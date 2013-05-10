@@ -1,0 +1,8 @@
+#BSUB -u ptoulis@fas.harvard.edu
+#BSUB -J "GraphSampler[1-200]"
+#BSUB -e out/odyssey/sampler_%I.err
+#BSUB -o out/odyssey/sampler_%I.out
+
+#BSUB -q airoldi
+
+Rscript /n/home00/ptoulis/GebKidney/odyssey-sampler.R ${LSB_JOBINDEX} 100
