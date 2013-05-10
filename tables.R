@@ -49,7 +49,7 @@ table.to.tex = function(object, filename) {
 ##   Synopsis.    D = table.assumptions(c(50,100,200, 300), trials=100)
 ##               table.to.tex(D, filename="out/assumptions.tex")
 table.matchings = function(sizes=c(50), trials=10) {
-    colnames = c("n", "$\\mu_E(n)$", "$\\mu_T(n)$", "$\\mu_E(n)$", "$\\mu_T(n)$")
+    colnames = c("n", "$\\mu_E(n)$", "$\\mu_T(n)$")
     ncols = length(colnames) ## size-experimental matches - theoretical matches  - (same for non-PRA)
     pb = txtProgressBar(style=3)
     ## result matrix
