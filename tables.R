@@ -4,9 +4,10 @@ source("experiments.R")
 library(xtable)
 
 ## hand-made bootstrap (USDA organic)
-bootstrap = function(x) sd(replicate(300, { y = sample(x, replace=T); mean(y)}))
+bootstrap = function(x) sd(replicate(1000, { y = sample(x, replace=T); mean(y)}))
+
 ## Combines the result matrix with the SE errors.
-combine.mat.se = function(M, SE) {
+add.se = function(M, SE) {
     D = matrix(NA, nrow=nrow(M), ncol=ncol(M))
     colnames(D) = colnames(M)
     for(i in 1:nrow(M)) {
@@ -15,6 +16,7 @@ combine.mat.se = function(M, SE) {
     return(D)
 }
 
+## Dumps the table as a .tex file.
 table.to.tex = function(results, filename) {
     fileConn = file(filename,open="w")
     lines =c()
@@ -41,54 +43,42 @@ table.to.tex = function(results, filename) {
 
 ###      FUNCTIONS TO CREATE THE TABLES
 ##  Table 1.   Model assumptions.
-##  n   | S matches,  S Theor |  R matches, R theor | #matches, μ(n) 
-##   e.g.    D = table.assumptions(c(50,100,200, 300), trials=100)
-##           table.to.tex(D, filename="out/assumptions.tex")
+##  n   |  #empirical matches |  theoretical matches
+##   Synopsis.    D = table.assumptions(c(50,100,200, 300), trials=100)
+##               table.to.tex(D, filename="out/assumptions.tex")
 table.assumptions = function(sizes=c(50), trials=10) {
-    
+    ncols = 3 ## size-experimental matches - theoretical matches 
     pb = txtProgressBar(style=3)
-    M = matrix(NA, nrow=length(sizes), ncol=7)
-    SE =  matrix(NA, nrow=length(sizes), ncol=7)
-    colnames(M) = c("n", "S real", "S theor.", "R real.", "R theor.", "#matches", "mu(n)")
-    N = length(sizes) * trials
+    ## result matrix
+    M = matrix(NA, nrow=length(sizes), ncol=ncols)
+    ## standard error matrix
+    SE =  matrix(NA, nrow=length(sizes), ncol=ncols)
+    colnames(M) = c("n", "$\\mu_E(n)$", "$\\mu_T(n)$")
     
+    ##  Total number of runs
+    nruns = length(sizes) * trials
     
     for(i in 1:length(sizes)) {
         n = sizes[i]
-        #print(sprintf("Size %d ", n))
+        ##  x =  2 x trials
         x = sapply(1:trials, function(j) {
             val = (i-1) * trials + j
-            setTxtProgressBar(pb, val/N)
+            setTxtProgressBar(pb, val/nruns)
             
+            # Sample the RKE, then match
             rke = rrke(n)
             m = max.matching(rke)
-            s.edges = filter.edges.by.type(rke, "S", "S")
-            s.pairs = length(which(get.pairs.attribute(rke, "type")=="S"))
-            s.theor = max(s.pairs-2, 0)
-            
-            r.edges = filter.edges.by.type(rke, "R","R")
-            or.edges = filter.edges.by.type(rke, "R", "O")
-            
-            r.pairs = length(which(get.pairs.attribute(rke, "type")=="R"))
-            ##  Stupid bug here. Was taking length()
-            r.theor = max(r.pairs - sqrt(2 * r.pairs/pi), 0)
-            
-            s.matches = 2 * length(intersect(s.edges, m$matching$matched.edges))
-            r.matches = length(intersect(or.edges, m$matching$matched.edges)) + 2 * length(intersect(r.edges, m$matching$matched.edges))
-            
-            
-            total.matches = m$matching$utility
-            matches.theor = 0.556 * n-0.338 * sqrt(n)-2
-            return(c(s.matches, s.theor, 
-                     r.matches, r.theor, 
-                     total.matches, matches.theor))
+            ## Empirical matches.
+            empirical.matches = m$matching$utility
+            theoretical.matches = 0.556 * n-0.338 * sqrt(n)-2
+            return(c(empirical.matches, theoretical. matches))
         });
         
         M[i,] = c(n,  t(apply(x, 1, mean)) )
         SE[i,] = c(0, t(apply(x, 1, bootstrap) ))
     }   
     # text = 
-    D = combine.mat.se(M, SE)
+    D = add.se(M, SE)
     return(D)
 }
 
