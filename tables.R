@@ -71,7 +71,7 @@ table.assumptions = function(sizes=c(50), trials=10) {
             ## Empirical matches.
             empirical.matches = m$matching$utility
             theoretical.matches = 0.556 * n-0.338 * sqrt(n)-2
-            return(c(empirical.matches, theoretical. matches))
+            return(c(empirical.matches, theoretical.matches))
         });
         
         M[i,] = c(n,  t(apply(x, 1, mean)) )
