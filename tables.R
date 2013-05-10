@@ -81,10 +81,13 @@ table.matchings = function(sizes=c(50),
             rke.all = pool.rke(rke.list)
             m.all = max.matching(rke.all)
             together.matches = m.all$matching$utility
-          
-            together.theoretical = 0.556 * n *m -0.338 * sqrt(n * m)-2
+            # 3. Theoretical matches
+            together.theoretical = 0.556 * n *m -0.338 * sqrt(n * m)- 2
             
-            return(c(empirical.matches, theoretical.matches))
+            # 4. Surplus
+            surplus = (together.matches - selfish.matches)/sqrt(n)
+            
+            return(c(selfish.matches, together.matches, together.theoretical, surplus))
         });
         
         M[i,] = c(n,  t(apply(x, 1, mean)) )
