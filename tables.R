@@ -48,8 +48,10 @@ table.to.tex = function(results, filename) {
 ##  n   |  #empirical matches |  theoretical matches
 ##   Synopsis.    D = table.assumptions(c(50,100,200, 300), trials=100)
 ##               table.to.tex(D, filename="out/assumptions.tex")
-table.matchings = function(sizes=c(50), trials=10) {
-    colnames = c("n", "$\\mu_E(n)$", "$\\mu_T(n)$")
+table.matchings = function(sizes=c(50), 
+                           m= 5, 
+                           trials=10) {
+    colnames = c("size ($n$)", "selfish", "together", "together (theoretical)", "surplus/$\sqrt{n}$")
     ncols = length(colnames) ## size-experimental matches - theoretical matches  - (same for non-PRA)
     pb = txtProgressBar(style=3)
     ## result matrix
@@ -68,16 +70,19 @@ table.matchings = function(sizes=c(50), trials=10) {
             val = (i-1) * trials + j
             setTxtProgressBar(pb, val/nruns)
             
-            # Sample the RKE, then match
-            rke = rrke(n, uniform.pra=T)
-            m = max.matching(rke)
-            ## Empirical matches.
-            empirical.matches = m$matching$utility
-            theoretical.matches = 0.556 * n-0.338 * sqrt(n)-2
+            # 0. Sample rke's 
+            rke.list = rke.many(k=m, n=n)
             
-            ## Non-uniform
-            rke =  rrke(n, uniform.pra=F)
-            m = max.matching(rke)
+            # 1.   Selfish (each one matches in isolation) 
+            selfish.matches= sum(sapply(1:length(rke.list), function(i)
+              {rke = rke.list[[i]];  m = max.matching(rke); m$matching$utility  }))
+            
+            # 2. Pool and match together
+            rke.all = pool.rke(rke.list)
+            m.all = max.matching(rke.all)
+            together.matches = m.all$matching$utility
+          
+            together.theoretical = 0.556 * n *m -0.338 * sqrt(n * m)-2
             
             return(c(empirical.matches, theoretical.matches))
         });
