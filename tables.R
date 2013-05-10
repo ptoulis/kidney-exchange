@@ -17,17 +17,19 @@ add.se = function(M, SE) {
 }
 
 ## Dumps the table as a .tex file.
-table.to.tex = function(results, filename) {
+table.to.tex = function(object, filename) {
     fileConn = file(filename,open="w")
     lines =c()
     attachLine <- function(s) {
         lines <<- c(lines, s)
     }
     attachLine("\\begin{center}")
+    
     columns = colnames(results)
+    ncols = length(columns)
     ##    alignment
     attachLine(sprintf("%s%s}","\\begin{tabular}{", 
-                       paste(rep("c", length(columns)), collapse=" | ")))
+                       paste(rep("c", ncols),  collapse=" | ")))
     tHeader = c(columns)
     attachLine(sprintf("%s\\\\ \\hline", paste(tHeader, collapse=" & ") ))
     for(i in  1:nrow(results)) {
@@ -42,18 +44,19 @@ table.to.tex = function(results, filename) {
 }
 
 ###      FUNCTIONS TO CREATE THE TABLES
-##  Table 1.   Model assumptions.
+##  Table 1.   Theorem 1 (expected value of maximum matchings.)
 ##  n   |  #empirical matches |  theoretical matches
 ##   Synopsis.    D = table.assumptions(c(50,100,200, 300), trials=100)
 ##               table.to.tex(D, filename="out/assumptions.tex")
-table.assumptions = function(sizes=c(50), trials=10) {
-    ncols = 3 ## size-experimental matches - theoretical matches 
+table.matchings = function(sizes=c(50), trials=10) {
+    colnames = c("n", "$\\mu_E(n)$", "$\\mu_T(n)$", "$\\mu_E(n)$", "$\\mu_T(n)$")
+    ncols = length(colnames) ## size-experimental matches - theoretical matches  - (same for non-PRA)
     pb = txtProgressBar(style=3)
     ## result matrix
     M = matrix(NA, nrow=length(sizes), ncol=ncols)
     ## standard error matrix
     SE =  matrix(NA, nrow=length(sizes), ncol=ncols)
-    colnames(M) = c("n", "$\\mu_E(n)$", "$\\mu_T(n)$")
+    colnames(M) = colnames
     
     ##  Total number of runs
     nruns = length(sizes) * trials
@@ -66,11 +69,16 @@ table.assumptions = function(sizes=c(50), trials=10) {
             setTxtProgressBar(pb, val/nruns)
             
             # Sample the RKE, then match
-            rke = rrke(n)
+            rke = rrke(n, uniform.pra=T)
             m = max.matching(rke)
             ## Empirical matches.
             empirical.matches = m$matching$utility
             theoretical.matches = 0.556 * n-0.338 * sqrt(n)-2
+            
+            ## Non-uniform
+            rke =  rrke(n, uniform.pra=F)
+            m = max.matching(rke)
+            
             return(c(empirical.matches, theoretical.matches))
         });
         
