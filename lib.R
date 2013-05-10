@@ -41,8 +41,7 @@ rblood <- function(n, probs=c(50,30,15,5)) {
 ## Sample a PRA value. For now this is constant to 0.2
 rpra <- function(n, is.uniform=F) {
     if(is.uniform)
-        return( sample(PRA.vals, n, replace=T))
-    warning("Using non-uniform PRA values.")
+        return( sample(PRA.vals, n, replace=T) )
     non.uniform.vals = c(0.05, 0.45, 0.9)
     return(sample(non.uniform.vals, size=n, replace=T, prob=c(0.7, 0.2, 0.1)))
 }
@@ -251,7 +250,7 @@ self.matched.pair = function(pair.code) {
 }
 
 ## Samples pairs and their PRAs
-rpairs.new <- function(n, sample.pra.fn=rpra, verbose=F) {
+rpairs.new <- function(n, uniform.pra, verbose=F) {
     out.codes= c()
     out.pras= c()
     basic.p = c(0.5, 0.3, 0.15, 0.05)
@@ -262,7 +261,7 @@ rpairs.new <- function(n, sample.pra.fn=rpra, verbose=F) {
     while(length(out.codes)<n) {
         no.samples =  n+100
         pair.codes = sample(all.pairs, size= no.samples, replace=T, prob=probs)
-        pras = sample.pra.fn( no.samples)
+        pras =  rpra(no.samples, is.uniform= uniform.pra)
         no.cross = rbinom( no.samples, size=1, prob=1-pras)
         b = as.numeric( sapply(pair.codes, function(i) self.matched.pair(i)) )
         j = which( b * no.cross==0)

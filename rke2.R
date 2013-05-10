@@ -1,9 +1,7 @@
 # Panos Toulis, David C.Parkes
 # 2012, Random Graph models for Kidney Exchanges
-
 ## Jan 2013, new version of rke.R
 rm(list=ls())
-library(gurobi)
 source("lib.R")
 ##      The main data structure.
 ##        rke2 = KE pool object (one hospital)
@@ -48,10 +46,13 @@ get.B <- function(rke) {
 
 
 ## Samples a rrke object.
-rrke <- function(n, sample.pra.fn = rpra, verbose=F) {
+rrke <- function(n, 
+                 uniform.pra = F,
+                 verbose=F) {
     
     # 1. Sample the pairs
-    pairs.obj = rpairs.new(n, sample.pra.fn, verbose)
+    ##   each one has a code and a PRA
+    pairs.obj = rpairs.new(n, uniform.pra, verbose)
     
     pair.codes = pairs.obj$codes
     pras = pairs.obj$pras
@@ -67,7 +68,7 @@ rrke <- function(n, sample.pra.fn = rpra, verbose=F) {
     obj$pc = pair.codes
     obj$compact = Compact.Matrix
     obj$pras = pras
-    
+    obj$uniform.pra = uniform.pra
     
     ###  Checks 
     #print(sum(get.P(obj)==bin.PRA.matrix) == n^2)
@@ -276,15 +277,13 @@ get.model.A <- function(rke, CAP=Inf) {
     return(A)
     
 }
-
-
 ##########################################################################
 ##   Maximum matching ##
 ## Returns { gurobi =>     { objvalue,  x = [0,1,...] },
 ##          matching =>  {matched.ids, matched.edges...} 
 ## x_i = 1  only if  edge i  is included in the maximum matching.
 ## Shuffling the edges eliminates bias in edge matching.
-
+library(gurobi)
 ##   Maximum  2min / maximum matching.
 ##  Can return NA if time out.
 max.matching <- function(rke, 
