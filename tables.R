@@ -17,7 +17,7 @@ add.se = function(M, SE) {
 }
 
 ## Dumps the table as a .tex file.
-table.to.tex = function(object, filename) {
+table.to.tex = function(results, filename) {
     fileConn = file(filename,open="w")
     lines =c()
     attachLine <- function(s) {
