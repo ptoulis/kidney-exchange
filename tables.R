@@ -71,7 +71,7 @@ table.matchings = function(sizes=c(50),
             setTxtProgressBar(pb, val/nruns)
             
             # 0. Sample rke's 
-            rke.list = rrke.many(k=m, n=n)
+            rke.list = rrke.many(m=m, n=n, uniform.pra=T)
             
             # 1.   Selfish (each one matches in isolation) 
             selfish.matches= sum(sapply(1:length(rke.list), function(i)

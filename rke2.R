@@ -47,7 +47,7 @@ get.B <- function(rke) {
 
 ## Samples a rrke object.
 rrke <- function(n, 
-                 uniform.pra = F,
+                 uniform.pra = T,
                  verbose=F) {
     
     # 1. Sample the pairs
@@ -84,9 +84,9 @@ rrke <- function(n,
 
 #  k = # hospitals
 #  n = # pairs/hospital
-rrke.many <- function(k=3, n=60) {
+rrke.many <- function(m=3, n=60, uniform.pra) {
     x = list()
-    for(i in sample(1:k)) 
+    for(i in sample(1:m)) 
         x[[i]] = rrke(n)
     return(x)
 }
