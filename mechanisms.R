@@ -25,7 +25,7 @@ get.hospitals.utility <- function(rke.all, m.all) {
 }
 
 ##  Given an RKE and a type of deviation, report back the pairs which are matched internally.
-play.strategy(rke, type="truthful") {
+play.strategy <- function(rke, type="truthful") {
   if(type=="truthful")
     return(c())
   if(type=="canonical") {
