@@ -99,6 +99,7 @@ table.matchings = function(sizes=c(50),
     }   
     # text = 
     D = add.se(M, SE)
+    print("")
     return(D)
 }
 
