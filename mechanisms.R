@@ -25,10 +25,10 @@ get.hospitals.utility <- function(rke.all, m.all) {
 }
 
 ##  Given an RKE and a type of deviation, report back the pairs which are matched internally.
-play.strategy <- function(rke, type="truthful") {
-  if(type=="truthful")
+play.strategy <- function(rke) {
+  if(type=="t")
     return(c())
-  if(type=="canonical") {
+  if(type=="c") {
     ## TO-DO(ptoulis): If the max matching is timed-out, this will return empty match
     ## which is equivalent to being truthful. Needs a fix?
     m = max.matching(rke)
@@ -44,6 +44,11 @@ play.strategy <- function(rke, type="truthful") {
 rCM <- function(rke.list, strategies) {
     m = length(rke.list)
     HospitalUtility = matrix(0, nrow=m, ncol=1)
+    
+    strategies = strsplit(strategies,split="")[[1]]
+    if(length(intersect(strategies, c("t","c", "r")))==0) {
+      stop("Strategies should be t,c,r")
+    }
     
     
     for(hid in 1:m) {
