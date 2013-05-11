@@ -306,6 +306,7 @@ max.matching <- function(rke,
         return(list(gurobi=list(objval=0, x=c()),
                     matching=list(matched.edges=c(),
                                   matched.ids=c(),
+                                  utility=0,
                                   not.matched.ids=c())))
     }
     if(K==0) {
