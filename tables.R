@@ -74,11 +74,11 @@ table.matchings = function(sizes=c(50),
             rke.list = rrke.many(m=m, n=n, uniform.pra=T)
             
             # 1.   Selfish (each one matches in isolation) 
-            selfish.matches= sum(sapply(1:length(rke.list), 
-                                        function(hid)
-                     {rke = rke.list[[hid]];  
-                      m = max.matching(rke); 
-                      m$matching$utility  }))
+            selfish.matches = c()
+            for(hid in 1:length(rke.list)) {
+              selfish.matches[hid] = max.matching(rke.list[[hid]])$matching$utility; 
+            }
+            selfish.matches = sum(selfish.matches)
             
             # 2. Pool and match together
             rke.all = pool.rke(rke.list)
