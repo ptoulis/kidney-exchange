@@ -81,6 +81,7 @@ table.matchings = function(sizes=c(50),
             rke.all = pool.rke(rke.list)
             m.all = max.matching(rke.all)
             together.matches = m.all$matching$utility
+            
             # 3. Theoretical matches
             together.theoretical = 0.556 * n *m -0.338 * sqrt(n * m)- 2
             
