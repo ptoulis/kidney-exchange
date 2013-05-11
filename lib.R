@@ -5,6 +5,7 @@
 
 Blood.Types  <- c("O", "A", "B", "AB")
 Blood.Codes  <- c(1, 2, 3, 6)
+Pair.Codes  <- c(1:16)
 PRA.vals    <- c(0.2)
 ## Given a pair -> [ compatible ABO]
 possible.matches <-function(pair) {
@@ -106,6 +107,12 @@ decode = function(pair.code) {
     pat = ifelse(i %% 4==0, 4, i%%4); 
     donor = 1+(i-pat)/4;
     return(list(donor=donor, patient=pat))
+}
+## Given O-A   compute the PC = pair code
+pair.code = function(pair) {
+  d = which(Blood.Types==pair$donor)
+  p = which(Blood.Types==pair$patient)
+  return( (d-1) * 4  + p)
 }
 compatible.patients <- function(donor.code) {
     x = c()
@@ -254,7 +261,7 @@ rpairs.new <- function(n, uniform.pra, verbose=F) {
     out.codes= c()
     out.pras= c()
     basic.p = c(0.5, 0.3, 0.15, 0.05)
-    all.pairs = 1:16
+    all.pairs = Pair.Codes
     probs = sapply(all.pairs, function(i) { dec = decode(i); 
                                        basic.p[dec$patient] * basic.p[dec$donor]})
     
