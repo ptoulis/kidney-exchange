@@ -17,43 +17,25 @@ source("lib.R")
 empty.rke <- function() {
    obj = list(pc=c(),  
               pras=c(),
-              compact=matrix(0, nrow=0, ncol=0),
+              P=matrix(0, nrow=0, ncol=0),
+              B=matrix(0, nrow=0, ncol=0),
               hospital=c())
    return(obj)
 }
-##  We allow a compact representation of the B, P matrices
-to.compact <- function(P,B) {
-    n = nrow(P)
-    comp = matrix(NA, nrow=n, ncol=n)
-    comp =    lower.tri(P) * P +upper.tri(B,diag=T) * B
-    return(comp)
-}
-##  Get the P matrix only
-get.P <- function(rke) {
-    ## Take the lower part
-    P = lower.tri(rke$compact) * rke$compact
-    return(P+t(P))
-}
-##  Get the B matrix only.
-get.B <- function(rke) {
-    B = upper.tri(rke$compact) * rke$compact
-    return(B+t(B)+ diag(diag(rke$compact)))
-}
-
-
-
-
-
 
 
 ## Samples a rrke object.
 rrke <- function(n, 
                  uniform.pra = T,
+                 blood.type.distr = list(O=0.5, A=0.3, B=0.15, AB=0.05),
                  verbose=F) {
     
     # 1. Sample the pairs
     ##   each one has a code and a PRA
-    pairs.obj = rpairs.new(n, uniform.pra, verbose)
+    pairs.obj = rpairs(n, 
+                       uniform.pra, 
+                       blood.type.distr,
+                       verbose)
     
     pair.codes = pairs.obj$codes
     pras = pairs.obj$pras
@@ -61,13 +43,11 @@ rrke <- function(n,
     bin.PRA.matrix =sample.bin.pra.matrix(pras, pras,same.hospital=T, verbose)
     bin.B.matrix =  get.bin.blood.matrix(pair.codes, verbose)
     
-    # 2. compact form
-    Compact.Matrix =to.compact(bin.PRA.matrix, bin.B.matrix)
-    
-    ## Define object to return.
+     ## Define object to return.
     obj = list()
     obj$pc = pair.codes
-    obj$compact = Compact.Matrix
+    obj$P = bin.PRA.matrix
+    obj$B = bin.B.matrix
     obj$pras = pras
     obj$uniform.pra = uniform.pra
     ###  Checks 
@@ -122,7 +102,8 @@ pool.rke <- function(rke.list) {
         P.all[s:t, s:t] = get.P(rke.list[[i]])
     }
     
-    rke.all$compact=to.compact(P.all, B.all)
+    rke.all$P  = P.all
+    rke.all$B = B.all
     rke.all$hospital = c()
     for(j in 1:k) {
         rke.all$hospital = c(rke.all$hospital, rep(j, get.size(rke.list[[j]])))
@@ -142,7 +123,8 @@ remove.pairs <- function(rke, pair.ids) {
    rke.new = list()
    rke.new$pras = rke$pras[-pair.ids]
    rke.new$pc = rke$pc[-pair.ids]
-   rke.new$compact = rke$compact[-pair.ids, -pair.ids]
+   rke.new$P = rke$P[-pair.ids, -pair.ids]
+   rke.new$B = rke$B[-pair.ids, -pair.ids]
    rke.new$uniform.pra = rke$uniform.pra
    if("hospital" %in% names(rke))
      rke.new$hospital = rke$hospital[-pair.ids]
@@ -294,9 +276,9 @@ get.matched.ids <- function(model.A, edge.ids) {
 
 ##    Get the model matrix.    Need for max matching
 ##   TO-DO   Aij = 1  iff   edge j is incident on node i 
-get.model.A <- function(rke, CAP=Inf) {
+get.model.A <- function(rke) {
     ##  the adjacency matrix. 
-    Adj = get.P(rke) * get.B(rke)
+    Adj = rke$P * rke$B
     Adj = upper.tri(Adj) * Adj ## get the upper triangular
     edges = c(0, cumsum(rowSums(Adj)) )  ##  n+1   elements.
     n = get.size(rke)
@@ -312,26 +294,14 @@ get.model.A <- function(rke, CAP=Inf) {
         left = edges[i]+1
 
         if(right>=left) {
-            #edges.to.add = right-left+1
-            #edges.to.add = min(CAP, edges.to.add)
-            #neighbors = sample(neighbors, edges.to.add)
             edges.to.add = left:right
-            if(length(edges.to.add)>CAP) {
-                n.kill = length(edges.to.add)- CAP
-                kill.edges=  c(kill.edges, sample(edges.to.add, n.kill))
-            }
             for(j in 1:length(edges.to.add))  {
                 index= c(i, neighbors[j])
                 A[index, edges.to.add[j] ]=1
             }
         }
     }
-    if(CAP<Inf) {
-        print(sprintf("Edges Before %d. After %d. Reduction  %.2f%%", 
-                      ncol(A),
-                      ncol(A)-length(kill.edges), 100* (length(kill.edges)/ncol(A))))
-        warning("Capping is experimental")
-    }
+
     if(length(kill.edges)>0)
         A = A[,-kill.edges]
     return(A)

@@ -7,6 +7,7 @@ Blood.Types  <- c("O", "A", "B", "AB")
 Blood.Codes  <- c(1, 2, 3, 6)
 Pair.Codes  <- c(1:16)
 PRA.vals    <- c(0.2)
+
 ## Given a pair -> [ compatible ABO]
 possible.matches <-function(pair) {
     donor = pair$donor
@@ -46,15 +47,6 @@ rpra <- function(n, is.uniform=F) {
     non.uniform.vals = c(0.05, 0.45, 0.9)
     return(sample(non.uniform.vals, size=n, replace=T, prob=c(0.7, 0.2, 0.1)))
 }
-## Sample pairs.
-rpairs <- function(n) {
-    p = list(donor=rblood(n), 
-             patient=rblood(n),
-             pra = rpra(n))
-    p$type = pair.type(p)
-    return(p)
-}
-
 ## The type as overdemanded (O), under-demanded (U), reciprocal (R) and 
 ## self-demanded (S)
 pair.type <- function(pair) {
@@ -169,44 +161,21 @@ rbin.matrix<- function(prob.matrix) {
 ## Can have 1 or 2 hospitals. If same we need to treat the diagonal elements differently.
 ## If equal to 1, then they can self match.
 sample.bin.pra.matrix = function(pra.probs1, pra.probs2, same.hospital=T,  verbose=F) {
-
     
     Us1 = 1-pra.probs1
     Us2 = 1-pra.probs2
+    ## This   n1 x n2  for n1 pairs of H1 and n2 pairs of H2 (n x n) if only one hospital
     pras.matrix = Us1 %*% t(Us2)
+    if(same.hospital && prod(pra.probs1==pra.probs2)==0)
+      stop("Error. Should give same PRAs when using same hospital. In lib.R")
     
-    
+    P = rbin.matrix(pras.matrix)
+    P = ceiling( (P+t(P))/2)
     if(same.hospital)
-        pras.matrix = pras.matrix - diag( Us1^2 )
-    ## Why -diag?   Because if we are in the same hospital we know 
-    ## that the pairs cannot be self-matched.
-
-    ## M = pras matrix   Mij = (1-pi) * (1-pj) and Mii = (1-pi)
-   
-    ret.matrix = rbin.matrix(pras.matrix)
-    rm(list=c("pras.matrix", "Us1", "Us2"))
-    d = diag(ret.matrix)
+      diag(P) <- 0
     
-    ##  Get the upper triangular and symmetrize.
-    up.ret = upper.tri(ret.matrix) * ret.matrix
-    ret.matrix = up.ret + t(up.ret) + diag(d)
-    ###   Symmetrize
-    if(verbose) {
-        print("Length of binom calls ")
-        print(length(pras.vec))
-        print("PRA probs matrix")
-        print(pras.matrix)
-        print("PRA vector")
-        print(pras.vec)
-        print("Y binomial ")
-        print(y)
-        print("PRA compatibility matrix")
-        print(ret.matrix)
-    }
-  
-    rm(list=c("up.ret", "d"))
-
-    return( ret.matrix)
+    rm(list=c("pras.matrix", "Us1", "Us2"))
+    return( P )
 }
 
 ###   Returns B = binary blood-type compatibility matrix
@@ -256,20 +225,33 @@ self.matched.pair = function(pair.code) {
     return(pair.code %in% compatible.codes(pair.code))
 }
 
+get.pair.probs = function(blood.type.distr) {
+  bd = blood.type.distr
+  return(  sapply(Pair.Codes, function(pc) { pair = pair.code.to.pair(pc) ;
+                                                 bd[[pair$patient]] * bd[[pair$donor]] }) )
+}
 ## Samples pairs and their PRAs
-rpairs.new <- function(n, uniform.pra, verbose=F) {
+rpairs <- function(n, uniform.pra, 
+                       blood.type.distr,
+                       verbose=F) {
     out.codes= c()
     out.pras= c()
-    basic.p = c(0.5, 0.3, 0.15, 0.05)
-    all.pairs = Pair.Codes
-    probs = sapply(all.pairs, function(i) { dec = decode(i); 
-                                       basic.p[dec$patient] * basic.p[dec$donor]})
+    bd = blood.type.distr
+    
+    ## Find probability for every pair.
+    ## e.g. [0.1,  0.05, ....]  for all 16 pair codes.
+    pair.probs = get.pair.probs(blood.type.distr)
     
     while(length(out.codes)<n) {
         no.samples =  n+100
-        pair.codes = sample(all.pairs, size= no.samples, replace=T, prob=probs)
+        ## Sample the pair codes.
+        pair.codes = sample(Pair.Codes, size= no.samples, replace=T, prob=pair.probs)
+        ## Sample their PRAs
         pras =  rpra(no.samples, is.uniform= uniform.pra)
+        
+        ## Pair-internal crossmatch
         no.cross = rbinom( no.samples, size=1, prob=1-pras)
+        ##  Pair-internal blood-type compatibility.
         b = as.numeric( sapply(pair.codes, function(i) self.matched.pair(i)) )
         j = which( b * no.cross==0)
         if(length(j)>0)
