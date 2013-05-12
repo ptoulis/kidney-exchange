@@ -473,8 +473,8 @@ max.matching <- function(rke,
     gurobi.result$x = old.x
     ##########    Preparing the result
     matched.edges = which(gurobi.result$x==1)
-    matched.ids = get.matched.ids(model.A, matched.edges)
-    original.ids = 1:get.size(rke)
+    matched.ids = get.matched.ids(get.model.A(rke), matched.edges)
+    original.ids = rke.pairs(rke)
     not.matched.ids =  sort(setdiff(original.ids, matched.ids)) 
     
     result = get.empty.result()
