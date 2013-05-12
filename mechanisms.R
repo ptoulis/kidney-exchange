@@ -194,10 +194,12 @@ xCM <- function(rke.list, strategy.str) {
                            remove.edges = all.but.s)
     
     ## 2.   Match R internally
+    ## TO-DO(ptoulis): Slow for some reason
     all.but.r = setdiff(rke.edges(rke.all), filter.edges.by.type(rke.all, "R","R"))
     Kq = c()
     match.r = list()
     q = 0
+    ## TO-DO(ptoulis): very slow!!
     while(length(Kq)==0) {
       ir.constraints = list()
       for(h in 1:m)
@@ -222,9 +224,13 @@ xCM <- function(rke.list, strategy.str) {
                                             match.s$matching$matched.ids))
     match.od = max.matching(remainder, regular.matching=T)
     
-    HospitalUtility = HospitalUtility + get.hospitals.utility(rke.all, match.s)
-                                      + get.hospitals.utility(rke.all, match.r)
-                                      + get.hospitals.utility(remainder, match.od)
+    Us = get.hospitals.utility(rke.all, match.s)
+    Ur = get.hospitals.utility(rke.all, match.r)
+    Uo = get.hospitals.utility(remainder, match.od)
+    print(Us)
+    print(Ur)
+    print(Uo)
+    HospitalUtility = HospitalUtility +Ur+ Us+ Uo
 
     return(HospitalUtility)
 }
