@@ -188,12 +188,12 @@ xCM <- function(rke.list, strategy.str) {
     ##  Ready to run xCM now
     ###  1.  Match S internally
     rke.all = pool.rke(rke.list)
-    all.but.s = setdiff(all.edges(rke.all), filter.edges.by.type(rke.all, "S","S"))
+    all.but.s = setdiff(rke.edges(rke.all), filter.edges.by.type(rke.all, "S","S"))
     match.s = max.matching(rke.all, IR.constraints=IR.constraints.S,
                            remove.edges = all.but.s)
     
     ## 2.   Match R internally
-    all.but.r = setdiff(all.edges(rke.all), filter.edges.by.type(rke.all, "R","R"))
+    all.but.r = setdiff(rke.edges(rke.all), filter.edges.by.type(rke.all, "R","R"))
     Kq = c()
     match.r = list()
     q = 0
@@ -260,11 +260,11 @@ Bonus = function(rke.list, strategy.str) {
   }
   
   ## 1. Match S pairs
-  all.but.s = setdiff(all.edges(rke.all), filter.edges.by.type(rke.all, "S","S"))
+  all.but.s = setdiff(rke.edges(rke.all), filter.edges.by.type(rke.all, "S","S"))
   match.s = max.matching(rke.all, remove.edges = all.but.s)
     
   ## 2. Match R pairs
-  all.but.r = setdiff(all.edges(rke.all), filter.edges.by.type(rke.all, "R","R"))
+  all.but.r = setdiff(rke.edges(rke.all), filter.edges.by.type(rke.all, "R","R"))
   match.r = max.matching(rke.all, IR.constraints=IR.constraints, 
                          remove.edges = all.but.r)
   
