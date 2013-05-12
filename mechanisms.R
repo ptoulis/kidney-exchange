@@ -49,22 +49,30 @@ read.strategy.str = function(strategy.str) {
   }
   return(strategies)
 }
+
+## Initializes every mechanism. Do not change.
+init.mechanism = function(rke.list, strategy.str) {
+  m = length(rke.list)
+  HospitalUtility = matrix(0, nrow=m, ncol=1)
+  
+  strategies = read.strategy.str(strategy.str)
+  
+  for(hid in 1:m) {
+    rke.h = rke.list[[hid]]
+    matched.internally = play.strategy(rke.h, type=strategies[hid])
+    HospitalUtility[hid,1] = length(matched.internally)
+    rke.list[[hid]] = remove.pairs(rke.h, matched.internally)
+  }
+  return( list(rke.list=rke.list, util=HospitalUtility))
+}
 ## Implementation of rCM
 ## deviating: list of hospitals which deviate.
 ##
 ##  Return:  kx1   matrix of utilities
 rCM <- function(rke.list, strategy.str) {
-    m = length(rke.list)
-    HospitalUtility = matrix(0, nrow=m, ncol=1)
-    
-   strategies = read.strategy.str(strategy.str)
-    
-    for(hid in 1:m) {
-      rke.h = rke.list[[hid]]
-      matched.internally = play.strategy(rke.h, type=strategies[hid])
-      HospitalUtility[hid,1] = length(matched.internally)
-      rke.list[[hid]] = remove.pairs(rke.h, matched.internally)
-    }
+    x = initialize.mechanism(rke.list, strategy.str)
+    rke.list = x$rke.list
+    HospitalUtility = x$util
     
     ## 0.  Pool all the reports.
     rke.all = pool.rke(rke.list=rke.list)
@@ -84,6 +92,7 @@ rCM <- function(rke.list, strategy.str) {
 ##
 ## z = mx1  demand from agents
 #  x = supply
+# TO-DO(ptoulis): Unit tests for this one?
 g.share = function(z, x) {
   set.J = which(z>0)
   y = rep(0, length(z))
@@ -104,15 +113,11 @@ g.share = function(z, x) {
 }
 xCM <- function(rke.list, strategy.str) {
    # total no. of hospitals
-    m = length(rke.list)
-    strategies = read.strategy.str(strategy.str)
-    ## Utility = K x 1 {  total matched }
-    HospitalUtility = matrix(0, nrow=m, ncol=1)
+    x = initialize.mechanism(rke.list, strategy.str)
+    HospitalUtility = x$util
+    rke.list = x$rke.list
     
     ##  Initialize variables
-    ## rke.list.S = S-subgraphs of hospitals
-    rke.list.S = list()
-    rke.list.R = list()
     ##  Demand for R-pairs
     z.AB = c()
     z.BA = c()
@@ -130,20 +135,12 @@ xCM <- function(rke.list, strategy.str) {
         irs = rep(0, length(Pair.Codes))
         irr = rep(0, length(Pair.Codes))
         
-        # 0. Play the strategy first.
-        ##  update rke.h   and the rke list 
         rke.h = rke.list[[hid]]
-        matched.internally = play.strategy(rke.h, type=strategies[hid])
-        rke.h = remove.pairs(rke.h, matched.internally)
-        rke.list[[hid]]  = rke.h
-        ## Matched internally, so add the utility now.
-        HospitalUtility[hid,1] = length(matched.internally)
         
         ## xCM mechanism starts
         #  1. Compute max matching internally in S
         S.subgraph = get.subgraph(rke.h, type="S")
         mS = max.matching(S.subgraph)
-        rke.list.S[[hid]] = S.subgraph
         matches.tab = table(rke.h$pc[mS$matching$matched.ids])
         pcs.matched = as.numeric(names(matches.tab))
         no.matches = as.numeric(matches.tab)
@@ -154,7 +151,6 @@ xCM <- function(rke.list, strategy.str) {
         # 2. Matchings in R 
         R.subgraph = get.subgraph(rke.h, type="R")
         mR = max.matching(R.subgraph)
-        rke.list.R[[hid]] = R.subgraph
         # Matched A-B, B-A pairs
         N.AB = length(intersect(filter.pairs.by.donor.patient(rke.h, dtype="A",ptype="B"),
                                 mR$matching$matched.ids))
@@ -188,6 +184,7 @@ xCM <- function(rke.list, strategy.str) {
     if(x.AB<x.BA)
       y.BA = g.share(z.BA, x.AB)
     
+    ##  Ready to run xCM now
     ###  1.  Match S internally
     rke.all = pool.rke(rke.list)
     all.but.s = setdiff(all.edges(rke.all), filter.edges.by.type(rke.all, "S","S"))
@@ -224,3 +221,71 @@ xCM <- function(rke.list, strategy.str) {
 
     return(HospitalUtility)
 }
+
+## Bonus mechanism. Ashlagi & Roth (2013)
+Bonus = function(rke.list, strategy.str) {
+  x = initialize.mechanism(rke.list, strategy.str)
+  HospitalUtility = x$util
+  rke.list = x$rke.list
+  
+  rke.all = pool.rke(rke.list)
+  ## Pair code (useful when setting constraints)
+  pc.AB = pair.code(list(donor="A", patient="B"))
+  pc.BA = pair.code(list(donor="B", patient="A"))
+  pc.R = c(pc.AB, pc.BA)
+  
+  IR.constraints.R = list()
+  ## Iterate over all hospitals.  (find constraints)
+  for(hid in 1:m) {
+    ## Constraints.
+    irr = rep(0, length(Pair.Codes))
+    
+    rke.h = rke.list[[hid]]
+    
+    # 2. Matchings in R 
+    R.subgraph = get.subgraph(rke.h, type="R")
+    mR = max.matching(R.subgraph)
+    # Matched A-B, B-A pairs
+    N.AB = length(intersect(filter.pairs.by.donor.patient(rke.h, dtype="A",ptype="B"),
+                            mR$matching$matched.ids))
+    N.BA = length(intersect(filter.pairs.by.donor.patient(rke.h, dtype="B",ptype="A"),
+                            mR$matching$matched.ids))
+    ## Because we are working on the R-subgraph, these numbers should be the same.
+    if(N.AB != N.BA) 
+      stop("AB and BA matches should be equal! ")
+  
+    irr[pc.R] = c(N.AB, N.BA)
+    IR.constraints.R[[hid]] = irr
+  }
+  
+  ## 1. Match S pairs
+  all.but.s = setdiff(all.edges(rke.all), filter.edges.by.type(rke.all, "S","S"))
+  match.s = max.matching(rke.all, remove.edges = all.but.s)
+    
+  ## 2. Match R pairs
+  all.but.r = setdiff(all.edges(rke.all), filter.edges.by.type(rke.all, "R","R"))
+  match.r = max.matching(rke.all, IR.constraints=IR.constraints, 
+                         remove.edges = all.but.r)
+  
+  #  3. Match OD/UD pairs.
+    # 3.1 Partition set of hospitals
+  k = as.integer(m/2)
+  H1 = sample(1:m, size=k, replace=F)
+  H2 = setdiff(1:m, H1)
+  
+  rke.all.one = pool.rke
+  
+  ud.pc = which( sapply(Pair.Codes, function(i) pair.type(pair.code.to.pair(i)))=="U")
+  ## For all under-demanded pairs
+  for(i in ud.pc) {
+    pair.ud = pair.code.to.pair(i)
+    # Find the reciprocal OD pair.
+    pair.od = list(donor=pair.ud$patient, patient=pair.ud$donor)
+    for(j in 1:2) {
+      theta.ij = 1 
+    }
+  }
+  
+  
+}
+

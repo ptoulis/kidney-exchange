@@ -351,15 +351,14 @@ max.matching <- function(rke,
                         IR.constraints=list(),
                         shuffle.edges=T,
                         remove.edges=c(),
-                        CAP=Inf, use.cutoff=F, 
                         timeLimit=120) {
     
-    ## Size of RKE
+    ## Size of RKE  (# pairs)
     n = get.size(rke)
     ###   1.   Get the model matrix. 
-    model.A = get.model.A(rke, CAP=CAP)
+    model.A = get.model.A(rke)
+    
     ## Total no. of edges
-     
     K = ncol(model.A) 
    
     get.empty.result <- function() {
@@ -392,6 +391,7 @@ max.matching <- function(rke,
         if(length(OUedges)>0)
             model.obj.coefficients[OUedges] = 2
     }
+    ##  Remove the specified edges.
     if(length(remove.edges)>0) {
         model.obj.coefficients[remove.edges]=0
     }
@@ -406,14 +406,14 @@ max.matching <- function(rke,
       
         ## Returns 0,1,2  = # of pairs of <pair> in <edge.id> for hospital <hid>
         # pair = list(donor="A", patient="B")
-        get.edge.coefficient = function(edge.id, hospital.id, pair) {
+        get.edge.coefficient = function(edge.id, hospital.id, pair.code) {
             edge.nodes = which(model.A[,edge.id]==1)
             s= 0
             for(pair.id in edge.nodes) {
                 ## get hospital of pair
                 h= rke$hospital[pair.id]
                 ## if match hospital AND match type add +1
-                if(h==hospital.id && rke$pc[pair.id] == pair.code(pair))
+                if(h==hospital.id && rke$pc[pair.id] == pair.code)
                     s = s+1
             }
             return(s)
@@ -424,16 +424,15 @@ max.matching <- function(rke,
         Rhs.ConstrainedEdges = matrix(0, nrow=0, ncol=1)
         ###   TO-DO(ptoulis): For loops +rbind makes things slow. Improve?
         for(hid in hospitals) {
+          ## this is 1x16  vector of lower bounds for matches.
           ir.constraints.h = IR.constraints[[hid]]
-          pcs.to.add = which(ir.constraints.h>0)
+          active.pcs = which(ir.constraints.h>0)
           
-          for(pc in pcs.to.add) {
-              A.ConstrainedEdges = rbind(A.ConstrainedEdges, 
-                                        sapply(1:K, function(edge.i) 
-                                            get.edge.coefficient(edge.i, hid, pair.code.to.pair(pc) )))
-              Rhs.ConstrainedEdges = rbind(Rhs.ConstrainedEdges, 
-                                           ir.constraints.h[pcs.to.add])
+          for(pc in active.pcs) {
+              pc.edge.coeffs = sapply(1:K, function(edge.i) get.edge.coefficient(edge.i, hid, pc))
+              A.ConstrainedEdges = rbind(A.ConstrainedEdges, pc.edge.coeffs)
           }
+          Rhs.ConstrainedEdges = rbind(Rhs.ConstrainedEdges, ir.constraints.h[active.pcs])
         }
         ## 2. Expand the constraints:
         ##    Match at least as much as defined in IR.constraints
@@ -470,27 +469,13 @@ max.matching <- function(rke,
                        Cuts=3,
                        Presolve=1,
                        TimeLimit=timeLimit)
-    if(use.cutoff && CAP==Inf) {
-        #m2= max.matching(rke, CAP=1)
-        #cutoff = m2$matching$utility
-        
-        theor.cutoff= 0.5 * n - sqrt(n) - 2
-        cutoff=theor.cutoff/3
-        print(sprintf("Calculated cutoff= %.1f. Theoretical=%.1f", cutoff, theor.cutoff))
-        params.new$Cutoff= cutoff
-        
-    }
-    
-      
+  
     gurobi.result <- gurobi(model, params.new)
     if(gurobi.result$status=="TIME_LIMIT")
     {
-        empty.result = list()
-        empty.result$matching = list(matched.edges=c(), 
-                                     matched.ids=c(), 
-                                     not.matched.ids = c(),
-                                     utility=0)
-        empty.result$gurobi = list()
+        warning("TIME LIMIT hit in Gurobi run.")
+        empty.result = get.empty.result()
+        empty.result$TIMEOUT=T
         return(empty.result)
     }
     
@@ -501,7 +486,7 @@ max.matching <- function(rke,
         old.x[old.edge] = gurobi.result$x[j]
     }
     gurobi.result$x = old.x
-    ##########
+    ##########    Preparing the result
     matched.edges = which(gurobi.result$x==1)
     matched.ids = get.matched.ids(model.A, matched.edges)
     original.ids = 1:get.size(rke)
