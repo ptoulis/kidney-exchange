@@ -415,8 +415,9 @@ max.matching <- function(rke,
           for(pc in active.pcs) {
               pc.edge.coeffs = sapply(1:K, function(edge.i) get.edge.coefficient(edge.i, hid, pc))
               A.ConstrainedEdges = rbind(A.ConstrainedEdges, pc.edge.coeffs)
+              Rhs.ConstrainedEdges = rbind(Rhs.ConstrainedEdges, ir.constraints.h[pc])
           }
-          Rhs.ConstrainedEdges = rbind(Rhs.ConstrainedEdges, ir.constraints.h[active.pcs])
+         
         }
         ## 2. Expand the constraints:
         ##    Match at least as much as defined in IR.constraints
