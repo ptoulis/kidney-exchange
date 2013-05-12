@@ -135,14 +135,6 @@ compatible.codes <- function(pair1) {
 }
 
 ##
-##
-##
-##
-###      Added: Jan. 30  --- New functions for sampling and pooling. Faster!
-## 
-##     pair.code = integer in {1,2.,,....16} for each pair O-O, O-A, ...
-##     New object = {   compact => compact matrix,  pc => pair codes   }
-##
 ##  Samples a binary matrix, based on probabilities of prob.matrix
 rbin.matrix<- function(prob.matrix) {
     n = nrow(prob.matrix)
@@ -160,7 +152,7 @@ rbin.matrix<- function(prob.matrix) {
 ##  Samples P = binary cross-match matrix
 ## Can have 1 or 2 hospitals. If same we need to treat the diagonal elements differently.
 ## If equal to 1, then they can self match.
-sample.bin.pra.matrix = function(pra.probs1, pra.probs2, same.hospital=T,  verbose=F) {
+rpra.matrix = function(pra.probs1, pra.probs2, same.hospital=T,  verbose=F) {
     
     Us1 = 1-pra.probs1
     Us2 = 1-pra.probs2
@@ -221,11 +213,13 @@ get.bin.blood.matrix <- function(pair.codes, verbose=F) {
     return(B)
 }
 
+# T,F  whether this pair is self-blood-type compatible.
 self.matched.pair = function(pair.code) {
     return(pair.code %in% compatible.codes(pair.code))
 }
 
-get.pair.probs = function(blood.type.distr) {
+##  For every pair code (PC) compute the probability based on blood-types.
+get.pc.probs = function(blood.type.distr) {
   bd = blood.type.distr
   return(  sapply(Pair.Codes, function(pc) { pair = pair.code.to.pair(pc) ;
                                                  bd[[pair$patient]] * bd[[pair$donor]] }) )
@@ -240,7 +234,7 @@ rpairs <- function(n, uniform.pra,
     
     ## Find probability for every pair.
     ## e.g. [0.1,  0.05, ....]  for all 16 pair codes.
-    pair.probs = get.pair.probs(blood.type.distr)
+    pair.probs = get.pc.probs(blood.type.distr)
     
     while(length(out.codes)<n) {
         no.samples =  n+100
@@ -292,5 +286,7 @@ to.rke <- function(new.rke) {
 }
 
 
-
+mu.thm = function(n) {
+  0.556 * n  -0.338 * sqrt(n)- 2
+}
 
