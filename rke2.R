@@ -113,14 +113,27 @@ pool.rke <- function(rke.list) {
 ##  Given an RKE  (1) subtract (2) return remainder.
 # Used to represent deviation strategies ("hide")
 remove.pairs <- function(rke, pair.ids) {
+  ### this is a delicate process, so we add some extra checks.
    if(length(pair.ids)==0)
        return(rke)
-   
+   all.pairs = rke.pairs(rke)
+   if(! is.subset(all.pairs, pair.ids))
+     stop("Pair ids to remove should be a subset!")
+    
+   if(equal.sets(pair.ids, all.pairs))
+     return(empty.rke())
+
    rke.new = list()
    rke.new$pras = rke$pras[-pair.ids]
    rke.new$pc = rke$pc[-pair.ids]
    rke.new$P = rke$P[-pair.ids, -pair.ids]
    rke.new$B = rke$B[-pair.ids, -pair.ids]
+   ## this is necessary. R messes up splicing! 
+   ## if you take out n-1 of the dimensions it will return a vector instead of a matrix!!! argh!
+   if(length(pair.ids) == length(all.pairs)-1) {
+     rke.new$P = matrix(rke.new$P, nrow=1, ncol=1)
+     rke.new$B = matrix(rke.new$B, nrow=1, ncol=1)
+   }
    rke.new$uniform.pra = rke$uniform.pra
    if("hospital" %in% names(rke))
      rke.new$hospital = rke$hospital[-pair.ids]
