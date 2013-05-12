@@ -137,12 +137,14 @@ xCM <- function(rke.list, strategy.str) {
         irr = rep(0, length(Pair.Codes))
         
         rke.h = rke.list[[hid]]
+        S.subgraph = get.subgraph(rke.h, type="S")
+        R.subgraph = get.subgraph(rke.h, type="R")
+        rm(rke.h)  ## avoids some bugs 
         
         ## xCM mechanism starts
         #  1. Compute max matching internally in S
-        S.subgraph = get.subgraph(rke.h, type="S")
         mS = max.matching(S.subgraph)
-        matches.tab = table(rke.h$pc[mS$matching$matched.ids])
+        matches.tab = table(S.subgraph$pc[mS$matching$matched.ids])
         pcs.matched = as.numeric(names(matches.tab))
         no.matches = as.numeric(matches.tab)
         # S-subgraph constraints
@@ -150,20 +152,19 @@ xCM <- function(rke.list, strategy.str) {
         
         
         # 2. Matchings in R 
-        R.subgraph = get.subgraph(rke.h, type="R")
         mR = max.matching(R.subgraph)
         # Matched A-B, B-A pairs
-        N.AB = length(intersect(filter.pairs.by.donor.patient(rke.h, dtype="A",ptype="B"),
+        N.AB = length(intersect(filter.pairs.by.donor.patient(R.subgraph, dtype="A",ptype="B"),
                                 mR$matching$matched.ids))
-        N.BA = length(intersect(filter.pairs.by.donor.patient(rke.h, dtype="B",ptype="A"),
+        N.BA = length(intersect(filter.pairs.by.donor.patient(R.subgraph, dtype="B",ptype="A"),
                                 mR$matching$matched.ids))
         ## Because we are working on the R-subgraph, these numbers should be the same.
         if(N.AB != N.BA) 
           stop("AB and BA matches should be equal! ")
         ## # unmatched A-B, B-A pairs
-        z.AB[hid] = length(intersect(filter.pairs.by.donor.patient(rke.h, dtype="A",ptype="B"),
+        z.AB[hid] = length(intersect(filter.pairs.by.donor.patient(R.subgraph, dtype="A",ptype="B"),
                                      mR$matching$not.matched.ids))
-        z.BA[hid] = length(intersect(filter.pairs.by.donor.patient(rke.h, dtype="B",ptype="A"),
+        z.BA[hid] = length(intersect(filter.pairs.by.donor.patient(R.subgraph, dtype="B",ptype="A"),
                                      mR$matching$not.matched.ids))
         
         ## add R constraints.
@@ -200,9 +201,9 @@ xCM <- function(rke.list, strategy.str) {
     while(length(Kq)==0) {
       ir.constraints = list()
       for(h in 1:m)
-        ir.constraints[[h]][pc.AB] = IR.constraints.R[[h]][pc.AB]+max(0, y.AB-q)
+        ir.constraints[[h]][pc.AB] = IR.constraints.R[[h]][pc.AB]+max(0, y.AB[h]-q)
       for(h in 1:m)
-        ir.constraints[[h]][pc.BA] = IR.constraints.R[[h]][pc.BA]+max(0, y.BA-q)
+        ir.constraints[[h]][pc.BA] = IR.constraints.R[[h]][pc.BA]+max(0, y.BA[h]-q)
       
       ## Do the matching.
       match.r = max.matching(rke.all, IR.constraints = ir.constraints,
@@ -212,6 +213,8 @@ xCM <- function(rke.list, strategy.str) {
     }
     
     #  3. Almost regular matching to the remainder
+    ## Notice that match.r, match.s are all on rke.all so that the 
+    ## ids refer to the same original ids in rke.all
     remainder = remove.pairs(rke.all, union(match.r$matching$matched.ids, 
                                             match.s$matching$matched.ids))
     match.od = max.matching(remainder, regular.matching=T)
@@ -247,9 +250,9 @@ Bonus = function(rke.list, strategy.str) {
     R.subgraph = get.subgraph(rke.h, type="R")
     mR = max.matching(R.subgraph)
     # Matched A-B, B-A pairs
-    N.AB = length(intersect(filter.pairs.by.donor.patient(rke.h, dtype="A",ptype="B"),
+    N.AB = length(intersect(filter.pairs.by.donor.patient(R.subgraph, dtype="A",ptype="B"),
                             mR$matching$matched.ids))
-    N.BA = length(intersect(filter.pairs.by.donor.patient(rke.h, dtype="B",ptype="A"),
+    N.BA = length(intersect(filter.pairs.by.donor.patient(R.subgraph, dtype="B",ptype="A"),
                             mR$matching$matched.ids))
     ## Because we are working on the R-subgraph, these numbers should be the same.
     if(N.AB != N.BA) 
