@@ -70,7 +70,7 @@ init.mechanism = function(rke.list, strategy.str) {
 ##
 ##  Return:  kx1   matrix of utilities
 rCM <- function(rke.list, strategy.str) {
-    x = initialize.mechanism(rke.list, strategy.str)
+    x = init.mechanism(rke.list, strategy.str)
     rke.list = x$rke.list
     HospitalUtility = x$util
     
@@ -113,7 +113,7 @@ g.share = function(z, x) {
 }
 xCM <- function(rke.list, strategy.str) {
    # total no. of hospitals
-    x = initialize.mechanism(rke.list, strategy.str)
+    x = init.mechanism(rke.list, strategy.str)
     HospitalUtility = x$util
     rke.list = x$rke.list
     
@@ -224,7 +224,7 @@ xCM <- function(rke.list, strategy.str) {
 
 ## Bonus mechanism. Ashlagi & Roth (2013)
 Bonus = function(rke.list, strategy.str) {
-  x = initialize.mechanism(rke.list, strategy.str)
+  x = init.mechanism(rke.list, strategy.str)
   HospitalUtility = x$util
   rke.list = x$rke.list
   
