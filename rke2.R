@@ -17,7 +17,8 @@ source("lib.R")
 empty.rke <- function() {
    obj = list(pc=c(),  
               pras=c(),
-              compact=matrix(0, nrow=0, ncol=0))
+              compact=matrix(0, nrow=0, ncol=0),
+              hospital=c())
    return(obj)
 }
 ##  We allow a compact representation of the B, P matrices
@@ -69,7 +70,6 @@ rrke <- function(n,
     obj$compact = Compact.Matrix
     obj$pras = pras
     obj$uniform.pra = uniform.pra
-    
     ###  Checks 
     #print(sum(get.P(obj)==bin.PRA.matrix) == n^2)
     #print(sum(get.B(obj)==bin.B.matrix) == n^2)
@@ -111,6 +111,7 @@ pool.rke <- function(rke.list) {
     for(i in 1:k) {
         rke.all$pc = c(rke.all$pc, rke.list[[i]]$pc)
         rke.all$pras =c(rke.all$pras, rke.list[[i]]$pras)
+        rke.all$uniform.pra[i] = rke.list[[i]]$uniform.pra
     }
     #print(ranges)
     P.all = sample.bin.pra.matrix(rke.all$pras, rke.all$pras,same.hospital=T)
@@ -134,15 +135,17 @@ pool.rke <- function(rke.list) {
 
 ##  Given an RKE  (1) subtract (2) return remainder.
 # Used to represent deviation strategies ("hide")
-remove.pairs <- function(rke, pairs) {
-   if(length(pairs)==0)
+remove.pairs <- function(rke, pair.ids) {
+   if(length(pair.ids)==0)
        return(rke)
    
    rke.new = list()
-   rke.new$pras = rke$pras[-pairs]
-   rke.new$pc = rke$pc[-pairs]
-   rke.new$compact = rke$compact[-pairs, -pairs]
-   
+   rke.new$pras = rke$pras[-pair.ids]
+   rke.new$pc = rke$pc[-pair.ids]
+   rke.new$compact = rke$compact[-pair.ids, -pair.ids]
+   rke.new$uniform.pra = rke$uniform.pra
+   if("hospital" %in% names(rke))
+     rke.new$hospital = rke$hospital[-pair.ids]
    return(rke.new)
 }
 
@@ -175,6 +178,31 @@ filter.pairs.by.donor.patient <- function(rke, dtype, ptype) {
     })
     return(which(membership==T))
 }
+filter.pairs.by.type <- function(rke, type) {
+  return(which(get.pairs.attribute(rke, "type")==type))
+}
+##  Returns a sub-RKE object of only type=OD/UD, R, S 
+get.subgraph <- function(rke, type) {
+  if(type=="S") {
+    pairs.rmv = union(filter.pairs.by.type(rke, "R"), 
+                      union(filter.pairs.by.type(rke, "O"), filter.pairs.by.type(rke,"U")))
+    rke.new = remove.pairs(rke, pairs.rmv)
+    return(rke.new)            
+    
+  }
+  if(type=="R") {
+    pairs.rmv = union(filter.pairs.by.type(rke, "S"), 
+                      union(filter.pairs.by.type(rke, "O"), filter.pairs.by.type(rke,"U")))
+    rke.new = remove.pairs(rke, pairs.rmv)
+    return(rke.new)   
+  }
+  if(type=="O/U") {
+    pairs.rmv = union(filter.pairs.by.type(rke, "R"), filter.pairs.by.type(rke,"S"))
+    rke.new = remove.pairs(rke, pairs.rmv)
+    return(rke.new)   
+  }
+  stop("Wrong type requested in get.subgraph")
+}
 get.incident.nodes = function(A, edges) {
     ret = c()
     for(e in edges) {
@@ -183,6 +211,11 @@ get.incident.nodes = function(A, edges) {
     return(unique(ret))
 }
 ##   new function
+all.edges = function(rke) {
+  A = get.model.A(rke)
+  if(ncol(A)==0) return(c())
+  return(1:ncol(A))
+}
 filter.edges.by.type <- function(rke, t1, t2) {
   
     #print(sprintf("t1=%s t2=%s", t1, t2))
@@ -208,13 +241,40 @@ filter.edges.by.type <- function(rke, t1, t2) {
         type2 = pair.type(pair2)
         #print(sprintf("Edge %d t1, t2=%s, %s", e, type1, type2))
         #print(type2)
-        pairMatch = (type1 %in% t1 && type2 %in% t2) ||
+        match = (type1 %in% t1 && type2 %in% t2) ||
                      (type1 %in%  t2 &&type2 %in% t1)
-        return(pairMatch)
+        return(match)
     })
    return(which(membership==T))
 }
+filter.edges.by.donor.patient <- function(rke, dt, pt) {
+  
+  #print(sprintf("t1=%s t2=%s", t1, t2))
+  A = get.model.A(rke)
+  
+  if(dt=="*") 
+    dt = c("O", "A", "B", "AB")
+  else dt = c(dt)
+  
+  if(pt=="*") 
+    pt = c("O", "A", "B", "AB")
+  else pdt = c(pt)
+  
+  K = ncol(A)
+  if(K==0) return(c())
+  
+  membership = sapply(1:K, function(e) {
+    ## find incident nodes to edge
+    edge.ids = which(A[,e]==1)
+    pair1=  pair.code.to.pair(rke$pc[edge.ids[1]])
+    pair2=  pair.code.to.pair(rke$pc[edge.ids[2]])
 
+    pairMatch = (pair1$donor %in% dt && pair1$patient %in% pt) ||
+      (pair2$donor %in% dt && pair2$patient %in% pt)
+    return(pairMatch)
+  })
+  return(which(membership==T))
+}
 
 
 #
@@ -288,7 +348,7 @@ library(gurobi)
 ##  Can return NA if time out.
 max.matching <- function(rke, 
                         regular.matching=F,
-                        IR.constraints=matrix(0,nrow=0, ncol=0),
+                        IR.constraints=list(),
                         shuffle.edges=T,
                         remove.edges=c(),
                         CAP=Inf, use.cutoff=F, 
@@ -326,7 +386,7 @@ max.matching <- function(rke,
     model.sense      <- rep("<=",n)
     
     
-    ## Required regular matching. Put more weights on O-U edges
+    ## Required regular matching. Put more weights on O-U edges (almost-regular)
     if(regular.matching) {
         OUedges = filter.edges.by.type(rke, "O", "U")
         if(length(OUedges)>0)
@@ -336,52 +396,50 @@ max.matching <- function(rke,
         model.obj.coefficients[remove.edges]=0
     }
     ###   If IR constraints  (used by xCM matching)
-    ## IR.constraints = k x 2  matrix
-    ## e.x. X[3, 1] = 5 means  for hospital 3 match at least as 5 "R" pairs.
-    if(nrow(IR.constraints)>0) {
+    ## IR.constraints = [][]  , i.e 
+    ## e.x. X[[3]] = [1,0,0,0,2,.....]    1 x 16  vector
+    ##  Vector has #pairs to match for each pair-code (1 to 16)
+    if(length(IR.constraints)>0) {
         ### Impose IR constraints only on R and S's
         if(length(rke$hospital)==0)
-            stop("Cannot run constraints with < 2 hospitals")
-        if(nrow(IR.constraints)!= length(unique(rke$hospital)))
-            stop("Error. Row of IR constraints should = RKE hospitals")
-        hospitals = 1:nrow(IR.constraints)
-        h.size = length(hospitals)
-        ## Returns 0,1,2  = # of pairs of <type> in <edge.id> for hospital <hid>
-        get.edge.coefficient = function(edge.id, hospital.id, type) {
+            stop("Cannot run constraints with no hospitals")
+      
+        ## Returns 0,1,2  = # of pairs of <pair> in <edge.id> for hospital <hid>
+        # pair = list(donor="A", patient="B")
+        get.edge.coefficient = function(edge.id, hospital.id, pair) {
             edge.nodes = which(model.A[,edge.id]==1)
             s= 0
-            for(node.j in 1:2) {
-                ## get pair of edge
-                pair = edge.nodes[node.j]
+            for(pair.id in edge.nodes) {
                 ## get hospital of pair
-                h= rke$hospital[pair]
+                h= rke$hospital[pair.id]
                 ## if match hospital AND match type add +1
-                if(h==hospital.id && pair.type(pair.code.to.pair(rke$pc[pair]))==type)
+                if(h==hospital.id && rke$pc[pair.id] == pair.code(pair))
                     s = s+1
             }
             return(s)
         }
-        ## Constraints matrix  Hospitals x  K   
-        ## For every hospital match at least as many internal matches of R,S
-        ## A2.Rij = {0,1,2} whether edge j matches 0,1,2 R pairs for hospital i 
-        A2.R = matrix(0, nrow=h.size, ncol=K)
-        A2.S =  matrix(0, nrow=h.size, ncol=K)
-        
+        ## Build the constrained matrix = A'ij = 1  if  i-th contraint include edge j
+        hospitals = 1:length(IR.constraints)  
+        A.ConstrainedEdges = matrix(0, nrow=0, ncol=K)
+        Rhs.ConstrainedEdges = matrix(0, nrow=0, ncol=1)
+        ###   TO-DO(ptoulis): For loops +rbind makes things slow. Improve?
         for(hid in hospitals) {
-            A2.R[hid,]=sapply(1:K, function(edge.i) 
-                get.edge.coefficient(edge.i, hid, "R" ))
-            A2.S[hid,]=sapply(1:K, function(edge.i) 
-                get.edge.coefficient(edge.i, hid, "S" ))
+          ir.constraints.h = IR.constraints[[hid]]
+          pcs.to.add = which(ir.constraints.h>0)
+          
+          for(pc in pcs.to.add) {
+              A.ConstrainedEdges = rbind(A.ConstrainedEdges, 
+                                        sapply(1:K, function(edge.i) 
+                                            get.edge.coefficient(edge.i, hid, pair.code.to.pair(pc) )))
+              Rhs.ConstrainedEdges = rbind(Rhs.ConstrainedEdges, 
+                                           ir.constraints.h[pcs.to.add])
+          }
         }
-        
         ## 2. Expand the constraints:
-        ##    Match (R or S) at least as much as defined in IR.constraints
-        model.A = rbind(model.A, A2.R)
-        model.rhs = c(model.rhs, IR.constraints[,1])
-        model.sense = c(model.sense, rep(">=", h.size))
-        model.A = rbind(model.A, A2.S)
-        model.rhs = c(model.rhs, IR.constraints[,2])
-        model.sense = c(model.sense, rep(">=", h.size))
+        ##    Match at least as much as defined in IR.constraints
+        model.A = rbind(model.A, A.ConstrainedEdges)
+        model.rhs = c(model.rhs, Rhs.ConstrainedEdges)
+        model.sense = c(model.sense, rep(">=", nrow(Rhs.ConstrainedEdges)))
     }### If   IR constraints
     
     ### Shuffle Edges (if required)
