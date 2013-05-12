@@ -113,6 +113,7 @@ g.share = function(z, x) {
 }
 xCM <- function(rke.list, strategy.str) {
    # total no. of hospitals
+    m =length(rke.list)
     x = init.mechanism(rke.list, strategy.str)
     HospitalUtility = x$util
     rke.list = x$rke.list
