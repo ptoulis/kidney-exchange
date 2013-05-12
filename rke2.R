@@ -40,7 +40,7 @@ rrke <- function(n,
     pair.codes = pairs.obj$codes
     pras = pairs.obj$pras
     
-    bin.PRA.matrix =sample.bin.pra.matrix(pras, pras,same.hospital=T, verbose)
+    bin.PRA.matrix =rpra.matrix(pras, pras,same.hospital=T, verbose)
     bin.B.matrix =  get.bin.blood.matrix(pair.codes, verbose)
     
      ## Define object to return.
@@ -76,10 +76,6 @@ get.size <- function(rke) {
     return( length(rke$pc) )
 }
 
-
-
-
-
 ##   Merge different RKE objects into one.
 ##   Assume all hospitals are non-empty
 pool.rke <- function(rke.list) {
@@ -94,7 +90,7 @@ pool.rke <- function(rke.list) {
         rke.all$uniform.pra[i] = rke.list[[i]]$uniform.pra
     }
     #print(ranges)
-    P.all = sample.bin.pra.matrix(rke.all$pras, rke.all$pras,same.hospital=T)
+    P.all = rpra.matrix(rke.all$pras, rke.all$pras,same.hospital=T)
     B.all = get.bin.blood.matrix(rke.all$pc)
     for(i in 1:k) {
         s = ranges[i,1]
@@ -130,6 +126,11 @@ remove.pairs <- function(rke, pair.ids) {
      rke.new$hospital = rke$hospital[-pair.ids]
    return(rke.new)
 }
+keep.pairs = function(rke, pair.ids) {
+  all.pairs = rke.pairs(rke)
+  rm.pairs = setdiff(all.pairs, pair.ids)
+  return(remove.pairs(rke, rm.pairs))
+}
 
 ## Returns the valus of the attribute "attr" for all pairs.
 ##  e.g. get.pairs.attribute(rke, ")
@@ -139,30 +140,7 @@ get.pairs.attribute <- function(rke, attr) {
     
     return(sapply(1:get.size(rke), function(i) pair.type(pair.code.to.pair(rke$pc[i]))))
 }
-##  Returns only those pairs of specific donor-patient types.
-filter.pairs.by.donor.patient <- function(rke, dtype, ptype) {
-    if(dtype=="*") 
-        dtype = c("O", "A", "B", "AB")
-    else dtype = c(dtype)
-    
-    if(ptype=="*") 
-        ptype = c("O", "A", "B", "AB")
-    else ptype=c(ptype)
-    
-    n = get.size(rke)
-    if(n==0) return(c())
-    membership = sapply(1:n, function(i) {
-        pair =  pair.code.to.pair(rke$pc[i])
-        donor.type = pair$donor
-        pat.type = pair$patient
-        pairMatch = (donor.type %in% dtype && pat.type %in% ptype)
-        return(pairMatch)
-    })
-    return(which(membership==T))
-}
-filter.pairs.by.type <- function(rke, type) {
-  return(which(get.pairs.attribute(rke, "type")==type))
-}
+
 ##  Returns a sub-RKE object of only type=OD/UD, R, S 
 get.subgraph <- function(rke, type) {
   if(type=="S") {
@@ -193,11 +171,20 @@ get.incident.nodes = function(A, edges) {
     return(unique(ret))
 }
 ##   new function
-all.edges = function(rke) {
+rke.edges = function(rke) {
   A = get.model.A(rke)
   if(ncol(A)==0) return(c())
   return(1:ncol(A))
 }
+rke.pairs = function(rke) {
+  n= get.size(rke)
+  if(n==0) return(c())
+  return(1:n)
+}
+
+
+##  FILTERS 
+##  for pairs and edges.
 filter.edges.by.type <- function(rke, t1, t2) {
   
     #print(sprintf("t1=%s t2=%s", t1, t2))
@@ -257,7 +244,30 @@ filter.edges.by.donor.patient <- function(rke, dt, pt) {
   })
   return(which(membership==T))
 }
-
+##  Returns only those pairs of specific donor-patient types.
+filter.pairs.by.donor.patient <- function(rke, dtype, ptype) {
+  if(dtype=="*") 
+    dtype = c("O", "A", "B", "AB")
+  else dtype = c(dtype)
+  
+  if(ptype=="*") 
+    ptype = c("O", "A", "B", "AB")
+  else ptype=c(ptype)
+  
+  n = get.size(rke)
+  if(n==0) return(c())
+  membership = sapply(1:n, function(i) {
+    pair =  pair.code.to.pair(rke$pc[i])
+    donor.type = pair$donor
+    pat.type = pair$patient
+    pairMatch = (donor.type %in% dtype && pat.type %in% ptype)
+    return(pairMatch)
+  })
+  return(which(membership==T))
+}
+filter.pairs.by.type <- function(rke, type) {
+  return(which(get.pairs.attribute(rke, "type")==type))
+}
 
 #
 #
@@ -279,33 +289,24 @@ get.matched.ids <- function(model.A, edge.ids) {
 get.model.A <- function(rke) {
     ##  the adjacency matrix. 
     Adj = rke$P * rke$B
-    Adj = upper.tri(Adj) * Adj ## get the upper triangular
-    edges = c(0, cumsum(rowSums(Adj)) )  ##  n+1   elements.
-    n = get.size(rke)
-    ## Now make this a model matrix 
-    K = sum(Adj)  ## total no. of edges
-      
-    A = matrix(0, nrow=n, ncol=K)
-    kill.edges=  c()
-    
-    for(i in 1:n) {
-        neighbors=  which(Adj[i, ]==1)
-        right = edges[i+1]
-        left = edges[i]+1
-
-        if(right>=left) {
-            edges.to.add = left:right
-            for(j in 1:length(edges.to.add))  {
-                index= c(i, neighbors[j])
-                A[index, edges.to.add[j] ]=1
-            }
+    all.pairs = rke.pairs(rke)
+    n = length(all.pairs)
+    if(sum(Adj)%%2 != 0) 
+      stop("Adjacency matrix is not symmetric?")
+  
+    ## The model matrix
+    ## TO-DO(ptoulis):  Probably not very efficient?
+    A = matrix(0, nrow=n, ncol=0)
+    for(i in all.pairs) {
+        neighbors =  which(Adj[i, ]==1)
+        for(j in neighbors[neighbors>i]) {          
+          ##   Add the pair, only if it has not been entered before.
+          A = cbind(A, rep(0, n))
+          A[c(i,j), ncol(A)] <- 1
+          
         }
     }
-
-    if(length(kill.edges)>0)
-        A = A[,-kill.edges]
     return(A)
-    
 }
 ##########################################################################
 ##   Maximum matching ##
