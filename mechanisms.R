@@ -201,9 +201,12 @@ xCM <- function(rke.list, strategy.str) {
     while(length(Kq)==0) {
       ir.constraints = list()
       for(h in 1:m)
+        ir.constraints[[h]] = rep(0, length(Pair.Codes))
+      
+      for(h in 1:m) {
         ir.constraints[[h]][pc.AB] = IR.constraints.R[[h]][pc.AB]+max(0, y.AB[h]-q)
-      for(h in 1:m)
         ir.constraints[[h]][pc.BA] = IR.constraints.R[[h]][pc.BA]+max(0, y.BA[h]-q)
+      }
       
       ## Do the matching.
       match.r = max.matching(rke.all, IR.constraints = ir.constraints,
