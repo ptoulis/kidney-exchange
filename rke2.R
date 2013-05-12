@@ -95,7 +95,7 @@ pool.rke <- function(rke.list) {
     for(i in 1:k) {
         s = ranges[i,1]
         t = ranges[i,2]
-        P.all[s:t, s:t] = get.P(rke.list[[i]])
+        P.all[s:t, s:t] = rke.list[[i]]$P
     }
     
     rke.all$P  = P.all
