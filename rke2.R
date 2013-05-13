@@ -183,6 +183,14 @@ get.incident.nodes = function(A, edges) {
     }
     return(unique(ret))
 }
+get.incident.edges = function(rke, pair.ids) {
+  if(length(pair.ids)==0) return(c())
+  A = get.model.A(rke)
+  return(which(apply(A[pair.ids,], 2, sum)>0))
+}
+get.nonincident.edges = function(rke, pair.ids) {
+  return(setdiff(rke.edges(rke), get.incident.edges(rke, pair.ids)))
+}
 ##   new function
 rke.edges = function(rke) {
   A = get.model.A(rke)
