@@ -227,16 +227,77 @@ xCM <- function(rke.list, strategy.str) {
     Us = get.hospitals.utility(rke.all, match.s)
     Ur = get.hospitals.utility(rke.all, match.r)
     Uo = get.hospitals.utility(remainder, match.od)
-    print(Us)
-    print(Ur)
-    print(Uo)
+
     HospitalUtility = HospitalUtility +Ur+ Us+ Uo
 
     return(HospitalUtility)
 }
 
+## The underdemanded lottery as defined in Ashlagi & Roth (2013)
+##  Return set of pair ids
+## rke = entire RKE object
+## pair.ud = UD pair (donor, patient)
+# Hn =   [1.4.5....]   vector of hospital ids
+# theta = supply
+# Qh, Sh  = lists 
+## @RETURN: (id1, id2, ...)    list of pair ids which are the union of Sh(X-Y)
+ud.lottery = function(rke, 
+                      pair.ud, 
+                      Hn, 
+                      theta,
+                      Qh, Sh) {
+  
+  # The underdemanded PC code
+  ud.code = pair.code(pair.ud)
+  
+  rke.XY.pairs = filter.pairs.by.donor.patient(rke, pair.ud$donor, pair.ud$patient)
+  ##  Pre-compute the X-Y pairs for every hospital h
+  Bh.XY = list()
+  ## For every hospital, holds the set of X-Y pairs.
+  Sh.XY = list()
+  ## Contains # balls /hospital     [1,1,1,3,3,3,3,3,5,5,5, ...]   NOTE: this is index by a hospital in Hn
+  set.J = c()
+  ## Initialize the Sh.XY  to the internal max matches.
+  for(hid in Hn) {
+    Sh.XY[[hid]] = Sh[[hid]][[ud.code]]
+    set.J = c(set.J, rep(hid, Qh[[hid]][ud.code]))
+    
+    Bh.XY[[hid]] = intersect(rke.XY.pairs, which(rke$hospital==hid) )
+    ## Sanity check
+    if(!is.subset(Bh.XY[[hid]], Sh.XY[[hid]]))
+      stop("Sh.XY should be subset. Error in UD lottery")
+  }
+
+  get.sum = function() sum(sapply(Hn, function(hid) length(Sh.XY[[hid]])))
+  
+  trials = 0
+  
+  while(get.sum() < theta && trials<20 && length(set.J)>0) {
+    trials= trials+1
+    h.sample = uniform.sample(set.J)
+    set.J = set.J[-which(set.J==h.sample)[1]]
+    if(! is.subset(Bh.XY[[h.sample]], Sh.XY[[h.sample]]))
+      stop("Sh should be a subset of Bh! ")
+    
+    avail = setdiff(Bh.XY[[h.sample]], Sh.XY[[h.sample]])
+    if(length(avail)>0) {
+      xy.pair = uniform.sample(avail)
+      Sh.XY[[h.sample]] = c(Sh.XY[[h.sample]], xy.pair)
+    }
+  }
+  ret.pairs = c()
+  # return the union.
+  for(h in Hn) {
+    ret.pairs = c(ret.pairs, Sh.XY[[h]])
+  }
+  return(ret.pairs)
+}
+
+
 ## Bonus mechanism. Ashlagi & Roth (2013)
 Bonus = function(rke.list, strategy.str) {
+  m = length(rke.list)
+  
   x = init.mechanism(rke.list, strategy.str)
   HospitalUtility = x$util
   rke.list = x$rke.list
@@ -277,28 +338,78 @@ Bonus = function(rke.list, strategy.str) {
     
   ## 2. Match R pairs
   all.but.r = setdiff(rke.edges(rke.all), filter.edges.by.type(rke.all, "R","R"))
-  match.r = max.matching(rke.all, IR.constraints=IR.constraints, 
+  match.r = max.matching(rke.all, IR.constraints=IR.constraints.R, 
                          remove.edges = all.but.r)
   
+  Us = get.hospitals.utility(rke.all, match.s)
+  Ur = get.hospitals.utility(rke.all, match.r)
+  
+  ## Update utilities.
+  HospitalUtily = HospitalUtility + Ur + Us
+  ##   Standard up to here.
+  
   #  3. Match OD/UD pairs.
-    # 3.1 Partition set of hospitals
+ 
   k = as.integer(m/2)
-  H1 = sample(1:m, size=k, replace=F)
-  H2 = setdiff(1:m, H1)
-  
-  rke.all.one = pool.rke
-  
+  H.sets = list()
+  H.sets[[1]] = sample(1:m, size=k, replace=F)
+  H.sets[[2]] = setdiff(1:m, H.sets[[1]])
+
+  ## Underdemanded PC codes
   ud.pc = which( sapply(Pair.Codes, function(i) pair.type(pair.code.to.pair(i)))=="U")
-  ## For all under-demanded pairs
-  for(i in ud.pc) {
-    pair.ud = pair.code.to.pair(i)
-    # Find the reciprocal OD pair.
-    pair.od = list(donor=pair.ud$patient, patient=pair.ud$donor)
-    for(j in 1:2) {
-      theta.ij = 1 
+  
+  #  Before we start. Compute Qh and Sh sets internally
+  ## Qh(X-Y) = how many #X-Y  in hospital h
+  ## Sh(X-Y) = { ids } of type X-Y which are included in a max regular matching.
+  Qh = list()
+  Sh = list()
+  for(h in 1:m) {
+    Qh[[h]] = rep(0, length(Pair.Codes))
+    Sh[[h]] = list()
+    h.pairs= which(rke.all$hospital == h)
+    h.pcs = rke.all$pc[h.pairs]
+    # 2 . Compute a regular matching on the specific hospital
+    m = max.matching(rke.all, regular.matching=T, 
+                     remove.edges= get.nonincident.edges(rke.all, h.pairs) )
+    for(i in ud.pc) {
+      hpairs.of.type = h.pairs[ which(h.pcs==i) ]
+      Qh[[h]][i] = length(hpairs.of.type)
+      Sh[[h]][[i]] = intersect( m$matching$matched.ids,  hpairs.of.type)
     }
   }
   
   
+  ## For all under-demanded pairs  X-Y
+  for(i in ud.pc) {
+    
+    pair.ud = pair.code.to.pair(i)
+    # Find the reciprocal OD pair  Y-X
+    pair.od = list(donor=pair.ud$patient, patient=pair.ud$donor)
+    ## Note: follow the notation in Ashlagi&Roth about Bonus
+    ## Find all pairs Y-X
+    set.YX = filter.pairs.by.donor.patient(rke.all, pair.od$donor, pair.od$patient)
+    
+    for(j in 1:2) {
+     
+      ## Pairs that belong to the specific set.
+      BH =  which(rke.all$hospital %in% H.sets[[3-j]])
+      
+      tau.BH.YX =  intersect(set.YX,  BH) 
+      theta.j.YX = length( tau.BH.YX )
+      
+      ## Run the under-demanded lottery  (contains pair ids)
+      S.XY = ud.lottery(rke.all, pair.ud, H.sets[[j]], theta.j.YX,
+                        Qh, Sh)
+      
+      ##
+      inc.ids = union(S.XY, tau.BH.YX)
+      Mj.XY = max.matching(rke.all, regular.matching=F, 
+                           remove.edges= get.nonincident.edges(rke.all, inc.ids))
+      
+      HospitalUtility = HospitalUtility + get.hospitals.utility(rke.all, Mj.XY)
+    }
+  }
+  
+  return(HospitalUtility)
 }
 

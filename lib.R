@@ -298,3 +298,11 @@ is.subset = function(bigger, smaller) {
   return(equal.sets(xandy, smaller))
 }
 
+## This fixes the super-annoying R's sample(c(4), 1) problem --- this could sample any number from 1-4 !!!
+uniform.sample = function(x) {
+  if(length(x)==0)
+    stop("Sample space is empty")
+  if(length(x)==1)
+    return(x)
+  return(sample(x, 1, replace=F))
+}
