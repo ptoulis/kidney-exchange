@@ -1,5 +1,4 @@
 ## Unit tests.
-source("experiments.R")
 # 1.  Sampling RKE. Distribution/expected values of ABO groups?
 # 2.  Inconsistencies in RKE graphs (e.g. self-loops, matches correct, missing matches?)
 # 3.  Shuffling in Gurobi max matching?
@@ -60,4 +59,22 @@ test.pairs = function() {
 }
 
 
-
+test.xCM = function() {
+  source("rke2.R")
+  source("mechanisms.R")
+  ##  Now test mechanism. First test if rCM >= xCM
+  trials = 100
+  for(i in 1:trials) {
+    rke.list = rrke.many(m=3, n=20)
+    sumr = sum(rCM(rke.list, "ttt"))
+    sumx = sum(xCM(rke.list, "ttt"))
+    if(sumr >= sumx) {
+      print("[PASS]...")
+      
+    } else {
+      print("[FAIL].. Saving state.")
+      save(rke.list, file="debug/xcm-fail.Rdata")
+      break()
+    }
+  }
+}

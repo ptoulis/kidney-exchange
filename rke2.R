@@ -176,8 +176,11 @@ get.subgraph <- function(rke, type) {
   }
   stop("Wrong type requested in get.subgraph")
 }
-get.incident.nodes = function(A, edges) {
+get.incident.nodes = function(rke, edges) {
     ret = c()
+    A = get.model.A(rke)
+    if(max(edges)> length(rke.edges(rke)))
+      stop("Invalid edges. ")
     for(e in edges) {
         ret = c(ret, which(A[,e]==1))
     }
@@ -268,6 +271,10 @@ filter.edges.by.donor.patient <- function(rke, dt, pt) {
     return(pairMatch)
   })
   return(which(membership==T))
+}
+filter.out.edges.by.type <- function(rke, t1, t2) {
+  edges = filter.edges.by.type(rke, t1, t2)
+  return(setdiff(rke.edges(rke), edges))
 }
 ##  Returns only those pairs of specific donor-patient types.
 filter.pairs.by.donor.patient <- function(rke, dtype, ptype) {
@@ -390,6 +397,8 @@ max.matching <- function(rke,
     ##  Remove the specified edges.
     if(length(remove.edges)>0) {
         model.obj.coefficients[remove.edges]=0
+        if(length(remove.edges)==K)
+          return(get.empty.result())
     }
     ###   If IR constraints  (used by xCM matching)
     ## IR.constraints = [][]  , i.e 
@@ -485,9 +494,9 @@ max.matching <- function(rke,
     gurobi.result$x = old.x
     ##########    Preparing the result
     matched.edges = which(gurobi.result$x==1)
-    matched.ids = get.matched.ids(get.model.A(rke), matched.edges)
+    matched.ids = my.sort(get.matched.ids(get.model.A(rke), matched.edges) )
     original.ids = rke.pairs(rke)
-    not.matched.ids =  sort(setdiff(original.ids, matched.ids)) 
+    not.matched.ids =  my.sort(setdiff(original.ids, matched.ids)) 
     
     result = get.empty.result()
     result$matching$matched.edges= matched.edges

@@ -63,7 +63,7 @@ init.mechanism = function(rke.list, strategy.str) {
     HospitalUtility[hid,1] = length(matched.internally)
     rke.list[[hid]] = remove.pairs(rke.h, matched.internally)
   }
-  return( list(rke.list=rke.list, util=HospitalUtility))
+  return( list(rke.list=rke.list, util=HospitalUtility)   )
 }
 ## Implementation of rCM
 ## deviating: list of hospitals which deviate.
@@ -118,6 +118,8 @@ xCM <- function(rke.list, strategy.str) {
     HospitalUtility = x$util
     rke.list = x$rke.list
     
+    rke.all = pool.rke(rke.list)
+    
     ##  Initialize variables
     ##  Demand for R-pairs
     z.AB = c()
@@ -139,16 +141,18 @@ xCM <- function(rke.list, strategy.str) {
         rke.h = rke.list[[hid]]
         S.subgraph = get.subgraph(rke.h, type="S")
         R.subgraph = get.subgraph(rke.h, type="R")
-        rm(rke.h)  ## avoids some bugs 
         
         ## xCM mechanism starts
         #  1. Compute max matching internally in S
+        
         mS = max.matching(S.subgraph)
-        matches.tab = table(S.subgraph$pc[mS$matching$matched.ids])
-        pcs.matched = as.numeric(names(matches.tab))
-        no.matches = as.numeric(matches.tab)
-        # S-subgraph constraints
-        irs[pcs.matched] = no.matches
+        if(length(mS$matching$matched.ids)>0) {
+          matches.tab = table(S.subgraph$pc[mS$matching$matched.ids])
+          pcs.matched = as.numeric(names(matches.tab))
+          no.matches = as.numeric(matches.tab)
+          irs[pcs.matched] = no.matches
+        } 
+        # done S-subgraph constraints
         
         
         # 2. Matchings in R 
@@ -161,6 +165,8 @@ xCM <- function(rke.list, strategy.str) {
         ## Because we are working on the R-subgraph, these numbers should be the same.
         if(N.AB != N.BA) 
           stop("AB and BA matches should be equal! ")
+        if(N.AB + N.BA != length(mR$matching$matched.ids)) 
+          stop("Something wrong with the subgraph. Not only A-B, B-A pairs considered.!")
         ## # unmatched A-B, B-A pairs
         z.AB[hid] = length(intersect(filter.pairs.by.donor.patient(R.subgraph, dtype="A",ptype="B"),
                                      mR$matching$not.matched.ids))
@@ -170,7 +176,7 @@ xCM <- function(rke.list, strategy.str) {
         ## add R constraints.
         irr[pc.R] = c(N.AB, N.BA)
         
-        
+        rm(list=c("R.subgraph", "S.subgraph", "rke.h"))
         IR.constraints.S[[hid]] = irs
         IR.constraints.R[[hid]] = irr
     }
@@ -188,8 +194,7 @@ xCM <- function(rke.list, strategy.str) {
     
     ##  Ready to run xCM now
     ###  1.  Match S internally
-    rke.all = pool.rke(rke.list)
-    all.but.s = setdiff(rke.edges(rke.all), filter.edges.by.type(rke.all, "S","S"))
+    all.but.s = filter.out.edges.by.type(rke.all, "S","S")
     match.s = max.matching(rke.all, IR.constraints=IR.constraints.S,
                            remove.edges = all.but.s)
     
@@ -220,13 +225,21 @@ xCM <- function(rke.list, strategy.str) {
     #  3. Almost regular matching to the remainder
     ## Notice that match.r, match.s are all on rke.all so that the 
     ## ids refer to the same original ids in rke.all
-    remainder = remove.pairs(rke.all, union(match.r$matching$matched.ids, 
-                                            match.s$matching$matched.ids))
-    match.od = max.matching(remainder, regular.matching=T)
+    if(length(intersect(match.r$matching$matched.ids, 
+                        match.s$matching$matched.ids))>0)
+      stop("R and S should not have ids in common!")
+    matched.already = union(match.r$matching$matched.ids, 
+                                match.s$matching$matched.ids)
+    remainder = remove.pairs(rke.all, matched.already)
+    match.od = max.matching(rke.all, regular.matching=T, 
+                            remove.edges= get.incident.edges(rke.all, matched.already))
+    
+    if(length(intersect(match.od$matching$matched.ids, matched.already))>0) 
+      stop("Error. Matched in OD step should not include any pairs from previous steps.")
     
     Us = get.hospitals.utility(rke.all, match.s)
     Ur = get.hospitals.utility(rke.all, match.r)
-    Uo = get.hospitals.utility(remainder, match.od)
+    Uo = get.hospitals.utility(rke.all, match.od)
 
     HospitalUtility = HospitalUtility +Ur+ Us+ Uo
 
@@ -297,7 +310,6 @@ ud.lottery = function(rke,
 ## Bonus mechanism. Ashlagi & Roth (2013)
 Bonus = function(rke.list, strategy.str) {
   m = length(rke.list)
-  
   x = init.mechanism(rke.list, strategy.str)
   HospitalUtility = x$util
   rke.list = x$rke.list
@@ -315,9 +327,9 @@ Bonus = function(rke.list, strategy.str) {
     irr = rep(0, length(Pair.Codes))
     
     rke.h = rke.list[[hid]]
+    R.subgraph = get.subgraph(rke.h, "R")
     
     # 2. Matchings in R 
-    R.subgraph = get.subgraph(rke.h, type="R")
     mR = max.matching(R.subgraph)
     # Matched A-B, B-A pairs
     N.AB = length(intersect(filter.pairs.by.donor.patient(R.subgraph, dtype="A",ptype="B"),
@@ -327,19 +339,29 @@ Bonus = function(rke.list, strategy.str) {
     ## Because we are working on the R-subgraph, these numbers should be the same.
     if(N.AB != N.BA) 
       stop("AB and BA matches should be equal! ")
-  
+    if(N.AB + N.BA != length(mR$matching$matched.ids)) 
+      stop("Something wrong with the subgraph. Not only A-B, B-A pairs considered.!")
+    
+    ## add R constraints.
     irr[pc.R] = c(N.AB, N.BA)
     IR.constraints.R[[hid]] = irr
   }
   
   ## 1. Match S pairs
-  all.but.s = setdiff(rke.edges(rke.all), filter.edges.by.type(rke.all, "S","S"))
+  all.but.s = filter.out.edges.by.type(rke.all, "S","S")
   match.s = max.matching(rke.all, remove.edges = all.but.s)
     
   ## 2. Match R pairs
-  all.but.r = setdiff(rke.edges(rke.all), filter.edges.by.type(rke.all, "R","R"))
+  all.but.r = filter.out.edges.by.type(rke.all, "R","R")
   match.r = max.matching(rke.all, IR.constraints=IR.constraints.R, 
                          remove.edges = all.but.r)
+  matched.ids.R = match.r$matching$matched.ids
+  matched.ids.S = match.s$matching$matched.ids
+  
+  exclude.edges = get.incident.edges(rke.all, union(matched.ids.R, matched.ids.S))
+  
+  if(length(intersect(matched.ids.R, matched.ids.S)) > 0)
+    stop("Error. Match on S and on R should be separate!")
   
   Us = get.hospitals.utility(rke.all, match.s)
   Ur = get.hospitals.utility(rke.all, match.r)
@@ -349,7 +371,6 @@ Bonus = function(rke.list, strategy.str) {
   ##   Standard up to here.
   
   #  3. Match OD/UD pairs.
- 
   k = as.integer(m/2)
   H.sets = list()
   H.sets[[1]] = sample(1:m, size=k, replace=F)
@@ -368,9 +389,12 @@ Bonus = function(rke.list, strategy.str) {
     Sh[[h]] = list()
     h.pairs= which(rke.all$hospital == h)
     h.pcs = rke.all$pc[h.pairs]
-    # 2 . Compute a regular matching on the specific hospital
+    # 2 . Compute a regular matching on the specific hospital (internal)
+    edges.score = sapply(rke.edges(rke.all), function(e) sum(get.incident.nodes(rke.all, c(e)) %in% h.pairs))
+    not.h.edges = which(edges.score<2)
+    
     m = max.matching(rke.all, regular.matching=T, 
-                     remove.edges= get.nonincident.edges(rke.all, h.pairs) )
+                     remove.edges= not.h.edges )
     for(i in ud.pc) {
       hpairs.of.type = h.pairs[ which(h.pcs==i) ]
       Qh[[h]][i] = length(hpairs.of.type)
@@ -404,8 +428,11 @@ Bonus = function(rke.list, strategy.str) {
       ##
       inc.ids = union(S.XY, tau.BH.YX)
       Mj.XY = max.matching(rke.all, regular.matching=F, 
-                           remove.edges= get.nonincident.edges(rke.all, inc.ids))
+                           remove.edges= union(exclude.edges, 
+                                               get.nonincident.edges(rke.all, inc.ids)))
       
+      if(length(intersect(Mj.XY$matching$matched.ids, union(matched.ids.R, matched.ids.S)))>0)
+        stop("Error. XY matches should exclude matched S and R pairs.")
       HospitalUtility = HospitalUtility + get.hospitals.utility(rke.all, Mj.XY)
     }
   }

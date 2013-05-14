@@ -306,3 +306,8 @@ uniform.sample = function(x) {
     return(x)
   return(sample(x, 1, replace=F))
 }
+## Avoid some annoying R warnings.
+my.sort =function(x) {
+  if(length(x)==0) return(c())
+  return(sort(x))
+}
