@@ -246,6 +246,7 @@ xCM <- function(rke.list, strategy.str) {
     return(HospitalUtility)
 }
 
+
 ## The underdemanded lottery as defined in Ashlagi & Roth (2013)
 ##  Return set of pair ids
 ## rke = entire RKE object
