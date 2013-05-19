@@ -86,6 +86,14 @@ rCM <- function(rke.list, strategy.str) {
     return(HospitalUtility)
 }
 
+
+## Compute IR constraints.
+compute.ir.constraints(rke, types=c()) {
+  ir.constraints = list()
+  if(length(c())==0)
+    return(ir.constraints)
+  stop("NotImplemented")
+}
 ## Implementation of  xCM mechanism (Parkes & Toulis, 2013)
 ##  
 ##
