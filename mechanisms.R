@@ -189,7 +189,7 @@ g.share = function(z, x) {
 }
 xCM <- function(rke.list, strategy.str) {
     warning("xCM() has no unit-test")
-    # total no. of hospitals
+    # 0. Initialize mechanism
     m =length(rke.list)
     x = init.mechanism(rke.list, strategy.str)
     HospitalUtility = x$util
@@ -223,7 +223,7 @@ xCM <- function(rke.list, strategy.str) {
     
     ## 3.   Match R internally
     ## TO-DO(ptoulis): Slow for some reason
-    all.but.r = setdiff(rke.edges(rke.all), filter.edges.by.type(rke.all, "R","R"))
+    all.but.r = filter.out.edges.by.type(rke.all, "R","R")
     Kq = c()
     match.r = list()
     q = 0    
@@ -259,14 +259,22 @@ xCM <- function(rke.list, strategy.str) {
     TEST.SETS.DISJOINT(match.r$matching$matched.ids, 
                         match.s$matching$matched.ids)
     
+    redges = match.r$matching$matched.edges
+    sedges = match.s$matching$matched.edges
+    
+    TEST.SETS.DISJOINT(redges, sedges)
+    
     matched.already = union(match.r$matching$matched.ids, 
                                 match.s$matching$matched.ids)
+    matched.edges.already = union( redges, sedges )
+    
     remainder = remove.pairs(rke.all, matched.already)
     match.od = max.matching(rke.all, regular.matching=T, 
                             remove.edges= get.incident.edges(rke.all, matched.already))
-    
+    ## Make sure OD ids are not R or S pairs
     TEST.SETS.DISJOINT(match.od$matching$matched.ids, 
                        matched.already)
+    TEST.SETS.DISJOINT(match.od$matching$matched.edges, matched.edges.already)
     
     Us = get.hospitals.utility(rke.all, match.s)
     Ur = get.hospitals.utility(rke.all, match.r)
@@ -341,43 +349,20 @@ ud.lottery = function(rke,
 
 ## Bonus mechanism. Ashlagi & Roth (2013)
 Bonus = function(rke.list, strategy.str) {
+  
+  ## 0. Initialize mechanism
   m = length(rke.list)
   x = init.mechanism(rke.list, strategy.str)
   HospitalUtility = x$util
   rke.list = x$rke.list
-  
   rke.all = pool.rke(rke.list)
+  
   ## Pair code (useful when setting constraints)
   pc.AB = pair.code(list(donor="A", patient="B"))
   pc.BA = pair.code(list(donor="B", patient="A"))
   pc.R = c(pc.AB, pc.BA)
   
-  IR.constraints.R = list()
-  ## Iterate over all hospitals.  (find constraints)
-  for(hid in 1:m) {
-    ## Constraints.
-    irr = rep(0, length(Pair.Codes))
-    
-    rke.h = rke.list[[hid]]
-    R.subgraph = get.subgraph(rke.h, "R")
-    
-    # 2. Matchings in R 
-    mR = max.matching(R.subgraph)
-    # Matched A-B, B-A pairs
-    N.AB = length(intersect(filter.pairs.by.donor.patient(R.subgraph, dtype="A",ptype="B"),
-                            mR$matching$matched.ids))
-    N.BA = length(intersect(filter.pairs.by.donor.patient(R.subgraph, dtype="B",ptype="A"),
-                            mR$matching$matched.ids))
-    ## Because we are working on the R-subgraph, these numbers should be the same.
-    if(N.AB != N.BA) 
-      stop("AB and BA matches should be equal! ")
-    if(N.AB + N.BA != length(mR$matching$matched.ids)) 
-      stop("Something wrong with the subgraph. Not only A-B, B-A pairs considered.!")
-    
-    ## add R constraints.
-    irr[pc.R] = c(N.AB, N.BA)
-    IR.constraints.R[[hid]] = irr
-  }
+  IR.constraints = compute.ir.constraints(rke.list, types=c("R"))
   
   ## 1. Match S pairs
   all.but.s = filter.out.edges.by.type(rke.all, "S","S")
@@ -385,15 +370,16 @@ Bonus = function(rke.list, strategy.str) {
     
   ## 2. Match R pairs
   all.but.r = filter.out.edges.by.type(rke.all, "R","R")
-  match.r = max.matching(rke.all, IR.constraints=IR.constraints.R, 
+  match.r = max.matching(rke.all, IR.constraints=IR.constraints$R, 
                          remove.edges = all.but.r)
+  
   matched.ids.R = match.r$matching$matched.ids
   matched.ids.S = match.s$matching$matched.ids
   
-  exclude.edges = get.incident.edges(rke.all, union(matched.ids.R, matched.ids.S))
+  TEST.SETS.DISJOINT(matched.ids.R, matched.ids.S)
   
-  if(length(intersect(matched.ids.R, matched.ids.S)) > 0)
-    stop("Error. Match on S and on R should be separate!")
+  matched.already = c(matched.ids.R, matched.ids.S)
+ 
   
   Us = get.hospitals.utility(rke.all, match.s)
   Ur = get.hospitals.utility(rke.all, match.r)
@@ -412,8 +398,8 @@ Bonus = function(rke.list, strategy.str) {
   ud.pc = which( sapply(Pair.Codes, function(i) pair.type(pair.code.to.pair(i)))=="U")
   
   #  Before we start. Compute Qh and Sh sets internally
-  ## Qh(X-Y) = how many #X-Y  in hospital h
-  ## Sh(X-Y) = { ids } of type X-Y which are included in a max regular matching.
+  ## Q[hid][X-Y] = how many #X-Y  in hospital hid 
+  ## S[hid][X-Y] = { ids } of type X-Y which are included in a max regular matching.
   Qh = list()
   Sh = list()
   for(h in 1:m) {
@@ -422,7 +408,8 @@ Bonus = function(rke.list, strategy.str) {
     h.pairs= which(rke.all$hospital == h)
     h.pcs = rke.all$pc[h.pairs]
     # 2 . Compute a regular matching on the specific hospital (internal)
-    edges.score = sapply(rke.edges(rke.all), function(e) sum(get.incident.nodes(rke.all, c(e)) %in% h.pairs))
+    edges.score = sapply(rke.edges(rke.all), function(e) 
+                  sum(get.incident.nodes(rke.all, c(e)) %in% h.pairs))
     not.h.edges = which(edges.score<2)
     
     m = max.matching(rke.all, regular.matching=T, 
@@ -433,7 +420,7 @@ Bonus = function(rke.list, strategy.str) {
       Sh[[h]][[i]] = intersect( m$matching$matched.ids,  hpairs.of.type)
     }
   }
-  
+  ##  TO-DO(ptoulis): How do you know if you computed Qh, Sh correctly???
   
   ## For all under-demanded pairs  X-Y
   for(i in ud.pc) {
@@ -444,27 +431,34 @@ Bonus = function(rke.list, strategy.str) {
     ## Note: follow the notation in Ashlagi&Roth about Bonus
     ## Find all pairs Y-X
     set.YX = filter.pairs.by.donor.patient(rke.all, pair.od$donor, pair.od$patient)
-    
+    hospitals.YX = rke.all$hospital[set.YX]
+    ## Iterate through hospital groups
     for(j in 1:2) {
      
-      ## Pairs that belong to the specific set.
+      ## Pairs that belong to the other group
       BH =  which(rke.all$hospital %in% H.sets[[3-j]])
-      
-      tau.BH.YX =  intersect(set.YX,  BH) 
+      ## Pairs Y-X in this set of hospitals
+      tau.BH.YX =  set.YX[ which(hospitals.YX %in% BH) ] 
+      ## no. of such pairs
       theta.j.YX = length( tau.BH.YX )
       
       ## Run the under-demanded lottery  (contains pair ids)
       S.XY = ud.lottery(rke.all, pair.ud, H.sets[[j]], theta.j.YX,
                         Qh, Sh)
       
-      ##
-      inc.ids = union(S.XY, tau.BH.YX)
-      Mj.XY = max.matching(rke.all, regular.matching=F, 
-                           remove.edges= union(exclude.edges, 
-                                               get.nonincident.edges(rke.all, inc.ids)))
+      # Test if disjoint (former=UD latter=OD so should not intersect)
+      TEST.SETS.DISJOINT(S.XY, tau.BH.YX)
       
-      if(length(intersect(Mj.XY$matching$matched.ids, union(matched.ids.R, matched.ids.S)))>0)
-        stop("Error. XY matches should exclude matched S and R pairs.")
+      inc.ids = union(S.XY, tau.BH.YX)
+      exclude.edges = get.incident.edges(rke.all, matched.already)
+      set.remove.edges =  union(exclude.edges, get.nonincident.edges(rke.all, inc.ids))
+      Mj.XY = max.matching(rke.all, regular.matching=F, 
+                           remove.edges= set.remove.edges)
+      ## Test if newly matched have already been matched.
+      TEST.SETS.DISJOINT(Mj.XY$matching$matched.ids, matched.already)
+      
+      matched.already = c(matched.already, Mj.XY$matching$matched.ids)
+      
       HospitalUtility = HospitalUtility + get.hospitals.utility(rke.all, Mj.XY)
     }
   }

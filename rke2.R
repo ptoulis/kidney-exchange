@@ -3,6 +3,7 @@
 ## Jan 2013, new version of rke.R
 rm(list=ls())
 source("lib.R")
+source("testing.R")
 ##      The main data structure.
 ##        rke2 = KE pool object (one hospital)
 ##               {  pc=> [1,2,1,1,4,13,...]    # pair codes
@@ -315,29 +316,30 @@ get.matched.ids <- function(model.A, edge.ids) {
     return(unique(ids))
 }
 
-##    Get the model matrix.    Need for max matching
-##   TO-DO   Aij = 1  iff   edge j is incident on node i 
 get.model.A <- function(rke) {
-    ##  the adjacency matrix. 
-    Adj = rke$P * rke$B
-    all.pairs = rke.pairs(rke)
-    n = length(all.pairs)
-    if(sum(Adj)%%2 != 0) 
-      stop("Adjacency matrix is not symmetric?")
+  ##  the adjacency matrix. 
+  warning("get.model.A not unit-tested")
+  Adj = rke$P * rke$B
+  Adj = upper.tri(Adj) * Adj
   
-    ## The model matrix
-    ## TO-DO(ptoulis):  Probably not very efficient?
-    A = matrix(0, nrow=n, ncol=0)
-    for(i in all.pairs) {
-        neighbors =  which(Adj[i, ]==1)
-        for(j in neighbors[neighbors>i]) {          
-          ##   Add the pair, only if it has not been entered before.
-          A = cbind(A, rep(0, n))
-          A[c(i,j), ncol(A)] <- 1
-          
-        }
+  all.pairs = rke.pairs(rke)
+  
+  ## The model matrix
+  ## TO-DO(ptoulis):  Probably not very efficient?
+  ## total number of edges
+  K = sum(Adj)
+  A = matrix(0, nrow=length(all.pairs), ncol=K)
+  edge.counter = 0
+  for(i in all.pairs) {
+    neighbors =  sort(which(Adj[i, ]==1))
+    for(j in neighbors) {
+      edge.counter = edge.counter+1
+      ##   Add the pair, only if it has not been entered before.
+      A[c(i,j), edge.counter] <- 1
     }
-    return(A)
+  }
+  TEST.LISTS.EQ(edge.counter, K)
+  return(A)
 }
 ##########################################################################
 ##   Maximum matching ##
@@ -459,20 +461,12 @@ max.matching <- function(rke,
     model$sense      <- model.sense
     model$vtype      <- rep('B', K)
     
-    params.def  <- list(OutputFlag=0)
-    params.old<- list(OutputFlag=0,
-                       NodefileStart=0.4,
-                       Threads=1,
-                       Cuts=3,
-                       Presolve=1)
-    
     ##  Seems to be much faster than the old params.
-    cutoff = -Inf
     params.new <- list(OutputFlag=0,
                        NodefileStart=0.4,
                        Cuts=3,
                        Presolve=1,
-                       MIPFocus=2,
+                       MIPFocus=1,
                        TimeLimit=timeLimit)
   
     gurobi.result <- gurobi(model, params.new)
