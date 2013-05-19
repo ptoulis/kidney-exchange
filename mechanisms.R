@@ -52,6 +52,7 @@ read.strategy.str = function(strategy.str) {
 
 ## Initializes every mechanism. Do not change.
 init.mechanism = function(rke.list, strategy.str) {
+
   m = length(rke.list)
   HospitalUtility = matrix(0, nrow=m, ncol=1)
   
@@ -70,6 +71,7 @@ init.mechanism = function(rke.list, strategy.str) {
 ##
 ##  Return:  kx1   matrix of utilities
 rCM <- function(rke.list, strategy.str) {
+    warning("rCM does not have unit test")
     x = init.mechanism(rke.list, strategy.str)
     rke.list = x$rke.list
     HospitalUtility = x$util
@@ -88,11 +90,76 @@ rCM <- function(rke.list, strategy.str) {
 
 
 ## Compute IR constraints.
-compute.ir.constraints(rke, types=c()) {
-  ir.constraints = list()
-  if(length(c())==0)
-    return(ir.constraints)
-  stop("NotImplemented")
+compute.ir.constraints = function(rke.list, types=c()) {
+  m = length(rke.list)
+  if(length(types)==0 || m==0 )
+    return(list() )
+  ##  Initialize variables
+  ##  Demand for R-pairs
+  z.AB = rep(0, m)
+  z.BA = rep(0, m)
+
+  ## IR constraints per hospital
+  IR.constraints = list(S=list(), R=list())
+  
+  ## Pair code (useful when setting constraints)
+  pc.AB = pair.code(list(donor="A", patient="B"))
+  pc.BA = pair.code(list(donor="B", patient="A"))
+  pc.R = c(pc.AB, pc.BA)
+  ## Iterate over all hospitals.
+  for(hid in 1:m) {
+    ## Constraints.
+    irs = rep(0, length(Pair.Codes))
+    irr = rep(0, length(Pair.Codes))
+    
+    rke.h = rke.list[[hid]]
+    S.subgraph = get.subgraph(rke.h, type="S")
+    R.subgraph = get.subgraph(rke.h, type="R")
+    
+    ## xCM mechanism starts
+    #  1. Compute max matching internally in S
+    if("S" %in% types) {
+      mS = max.matching(S.subgraph)
+      if(length(mS$matching$matched.ids)>0) {
+        matches.tab = table(S.subgraph$pc[mS$matching$matched.ids])
+        pcs.matched = as.numeric(names(matches.tab))
+        no.matches = as.numeric(matches.tab)
+        irs[pcs.matched] = no.matches
+      } 
+      # done S-subgraph constraints
+    }
+    if("R" %in% types) {
+      # 2. Matchings in R 
+      mR = max.matching(R.subgraph)
+      # Matched A-B, B-A pairs
+      N.AB = length(intersect(filter.pairs.by.donor.patient(R.subgraph, dtype="A",ptype="B"),
+                              mR$matching$matched.ids))
+      N.BA = length(intersect(filter.pairs.by.donor.patient(R.subgraph, dtype="B",ptype="A"),
+                              mR$matching$matched.ids))
+      ## Because we are working on the R-subgraph, these numbers should be the same.
+      if(N.AB != N.BA) 
+        stop("AB and BA matches should be equal! ")
+      if(N.AB + N.BA != length(mR$matching$matched.ids)) 
+        stop("Something wrong with the subgraph. Not only A-B, B-A pairs considered.!")
+      ## # unmatched A-B, B-A pairs
+      z.AB[hid] = length(intersect(filter.pairs.by.donor.patient(R.subgraph, dtype="A",ptype="B"),
+                                   mR$matching$not.matched.ids))
+      z.BA[hid] = length(intersect(filter.pairs.by.donor.patient(R.subgraph, dtype="B",ptype="A"),
+                                   mR$matching$not.matched.ids))
+      
+      ## add R constraints.
+      irr[pc.R] = c(N.AB, N.BA)
+    }
+    
+    ## do some cleaning
+    rm(list=c("R.subgraph", "S.subgraph", "rke.h"))
+    
+    IR.constraints$S[[hid]] = irs
+    IR.constraints$R[[hid]] = irr
+  }## for every hospital
+  IR.constraints$z.ab = z.AB
+  IR.constraints$z.ba = z.BA
+  return(IR.constraints)
 }
 ## Implementation of  xCM mechanism (Parkes & Toulis, 2013)
 ##  
@@ -102,6 +169,7 @@ compute.ir.constraints(rke, types=c()) {
 #  x = supply
 # TO-DO(ptoulis): Unit tests for this one?
 g.share = function(z, x) {
+  warning("g.share has no unit-test")
   set.J = which(z>0)
   y = rep(0, length(z))
   
@@ -120,74 +188,21 @@ g.share = function(z, x) {
   return(y)
 }
 xCM <- function(rke.list, strategy.str) {
-   # total no. of hospitals
+    warning("xCM() has no unit-test")
+    # total no. of hospitals
     m =length(rke.list)
     x = init.mechanism(rke.list, strategy.str)
     HospitalUtility = x$util
     rke.list = x$rke.list
     
     rke.all = pool.rke(rke.list)
+  
+    ##  1. Compute IR constraints
+    IR.constraints = compute.ir.constraints(rke.list, types=c("S", "R"))
     
-    ##  Initialize variables
-    ##  Demand for R-pairs
-    z.AB = c()
-    z.BA = c()
-    ## IR constraints per hospital
-    IR.constraints.S = list()
-    IR.constraints.R = list()
     
-    ## Pair code (useful when setting constraints)
-    pc.AB = pair.code(list(donor="A", patient="B"))
-    pc.BA = pair.code(list(donor="B", patient="A"))
-    pc.R = c(pc.AB, pc.BA)
-    ## Iterate over all hospitals.
-    for(hid in 1:m) {
-      ## Constraints.
-        irs = rep(0, length(Pair.Codes))
-        irr = rep(0, length(Pair.Codes))
-        
-        rke.h = rke.list[[hid]]
-        S.subgraph = get.subgraph(rke.h, type="S")
-        R.subgraph = get.subgraph(rke.h, type="R")
-        
-        ## xCM mechanism starts
-        #  1. Compute max matching internally in S
-        
-        mS = max.matching(S.subgraph)
-        if(length(mS$matching$matched.ids)>0) {
-          matches.tab = table(S.subgraph$pc[mS$matching$matched.ids])
-          pcs.matched = as.numeric(names(matches.tab))
-          no.matches = as.numeric(matches.tab)
-          irs[pcs.matched] = no.matches
-        } 
-        # done S-subgraph constraints
-        
-        
-        # 2. Matchings in R 
-        mR = max.matching(R.subgraph)
-        # Matched A-B, B-A pairs
-        N.AB = length(intersect(filter.pairs.by.donor.patient(R.subgraph, dtype="A",ptype="B"),
-                                mR$matching$matched.ids))
-        N.BA = length(intersect(filter.pairs.by.donor.patient(R.subgraph, dtype="B",ptype="A"),
-                                mR$matching$matched.ids))
-        ## Because we are working on the R-subgraph, these numbers should be the same.
-        if(N.AB != N.BA) 
-          stop("AB and BA matches should be equal! ")
-        if(N.AB + N.BA != length(mR$matching$matched.ids)) 
-          stop("Something wrong with the subgraph. Not only A-B, B-A pairs considered.!")
-        ## # unmatched A-B, B-A pairs
-        z.AB[hid] = length(intersect(filter.pairs.by.donor.patient(R.subgraph, dtype="A",ptype="B"),
-                                     mR$matching$not.matched.ids))
-        z.BA[hid] = length(intersect(filter.pairs.by.donor.patient(R.subgraph, dtype="B",ptype="A"),
-                                     mR$matching$not.matched.ids))
-        
-        ## add R constraints.
-        irr[pc.R] = c(N.AB, N.BA)
-        
-        rm(list=c("R.subgraph", "S.subgraph", "rke.h"))
-        IR.constraints.S[[hid]] = irs
-        IR.constraints.R[[hid]] = irr
-    }
+    z.AB = IR.constraints$z.ab
+    z.BA = IR.constraints$z.ba
     ###  Done with per-hospital
     ###  Final stages of xCM
     x.AB = sum(z.AB)
@@ -201,17 +216,21 @@ xCM <- function(rke.list, strategy.str) {
       y.BA = g.share(z.BA, x.AB)
     
     ##  Ready to run xCM now
-    ###  1.  Match S internally
+    ###  2.  Match S internally
     all.but.s = filter.out.edges.by.type(rke.all, "S","S")
-    match.s = max.matching(rke.all, IR.constraints=IR.constraints.S,
+    match.s = max.matching(rke.all, IR.constraints=IR.constraints$S,
                            remove.edges = all.but.s)
     
-    ## 2.   Match R internally
+    ## 3.   Match R internally
     ## TO-DO(ptoulis): Slow for some reason
     all.but.r = setdiff(rke.edges(rke.all), filter.edges.by.type(rke.all, "R","R"))
     Kq = c()
     match.r = list()
-    q = 0
+    q = 0    
+    ## Pair code (useful when setting constraints)
+    pc.AB = pair.code(list(donor="A", patient="B"))
+    pc.BA = pair.code(list(donor="B", patient="A"))
+    pc.R = c(pc.AB, pc.BA)
     ## TO-DO(ptoulis): very slow!!
     while(length(Kq)==0) {
       ir.constraints = list()
@@ -219,8 +238,8 @@ xCM <- function(rke.list, strategy.str) {
         ir.constraints[[h]] = rep(0, length(Pair.Codes))
       
       for(h in 1:m) {
-        ir.constraints[[h]][pc.AB] = IR.constraints.R[[h]][pc.AB]+max(0, y.AB[h]-q)
-        ir.constraints[[h]][pc.BA] = IR.constraints.R[[h]][pc.BA]+max(0, y.BA[h]-q)
+        ir.constraints[[h]][pc.AB] = IR.constraints$R[[h]][pc.AB]+max(0, y.AB[h]-q)
+        ir.constraints[[h]][pc.BA] = IR.constraints$R[[h]][pc.BA]+max(0, y.BA[h]-q)
       }
       
       ## Do the matching.
@@ -229,21 +248,25 @@ xCM <- function(rke.list, strategy.str) {
       Kq = match.r$matching$matched.ids
       q = q + 1
     }
+    print(sprintf("Final q* = %d", q))
+    ## remove some stuff that are not needed anymore
+    rm(IR.constraints)
     
-    #  3. Almost regular matching to the remainder
+    
+    #  4. Almost regular matching to the remainder
     ## Notice that match.r, match.s are all on rke.all so that the 
     ## ids refer to the same original ids in rke.all
-    if(length(intersect(match.r$matching$matched.ids, 
-                        match.s$matching$matched.ids))>0)
-      stop("R and S should not have ids in common!")
+    TEST.SETS.DISJOINT(match.r$matching$matched.ids, 
+                        match.s$matching$matched.ids)
+    
     matched.already = union(match.r$matching$matched.ids, 
                                 match.s$matching$matched.ids)
     remainder = remove.pairs(rke.all, matched.already)
     match.od = max.matching(rke.all, regular.matching=T, 
                             remove.edges= get.incident.edges(rke.all, matched.already))
     
-    if(length(intersect(match.od$matching$matched.ids, matched.already))>0) 
-      stop("Error. Matched in OD step should not include any pairs from previous steps.")
+    TEST.SETS.DISJOINT(match.od$matching$matched.ids, 
+                       matched.already)
     
     Us = get.hospitals.utility(rke.all, match.s)
     Ur = get.hospitals.utility(rke.all, match.r)
@@ -268,7 +291,7 @@ ud.lottery = function(rke,
                       Hn, 
                       theta,
                       Qh, Sh) {
-  
+  warning("UD lottery does not have a unit test.")
   # The underdemanded PC code
   ud.code = pair.code(pair.ud)
   
