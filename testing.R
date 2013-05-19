@@ -1,4 +1,5 @@
 ## Unit tests.
+source("lib.R")
 TEST.SETS.DISJOINT = function(x, y, str="n/a") {
   if(length(intersect(x,y))>0)
     stop(sprintf("[TEST FAIL]...Sets x,y not disjoint : %s", str))
@@ -32,8 +33,8 @@ TEST.RKE.EQ = function(x,y, str="n/a") {
     throw("size")
   
   library(igraph)
-  gx = graph.adjacency(x$P * x$B, mode="undirected")
-  gy = graph.adjacency(y$P * y$B, mode="undirected")
+  gx = rke.to.igraph(x)
+  gy = rke.to.igraph(y)
   
   if(vcount(gx)!= vcount(gy)) throw("vcount")
   if(ecount(gx) != ecount(gy)) throw("ecount")
@@ -52,6 +53,34 @@ test.repeat = function(test, args, trials) {
   
 }
 
+
+####   TESTS start here.
+test.rpra = function(args) {
+  throw=function(str) stop(sprintf("[TEST FAIL]...rpra() hypothesis test fail : %s", str))
+  
+  n = args$n
+  ## sample PRA uniformly
+  for(pra.mode in c(T,F)) {
+    pra1 = rpra(n,is.uniform=pra.mode)
+    pra2 = pra1
+    ## Pick some ij  pair
+    pair = sample(1:n, 2, replace=F)
+    i = pair[1]
+    j = pair[2]
+    reps =replicate(1000, { P = rpra.matrix(pra1, pra2); P[i,j]})
+    mu = mean(reps)
+    se = bootstrap.mean(reps)
+    ci=c(mu-2*se, mu+2*se)
+    pci = pra1[i]
+    pcj = pra2[j]
+    
+    p.theor = (1-pci) * (1-pcj)
+    if(p.theor< ci[1] || p.theor>ci[2])
+      throw(sprintf("Uniform? %s Pij (expected)=%.3f  found=[%.3f, %.3f]",pra.mode,
+                    p.theor,  ci[1], ci[2]))
+    
+  }
+}
 ### Tests compute.ir.constraints from mechanisms.R
 test.ir.constraints = function(args) {
   m = args$m

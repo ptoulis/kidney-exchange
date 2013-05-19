@@ -153,7 +153,7 @@ rbin.matrix<- function(prob.matrix) {
 ## Can have 1 or 2 hospitals. If same we need to treat the diagonal elements differently.
 ## If equal to 1, then they can self match.
 rpra.matrix = function(pra.probs1, pra.probs2, same.hospital=T,  verbose=F) {
-    
+    warning("rpra not under test yet.")
     Us1 = 1-pra.probs1
     Us2 = 1-pra.probs2
     ## This   n1 x n2  for n1 pairs of H1 and n2 pairs of H2 (n x n) if only one hospital
@@ -311,3 +311,9 @@ my.sort =function(x) {
   if(length(x)==0) return(c())
   return(sort(x))
 }
+rke.to.igraph = function(rke) {
+  library(igraph) 
+  A = rke$P * rke$B
+  return(graph.adjacency(A))
+}
+bootstrap.mean = function(x) sd(replicate(1000, { mean(sample(x, replace=T)) }))

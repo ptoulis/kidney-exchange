@@ -23,7 +23,6 @@ empty.rke <- function() {
    return(obj)
 }
 
-
 ## Samples a rrke object.
 rrke <- function(n, 
                  uniform.pra = T,
