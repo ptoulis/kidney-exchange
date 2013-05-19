@@ -355,7 +355,7 @@ max.matching <- function(rke,
                         shuffle.edges=T,
                         remove.edges=c(),
                         timeLimit=120) {
-    
+    warning("max.matching does not have a unit test")
     ## Size of RKE  (# pairs)
     n = get.size(rke)
     ###   1.   Get the model matrix. 
