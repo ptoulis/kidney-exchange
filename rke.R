@@ -30,7 +30,7 @@ rrke <- function(n,
                  uniform.pra = T,
                  blood.type.distr = list(O=0.5, A=0.3, B=0.15, AB=0.05),
                  verbose=F) {
-    
+    warning("rke() not unit-tested")
     # 1. Sample the pairs
     ##   each one has a code and a PRA
     pairs.obj = rpairs(n, 
@@ -66,6 +66,7 @@ rrke <- function(n,
 #  k = # hospitals
 #  n = # pairs/hospital
 rrke.many <- function(m=3, n=60, uniform.pra) {
+   warning("rke-many  not unit-tested")
     x = list()
     for(i in sample(1:m)) 
         x[[i]] = rrke(n,uniform.pra=uniform.pra)
@@ -80,6 +81,7 @@ get.size <- function(rke) {
 ##   Merge different RKE objects into one.
 ##   Assume all hospitals are non-empty
 pool.rke <- function(rke.list) {
+  warning("pool.rke()  not unit-tested")
     rke.all = empty.rke()
     k  = length(rke.list)
     ranges = matrix(0, nrow=k, ncol=2)
@@ -114,6 +116,7 @@ pool.rke <- function(rke.list) {
 ##  Given an RKE  (1) subtract (2) return remainder.
 # Used to represent deviation strategies ("hide")
 remove.pairs <- function(rke, pair.ids) {
+  warning("remove.pairs()  not unit-tested")
   ### this is a delicate process, so we add some extra checks.
    if(length(pair.ids)==0)
        return(rke)
@@ -141,6 +144,7 @@ remove.pairs <- function(rke, pair.ids) {
    return(rke.new)
 }
 keep.pairs = function(rke, pair.ids) {
+  warning("keep.pairs()  not unit-tested")
   all.pairs = rke.pairs(rke)
   rm.pairs = setdiff(all.pairs, pair.ids)
   return(remove.pairs(rke, rm.pairs))

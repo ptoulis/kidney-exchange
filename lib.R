@@ -320,3 +320,20 @@ rke.to.igraph = function(rke) {
   return(graph.adjacency(A))
 }
 bootstrap.mean = function(x) sd(replicate(1000, { mean(sample(x, replace=T)) }))
+
+pair.to.str = function(pair, more) sprintf("%s-%s%s", pair$donor, pair$patient, more)
+##  Add plot functions
+plot.rke = function(rke) {
+  library(igraph)
+  g = rke.to.igraph(rke)
+  for(i in 1:get.size(rke)) {
+    pair = pair.code.to.pair(rke$pc[i])
+    g = set.vertex.attribute(g, name="color", index=i, value=pair.color(pair=pair))
+    more = ifelse("hospital" %in% names(rke), sprintf("/ H%d", rke$hospital[i], ""))
+    g = set.vertex.attribute(g, name="label", index=i, value=pair.to.str(pair, more) )
+  }
+  par(mar=c(0,0,0,0))
+  plot.igraph(g,layout=layout.auto)
+}
+
+

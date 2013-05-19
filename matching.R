@@ -164,7 +164,7 @@ max.matching <- function(rke,
   result$matching$matched.ids = matched.ids###    TO -DO   count the matched. idsmatched.ids
   result$matching$not.matched.ids = not.matched.ids
   result$matching$utility = length(matched.ids)
-  result$matching$timeout = T
+  result$matching$timeout = F
   result$gurobi = gurobi.result
   #########
   
