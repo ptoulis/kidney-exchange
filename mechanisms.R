@@ -70,14 +70,11 @@ init.mechanism = function(rke.list, strategy.str) {
 ## deviating: list of hospitals which deviate.
 ##
 ##  Return:  kx1   matrix of utilities
-rCM <- function(rke.list, strategy.str) {
+rCM <- function(rke.list, rke.all, strategy.str) {
     warning("rCM does not have unit test")
     x = init.mechanism(rke.list, strategy.str)
     rke.list = x$rke.list
     HospitalUtility = x$util
-    
-    ## 0.  Pool all the reports.
-    rke.all = pool.rke(rke.list=rke.list)
     
     ## 1. Simply calculate a maximum-matching (this will shuffle the edges by default)
     m.all =  max.matching(rke.all)
@@ -187,15 +184,13 @@ g.share = function(z, x) {
   }
   return(y)
 }
-xCM <- function(rke.list, strategy.str) {
+xCM <- function(rke.list, rke.all, strategy.str) {
     warning("xCM() has no unit-test")
     # 0. Initialize mechanism
     m =length(rke.list)
     x = init.mechanism(rke.list, strategy.str)
     HospitalUtility = x$util
     rke.list = x$rke.list
-    
-    rke.all = pool.rke(rke.list)
   
     ##  1. Compute IR constraints
     IR.constraints = compute.ir.constraints(rke.list, types=c("S", "R"))
@@ -358,14 +353,13 @@ ud.lottery = function(rke,
 
 
 ## Bonus mechanism. Ashlagi & Roth (2013)
-Bonus = function(rke.list, strategy.str) {
+Bonus = function(rke.list, rke.all, strategy.str) {
   
   ## 0. Initialize mechanism
   m = length(rke.list)
   x = init.mechanism(rke.list, strategy.str)
   HospitalUtility = x$util
   rke.list = x$rke.list
-  rke.all = pool.rke(rke.list)
   
   ## Pair code (useful when setting constraints)
   pc.AB = pair.code(list(donor="A", patient="B"))
