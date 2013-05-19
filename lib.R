@@ -41,7 +41,7 @@ rblood <- function(n, probs=c(50,30,15,5)) {
 }
 
 ## Sample a PRA value. For now this is constant to 0.2
-rpra <- function(n, is.uniform=F) {
+rpra <- function(n, is.uniform=T) {
     if(is.uniform)
         return( sample(PRA.vals, n, replace=T) )
     non.uniform.vals = c(0.05, 0.45, 0.9)
@@ -153,7 +153,7 @@ rbin.matrix<- function(prob.matrix) {
 ## Can have 1 or 2 hospitals. If same we need to treat the diagonal elements differently.
 ## If equal to 1, then they can self match.
 rpra.matrix = function(pra.probs1, pra.probs2, same.hospital=T,  verbose=F) {
-    warning("rpra not under test yet.")
+  
     Us1 = 1-pra.probs1
     Us2 = 1-pra.probs2
     ## This   n1 x n2  for n1 pairs of H1 and n2 pairs of H2 (n x n) if only one hospital
@@ -162,6 +162,9 @@ rpra.matrix = function(pra.probs1, pra.probs2, same.hospital=T,  verbose=F) {
       stop("Error. Should give same PRAs when using same hospital. In lib.R")
     
     P = rbin.matrix(pras.matrix)
+    if(length(pra.probs1)==1) return(P)
+    
+    P = lower.tri(P, diag=T) * P
     P = ceiling( (P+t(P))/2)
     if(same.hospital)
       diag(P) <- 0

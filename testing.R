@@ -54,6 +54,8 @@ test.repeat = function(test, args, trials) {
 }
 
 
+
+
 ####   TESTS start here.
 test.rpra = function(args) {
   throw=function(str) stop(sprintf("[TEST FAIL]...rpra() hypothesis test fail : %s", str))
@@ -63,11 +65,15 @@ test.rpra = function(args) {
   for(pra.mode in c(T,F)) {
     pra1 = rpra(n,is.uniform=pra.mode)
     pra2 = pra1
+    
+    Q = rpra.matrix(pra1, pra2);
+    if(nrow(Q)!=ncol(Q)) throw("square matrix")
+    if(nrow(Q)!=n) throw("correct size")
     ## Pick some ij  pair
     pair = sample(1:n, 2, replace=F)
     i = pair[1]
     j = pair[2]
-    reps =replicate(1000, { P = rpra.matrix(pra1, pra2); P[i,j]})
+    reps =replicate(2000, { P = rpra.matrix(pra1, pra2); P[i,j]})
     mu = mean(reps)
     se = bootstrap.mean(reps)
     ci=c(mu-2*se, mu+2*se)
@@ -80,7 +86,9 @@ test.rpra = function(args) {
                     p.theor,  ci[1], ci[2]))
     
   }
+  return(T)
 }
+
 ### Tests compute.ir.constraints from mechanisms.R
 test.ir.constraints = function(args) {
   m = args$m
