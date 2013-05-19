@@ -4,12 +4,12 @@
 rm(list=ls())
 source("lib.R")
 source("testing.R")
-source("matching.R")
 ##      The main data structure.
 ##        rke2 = KE pool object (one hospital)
 ##               {  pc=> [1,2,1,1,4,13,...]    # pair codes
 ##                  pras=>[0.2, 0.3, 0.1, ...]
-##                  compact=> [nxn]  matrix
+##                  B = matrix
+##                  P = matrix
 ################################################################
 #  Return an empty KE object
 ##   Defined by pc = vector of pair codes
@@ -30,7 +30,6 @@ rrke <- function(n,
                  uniform.pra = T,
                  blood.type.distr = list(O=0.5, A=0.3, B=0.15, AB=0.05),
                  verbose=F) {
-    warning("rke() not unit-tested")
     # 1. Sample the pairs
     ##   each one has a code and a PRA
     pairs.obj = rpairs(n, 
@@ -116,7 +115,7 @@ pool.rke <- function(rke.list) {
 ##  Given an RKE  (1) subtract (2) return remainder.
 # Used to represent deviation strategies ("hide")
 remove.pairs <- function(rke, pair.ids) {
-  warning("remove.pairs()  not unit-tested")
+  
   ### this is a delicate process, so we add some extra checks.
    if(length(pair.ids)==0)
        return(rke)
@@ -161,6 +160,7 @@ get.pairs.attribute <- function(rke, attr) {
 
 ##  Returns a sub-RKE object of only type=OD/UD, R, S 
 get.subgraph <- function(rke, type) {
+  warning("get.subgraph  not unit-tested")
   if(type=="S") {
     pairs.rmv = union(filter.pairs.by.type(rke, "R"), 
                       union(filter.pairs.by.type(rke, "O"), filter.pairs.by.type(rke,"U")))
@@ -182,6 +182,7 @@ get.subgraph <- function(rke, type) {
   stop("Wrong type requested in get.subgraph")
 }
 get.incident.nodes = function(rke, edges) {
+    warning("get.incident.nodes() not unit-tested")
     ret = c()
     A = get.model.A(rke)
     if(max(edges)> length(rke.edges(rke)))
@@ -192,6 +193,7 @@ get.incident.nodes = function(rke, edges) {
     return(unique(ret))
 }
 get.incident.edges = function(rke, pair.ids) {
+  
   if(length(pair.ids)==0) return(c())
   A = get.model.A(rke)
   Ai = A[pair.ids,]
@@ -229,7 +231,6 @@ rke.pairs = function(rke) {
 ##  FILTERS 
 ##  for pairs and edges.
 filter.edges.by.type <- function(rke, t1, t2) {
-  
     #print(sprintf("t1=%s t2=%s", t1, t2))
     A = get.model.A(rke)
     
@@ -260,7 +261,6 @@ filter.edges.by.type <- function(rke, t1, t2) {
    return(which(membership==T))
 }
 filter.edges.by.donor.patient <- function(rke, dt, pt) {
-  
   #print(sprintf("t1=%s t2=%s", t1, t2))
   A = get.model.A(rke)
   
@@ -293,6 +293,7 @@ filter.out.edges.by.type <- function(rke, t1, t2) {
 }
 ##  Returns only those pairs of specific donor-patient types.
 filter.pairs.by.donor.patient <- function(rke, dtype, ptype) {
+ 
   if(dtype=="*") 
     dtype = c("O", "A", "B", "AB")
   else dtype = c(dtype)
@@ -317,7 +318,6 @@ filter.pairs.by.type <- function(rke, type) {
 }
 
 get.hospital.pairs <- function(rke.all, hid) {
-  warning("get.hospital.pairs not unit-tested")
   if(! "hospital" %in% names(rke.all))
     stop("Input is not a pooled RKE object")
   
@@ -325,7 +325,6 @@ get.hospital.pairs <- function(rke.all, hid) {
 }
 get.model.A <- function(rke) {
   ##  the adjacency matrix. 
-  warning("get.model.A not unit-tested")
   Adj = rke$P * rke$B
   Adj = upper.tri(Adj) * Adj
   

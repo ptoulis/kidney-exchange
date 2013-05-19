@@ -329,7 +329,9 @@ plot.rke = function(rke) {
   for(i in 1:get.size(rke)) {
     pair = pair.code.to.pair(rke$pc[i])
     g = set.vertex.attribute(g, name="color", index=i, value=pair.color(pair=pair))
-    more = ifelse("hospital" %in% names(rke), sprintf("/ H%d", rke$hospital[i], ""))
+    more = ""
+    if("hospital" %in% names(rke))
+      more = sprintf("/ H%d", rke$hospital[i])
     g = set.vertex.attribute(g, name="label", index=i, value=pair.to.str(pair, more) )
   }
   par(mar=c(0,0,0,0))

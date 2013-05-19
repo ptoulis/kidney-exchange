@@ -3,11 +3,12 @@
 ##  Currently supported:   rCM,  xCM
 ## A mechanism receives a combined donor-patient graph and outputs a matching. 
 ## (note: code returns a vector of utilities (matches/hospital)
-
+source("rke.R")
+source("matching.R")
 
 ## Given the matching, and the input graphs, 
 ##  calculate the utilities/hospital 
-##  Returns    k x 1  vector,     with the matches for every hospital.
+##  Returns    k x 1  vector,     with the matches for every hospital
 get.hospitals.utility <- function(rke.all, m.all) {
     ## find no. of hospitals 
     m = length(unique(rke.all$hospital))
@@ -71,7 +72,7 @@ init.mechanism = function(rke.list, strategy.str) {
 ##
 ##  Return:  kx1   matrix of utilities
 rCM <- function(rke.list, rke.all, strategy.str) {
-    warning("rCM does not have unit test")
+    
     x = init.mechanism(rke.list, strategy.str)
     rke.list = x$rke.list
     HospitalUtility = x$util
