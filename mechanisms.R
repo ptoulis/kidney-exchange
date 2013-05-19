@@ -257,28 +257,38 @@ xCM <- function(rke.list, strategy.str) {
     ## Notice that match.r, match.s are all on rke.all so that the 
     ## ids refer to the same original ids in rke.all
     TEST.SETS.DISJOINT(match.r$matching$matched.ids, 
-                        match.s$matching$matched.ids)
+                        match.s$matching$matched.ids, "R and S matched ids")
     
     redges = match.r$matching$matched.edges
     sedges = match.s$matching$matched.edges
     
-    TEST.SETS.DISJOINT(redges, sedges)
+    TEST.SETS.DISJOINT(redges, sedges, "S and R edges")
     
     matched.already = union(match.r$matching$matched.ids, 
                                 match.s$matching$matched.ids)
     matched.edges.already = union( redges, sedges )
     
-    remainder = remove.pairs(rke.all, matched.already)
-    match.od = max.matching(rke.all, regular.matching=T, 
-                            remove.edges= get.incident.edges(rke.all, matched.already))
-    ## Make sure OD ids are not R or S pairs
-    TEST.SETS.DISJOINT(match.od$matching$matched.ids, 
-                       matched.already)
-    TEST.SETS.DISJOINT(match.od$matching$matched.edges, matched.edges.already)
+    ## Match OD's individually.
+    Uo = matrix(rep(0, m), nrow=m)
+    for(hid in 1:m) {
+      Gh = get.hospital.pairs(rke.all, hid)
+      Gh.remainder = setdiff(Gh, intersect(Gh, matched.already))
+
+      match.Gh = max.matching(rke.all, regular.matching=T, 
+                              remove.edges= get.external.edges(rke.all, Gh.remainder))
+      
+      ## Make sure OD ids are not R or S pairs
+      TEST.SETS.DISJOINT(match.Gh$matching$matched.ids, 
+                         matched.already, str="OD and matched_already pairs")
+      TEST.SETS.DISJOINT(match.Gh$matching$matched.edges, matched.edges.already,
+                         str="Matched edges already")
+      
+      Uo = Uo + get.hospitals.utility(rke.all, match.Gh)
+      matched.already = c(matched.already, match.Gh$matching$matched.ids)
+    }
     
     Us = get.hospitals.utility(rke.all, match.s)
     Ur = get.hospitals.utility(rke.all, match.r)
-    Uo = get.hospitals.utility(rke.all, match.od)
 
     HospitalUtility = HospitalUtility +Ur+ Us+ Uo
 

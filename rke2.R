@@ -67,7 +67,7 @@ rrke <- function(n,
 rrke.many <- function(m=3, n=60, uniform.pra) {
     x = list()
     for(i in sample(1:m)) 
-        x[[i]] = rrke(n)
+        x[[i]] = rrke(n,uniform.pra=uniform.pra)
     return(x)
 }
 
@@ -198,6 +198,16 @@ get.incident.edges = function(rke, pair.ids) {
 get.nonincident.edges = function(rke, pair.ids) {
   return(setdiff(rke.edges(rke), get.incident.edges(rke, pair.ids)))
 }
+get.internal.edges = function(rke, pair.ids) {
+  if(length(pair.ids)<1) return(c())
+  A = get.model.A(rke)
+  Ai = A[pair.ids,]
+  
+  return(which(apply(Ai, 2, sum)==2))
+}
+get.external.edges = function(rke, pair.ids) {
+  return(setdiff(rke.edges(rke), get.internal.edges(rke, pair.ids)))
+}
 ##   new function
 rke.edges = function(rke) {
   A = get.model.A(rke)
@@ -315,7 +325,13 @@ get.matched.ids <- function(model.A, edge.ids) {
     }
     return(unique(ids))
 }
-
+get.hospital.pairs <- function(rke.all, hid) {
+  warning("get.hospital.pairs not unit-tested")
+  if(! "hospital" %in% names(rke.all))
+    stop("Input is not a pooled RKE object")
+  
+  return(which(rke.all$hospital==hid))
+}
 get.model.A <- function(rke) {
   ##  the adjacency matrix. 
   warning("get.model.A not unit-tested")
