@@ -471,9 +471,9 @@ max.matching <- function(rke,
     cutoff = -Inf
     params.new <- list(OutputFlag=0,
                        NodefileStart=0.4,
-                       Threads=1,
                        Cuts=3,
                        Presolve=1,
+                       MIPFocus=2,
                        TimeLimit=timeLimit)
   
     gurobi.result <- gurobi(model, params.new)
