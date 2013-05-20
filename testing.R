@@ -1,11 +1,23 @@
 ## Unit tests.
 source("lib.R")
+equal.sets = function(x,y) {
+  if(length(x) != length(y)) return(F)
+  return(length(setdiff(x,y))==0)
+}
+is.subset = function(bigger, smaller) {
+  xandy = intersect(bigger, smaller)
+  return(equal.sets(xandy, smaller))
+}
+
 TEST.SETS.DISJOINT = function(x, y, str="n/a") {
   if(length(intersect(x,y))>0)
     stop(sprintf("[TEST FAIL]...Sets x,y not disjoint : %s", str))
   return(T)
 }
-TEST.SETS.EQUAL = function(x, y, str="n/a") {
+## Testing set-equality
+TEST.SETS.EQ = function(x, y, str="n/a") {
+  x = unique(x)
+  y = unique(y)
   throw = function() {
     stop(sprintf("[TEST FAIL]...Sets are not equal : %s", str))
   }
@@ -15,7 +27,7 @@ TEST.SETS.EQUAL = function(x, y, str="n/a") {
     throw()
   return(T)
 }
-TEST.LISTS.EQ = function(x,y, tol=0, str="n/a") {
+TEST.LISTS.EQ = function(x,y, str="n/a", tol=0) {
   throw = function() {
     stop(sprintf("[TEST FAIL]...Lists x,y not equal at this tol level : %s", str))
   }
@@ -31,7 +43,14 @@ TEST.LISTS.GEQ = function(x,y, str="n/a") {
   if(s >0) throw()
   return(T)
 }
-
+TEST.SUBSET = function(smaller, bigger, str="n/a)") {
+  throw = function() {
+    stop(sprintf("[TEST FAIL]...x is not subset of y : %s", str))
+  }
+  if(! is.subset(bigger=bigger, smaller=smaller))
+    throw()
+  return(T)
+}
 ## Test whether two RKE's are the same (NOT exact)
 ## TEST.RKE.EQ(rrke(10), rrke(10))   should fail
 TEST.RKE.EQ = function(x,y, str="n/a") {
@@ -58,6 +77,7 @@ TEST.MEAN.EQ = function(x, mu0, str="n/a") {
   sd = bootstrap.mean(x)
   mu = mean(x)
   ci = c(mu - 2 *sd, mu + 2*sd)
+
   if(mu0 < ci[1] || mu0 > ci[2])
     stop(sprintf("[TEST FAIL] Hypothesis test mu=mu0  mu0=%.3f  CI=[%.3f, %.3f]: %s", 
                  mu0, ci[1], ci[2], str))
@@ -274,7 +294,23 @@ test.get.incident.edges = function(args) {
   # 1. Ad-hoc = function output
   TEST.LISTS.EQ(nedges.theor, length(edges))
 }
+test.get.external.edges = function(args) {
+  m = 3
+  n=30
+  rke.list = rrke.many(m=m, n=n, uniform.pra=T)
+  rke.all = pool.rke(rke.list)
+  hid=sample(3, 1)
+  h.pairs = get.hospital.pairs(rke.all, hid)
+  not.h.edges = get.external.edges(rke.all, h.pairs)
+  
+  m = max.matching(rke.all, remove.edges = not.h.edges)
+  ## Test whether splitting the rke.all through  get.external 
+  ## or through the list give the same matching (should be because they are the same graphs.)
+  TEST.LISTS.EQ(m$matching$utility, 
+                max.matching(rke.list[[hid]])$matching$utility, 
+                "utility of 1 hospital")
 
+}
 ## Tests for matching.R
 test.max.matching = function(args) {
   load(file="tests/rke-20.Rdata")
@@ -360,6 +396,46 @@ test.rCM = function(args) {
   TEST.LISTS.GEQ(U, m.ind, "rCM at least as good as selfish matching")
   
 }
+test.g.share = function(args) {
+  n = 10
+  k = 20
+  z = rep(k, n)
+  x = k * n
+  TEST.LISTS.EQ( g.share(z, x),  rep(20, n), "all same")
+  
+  z[1] = 21
+  TEST.LISTS.EQ( g.share(z, x),  c(21, rep(20, n-1)), "one more")
+  
+  z = c(1,1,1,1,100)
+  x = 5
+  TEST.LISTS.EQ( g.share(z, x),  rep(1, 5), "someone asking a lot")
+  
+  z = c(1,1,1,1,100)
+  x = 104
+  TEST.LISTS.EQ( g.share(z, x),  z, "someone asking a lot + can cover")
+  
+  z = c(1,1,1,1,100)
+  x = 0
+  TEST.LISTS.EQ( g.share(z, x),  rep(0, 5), "zero supply")
+  
+  z = c(0,0,0,0,0)
+  x = 1000
+  TEST.LISTS.EQ( g.share(z, x),  rep(0, 5), "zero demand")
+  
+  z = c(0,0,0,0,1000)
+  x = 1000
+  TEST.LISTS.EQ( g.share(z, x),  c(0,0,0,0,1000), "one guy")
+  
+  ## Check whether the +1 is distributed fairly
+  z = c(2,2,2,2,2)
+  x = 6
+  i = sample(5, 1)
+  reps= replicate(1000, {  which.max(g.share(z,x))==i})
+
+  TEST.MEAN.EQ(reps, mu0=1/5, str="20% prob.")
+  
+  
+}
 test.xCM = function() {
   source("rke2.R")
   source("mechanisms.R")
@@ -378,4 +454,56 @@ test.xCM = function() {
       break()
     }
   }
+}
+
+test.Bonus.QS = function(args) {
+  m = args$m
+  n = args$n 
+  
+  rke.list = rrke.many(m=m,n=n,uniform.pra=T)
+  rke.all = pool.rke(rke.list)
+  QS = Bonus.QS(rke.all)
+  
+  
+  ud.pcs = pair.codes.per.type("U")
+  
+  
+  # Test the Q-part (#X-Y /hospital)
+  for(h in 1:m) {
+    rke.h = rke.list[[h]]
+    TEST.LISTS.EQ(sum(QS$Q[[h]][-ud.pcs]), 0, "non-UD pairs are 0")
+    
+    for(i in ud.pcs) {
+      pair.i = pair.code.to.pair(i)
+      ud.theor = length(filter.pairs.by.donor.patient(rke.h,dtype=pair.i$donor, ptype=pair.i$patient))
+      
+      TEST.LISTS.EQ(ud.theor, QS$Q[[h]][i], str=sprintf(" code=%d", i))
+    }
+  }
+  
+  rm(list=c("rke.list", "rke.all"))
+  ## Ad-hoc test here.
+  load(file="tests/rkes-m3-n8.Rdata")
+  rke.list = rke.many$rke.list
+  rke.all = rke.many$rke.all
+  QS = Bonus.QS(rke.all)
+  
+  TEST.LISTS.EQ(QS$Q[[1]][5], 2, str="H1 A-O")
+  TEST.LISTS.EQ(QS$Q[[2]][5], 2, str="H2 A-O")
+  
+  TEST.LISTS.EQ(QS$Q[[1]][14], 0, str= "H1 AB-A")
+  TEST.LISTS.EQ(QS$Q[[1]][15], 0, str="H1 AB-B")
+  TEST.LISTS.EQ(QS$Q[[3]][13], 2, str="H3 AB-O")
+  TEST.LISTS.EQ(QS$Q[[3]][9], 1, str="H3 B-O")
+  TEST.LISTS.EQ(QS$Q[[2]][14], 0, str="H2 AB-A")
+  
+  
+  x = c(1,0,0,0,0)
+  z = rep(0, 5)
+  TEST.LISTS.EQ( sapply(ud.pcs, function(i) length(QS$S[[1]][[i]])), x, str="UD matches in H1")
+  TEST.LISTS.EQ( sapply(ud.pcs, function(i) length(QS$S[[2]][[i]])), z, str="UD matches in H2")
+  TEST.LISTS.EQ( sapply(ud.pcs, function(i) length(QS$S[[3]][[i]])), z, str="UD matches in H3")
+    
+  
+  return(T)
 }

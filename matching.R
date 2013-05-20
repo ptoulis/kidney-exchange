@@ -65,7 +65,7 @@ max.matching <- function(rke,
   }
   ##  Remove the specified edges.
   if(length(remove.edges)>0) {
-    model.obj.coefficients[remove.edges]=0
+    model.obj.coefficients[remove.edges] <- -0.5 
     if(length(remove.edges)==K)
       return(get.empty.result())
   }
@@ -134,7 +134,7 @@ max.matching <- function(rke,
                      NodefileStart=0.4,
                      Cuts=3,
                      Presolve=1,
-                     MIPFocus=2,
+                     MIPFocus=1,
                      TimeLimit=timeLimit)
   
   gurobi.result <- gurobi(model, params.new)

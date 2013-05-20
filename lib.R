@@ -292,14 +292,6 @@ to.rke <- function(new.rke) {
 mu.thm = function(n) {
   0.556 * n  -0.338 * sqrt(n)- 2
 }
-equal.sets = function(x,y) {
-  if(length(x) != length(y)) return(F)
-  return(length(setdiff(x,y))==0)
-}
-is.subset = function(bigger, smaller) {
-  xandy = intersect(bigger, smaller)
-  return(equal.sets(xandy, smaller))
-}
 
 ## This fixes the super-annoying R's sample(c(4), 1) problem --- this could sample any number from 1-4 !!!
 uniform.sample = function(x) {
@@ -337,5 +329,6 @@ plot.rke = function(rke) {
   par(mar=c(0,0,0,0))
   plot.igraph(g,layout=layout.auto)
 }
-
+pair.codes.per.type=  function(type)
+  which( sapply(Pair.Codes, function(i) pair.type(pair.code.to.pair(i)))==type)
 
