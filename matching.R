@@ -1,5 +1,6 @@
 ## Matching functions. 
 ##########################################################################
+##  master   branch
 ##   Maximum matching ##
 ## Returns { gurobi =>     { objvalue,  x = [0,1,...] },
 ##          matching =>  {matched.ids, matched.edges...} 
