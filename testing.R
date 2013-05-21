@@ -327,6 +327,16 @@ test.max.matching = function(args) {
     print(sprintf("Checked against %s [OK]", filename) )
     rm(res)
   }
+  ## Check the m3  model
+  message("Checking multi-hospital graph")
+  load(file="tests/rkes-m3-n8.Rdata")
+  rke = rke.many$rke.all
+  m= max.matching(rke, remove.edges=(c(1,4,6)))
+  TEST.LISTS.EQ(m$matching$utility, 10)
+  m= max.matching(rke, remove.edges=(c(8,9,16,17,7,13,5)))
+  TEST.LISTS.EQ(m$matching$utility, 6)
+  m= max.matching(rke, remove.edges=(c(7,13)))
+  TEST.LISTS.EQ(m$matching$utility, 10)
   return(T)
 }
 test.get.subgraph = function(args) {

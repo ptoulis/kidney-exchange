@@ -103,7 +103,7 @@ max.matching <- function(rke,
     ##  knock-out the edges otherwise they will come back in from "remove.pairs"
     ## CAUTION:  rke is mutated here
     for(ed in remove.edges) {
-      ids = which(model.A[,ed]==0)
+      ids = which(model.A[,ed]==1)
       rke$P[ids, ids] <- 0
     }
     

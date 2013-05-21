@@ -309,7 +309,7 @@ my.sort =function(x) {
 rke.to.igraph = function(rke) {
   library(igraph) 
   A = rke$P * rke$B
-  return(graph.adjacency(A))
+  return(graph.adjacency(A, mode="undirected"))
 }
 bootstrap.mean = function(x) sd(replicate(1000, { mean(sample(x, replace=T)) }))
 
@@ -327,7 +327,7 @@ plot.rke = function(rke) {
     g = set.vertex.attribute(g, name="label", index=i, value=pair.to.str(pair, more) )
   }
   par(mar=c(0,0,0,0))
-  plot.igraph(g,layout=layout.auto)
+  plot.igraph(g,layout=layout.auto, edge.label= 1:ecount(g) )
 }
 pair.codes.per.type=  function(type)
   which( sapply(Pair.Codes, function(i) pair.type(pair.code.to.pair(i)))==type)
