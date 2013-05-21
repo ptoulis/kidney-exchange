@@ -19,7 +19,10 @@ TEST.SETS.EQ = function(x, y, str="n/a") {
   x = unique(x)
   y = unique(y)
   throw = function() {
-    stop(sprintf("[TEST FAIL]...Sets are not equal : %s", str))
+    print(sprintf("[TEST FAIL]...Lists x,y not equal at this tol level : %s", str))
+    print(sprintf("x = %s", paste(head(x,5), collapse=",")))
+    print(sprintf("y = %s", paste(head(y,5), collapse=",")))
+    stop("Quitting.")
   }
   if(length(x) != length(y))
     throw()
@@ -29,7 +32,10 @@ TEST.SETS.EQ = function(x, y, str="n/a") {
 }
 TEST.LISTS.EQ = function(x,y, str="n/a", tol=0) {
   throw = function() {
-    stop(sprintf("[TEST FAIL]...Lists x,y not equal at this tol level : %s", str))
+    print(sprintf("[TEST FAIL]...Lists x,y not equal at this tol level : %s", str))
+    print(sprintf("x = %s", paste(head(x,5), collapse=",")))
+    print(sprintf("y = %s", paste(head(y,5), collapse=",")))
+    stop("Quitting.")
   }
   s = sum(which(abs(x-y)>tol))
   if(s >0) throw()
