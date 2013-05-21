@@ -315,8 +315,13 @@ test.get.external.edges = function(args) {
 }
 ## Tests for matching.R
 test.max.matching = function(args) {
-  load(file="tests/rke-20.Rdata")
-  TEST.LISTS.EQ(max.matching(rke)$matching$utility, 8)
+  for(filename in  list.files("tests",full.names=T,pattern="rke-res")) {
+    load(filename)
+    TEST.LISTS.EQ(res$util,  max.matching(res$rke)$matching$utility)
+    print(sprintf("Checked against %s [OK]", filename) )
+    rm(res)
+  }
+  return(T)
 }
 test.get.subgraph = function(args) {
   n = args$n
