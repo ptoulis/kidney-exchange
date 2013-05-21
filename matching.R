@@ -26,8 +26,8 @@ max.matching <- function(rke,
                          remove.edges=c(),
                          timeLimit=120) {
   
-  last.input = list(rke=rke, remove.edges=remove.edges, ir.constraints=IR.constraints)
-  save(last.input, file="debug/last-ip-input.Rdata")
+  #last.input = list(rke=rke, remove.edges=remove.edges, ir.constraints=IR.constraints)
+  #save(last.input, file="debug/last-ip-input.Rdata")
   ## Size of RKE  (# pairs)
   n = get.size(rke)
   ###   1.   Get the model matrix. 
@@ -59,7 +59,6 @@ max.matching <- function(rke,
   model.rhs        <- rep(1, n)
   model.sense      <- rep("<=",n)
   
-  
   ## Required regular matching. Put more weights on O-U edges (almost-regular)
   if(regular.matching) {
     OUedges = filter.edges.by.type(rke, "O", "U")
@@ -68,9 +67,73 @@ max.matching <- function(rke,
   }
   ##  Remove the specified edges.
   if(length(remove.edges)>0) {
-    model.obj.coefficients[remove.edges] <- -1
+    
+    n = get.size(rke)
     if(length(remove.edges)==K)
       return(get.empty.result())
+    ## Try something different.
+    A2 = matrix(model.A[, -remove.edges], nrow=n)
+    ## Which nodes become isolated and could be removed.
+    rm.ids = which(rowSums(A2)==0)
+    ## check if the incident pairs are the entire set of pairs.
+    if(length(rm.ids)== n )
+      return(get.empty.result() )
+    ## We know that the matching will be non-empty
+    original.ids = 1:n
+    original.edges = 1:K
+    map.ids = c()
+    map.edges = c()
+    count = 0
+    for(i in original.ids) {
+      if(i %in% rm.ids) {
+        map.ids[i]=0 
+      } else {
+        count = count+1
+        map.ids[i] = count
+      }
+    }
+    count=0
+    for(k in original.edges) {
+      if(k %in% remove.edges) {
+        map.edges[k]=0 
+      } else {
+        count = count+1
+        map.edges[k] = count
+      }
+    }   
+    ##  knock-out the edges otherwise they will come back in from "remove.pairs"
+    ## CAUTION:  rke is mutated here
+    for(ed in remove.edges) {
+      ids = which(model.A[,ed]==1)
+      rke$P[ids, ids] <- 0
+    }
+    
+    # map.ids = [1,2, 0, 0, 3, ,....]     so that 5 -> mapped to 3  etc.
+    # map.edges has similar meaning.
+    rke2 = remove.pairs(rke, rm.ids)
+    keep.ids = setdiff(original.ids, rm.ids)
+    rm(rke)   ## just to be safe you wont' use it again
+    
+    map.back.ids = function(new.id) sapply(new.id, function(i) which(map.ids==i) )
+    map.back.edges = function(new.edges)
+      sapply(new.edges, function(i) {
+          nodes = get.incident.nodes(rke2, i)
+          old.nodes = map.back.ids(nodes)
+          es = model.A[old.nodes,]
+          which(colSums(es)==2)
+      });
+    
+    ## Make the matching without "Remove.edges" -- easier
+    m2 = max.matching(rke2, 
+                      IR.constraints=IR.constraints, 
+                      remove.edges=c(), 
+                      regular.matching=regular.matching)
+    m = m2
+    m$matching$matched.ids = map.back.ids(m2$matching$matched.ids)
+    m$matching$not.matched.ids = my.sort(setdiff(original.ids, m$matching$matched.ids)) 
+    m$matching$matched.edges = my.sort(map.back.edges(m2$matching$matched.edges) )
+    
+    return(m)
   }
   ###   If IR constraints  (used by xCM matching)
   ## IR.constraints = [][]  , i.e 
@@ -137,7 +200,7 @@ max.matching <- function(rke,
                      NodefileStart=0.4,
                      Cuts=3,
                      Presolve=1,
-                     MIPFocus=0,
+                     MIPFocus=2,
                      TimeLimit=timeLimit)
   
   gurobi.result <- gurobi(model, params.new)

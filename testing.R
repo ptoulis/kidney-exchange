@@ -19,7 +19,10 @@ TEST.SETS.EQ = function(x, y, str="n/a") {
   x = unique(x)
   y = unique(y)
   throw = function() {
-    stop(sprintf("[TEST FAIL]...Sets are not equal : %s", str))
+    print(sprintf("[TEST FAIL]...Lists x,y not equal at this tol level : %s", str))
+    print(sprintf("x = %s", paste(head(x,5), collapse=",")))
+    print(sprintf("y = %s", paste(head(y,5), collapse=",")))
+    stop("Quitting.")
   }
   if(length(x) != length(y))
     throw()
@@ -29,7 +32,10 @@ TEST.SETS.EQ = function(x, y, str="n/a") {
 }
 TEST.LISTS.EQ = function(x,y, str="n/a", tol=0) {
   throw = function() {
-    stop(sprintf("[TEST FAIL]...Lists x,y not equal at this tol level : %s", str))
+    print(sprintf("[TEST FAIL]...Lists x,y not equal at this tol level : %s", str))
+    print(sprintf("x = %s", paste(head(x,5), collapse=",")))
+    print(sprintf("y = %s", paste(head(y,5), collapse=",")))
+    stop("Quitting.")
   }
   s = sum(which(abs(x-y)>tol))
   if(s >0) throw()
@@ -315,8 +321,23 @@ test.get.external.edges = function(args) {
 }
 ## Tests for matching.R
 test.max.matching = function(args) {
-  load(file="tests/rke-20.Rdata")
-  TEST.LISTS.EQ(max.matching(rke)$matching$utility, 8)
+  for(filename in  list.files("tests",full.names=T,pattern="rke-res")) {
+    load(filename)
+    TEST.LISTS.EQ(res$util,  max.matching(res$rke)$matching$utility)
+    print(sprintf("Checked against %s [OK]", filename) )
+    rm(res)
+  }
+  ## Check the m3  model
+  message("Checking multi-hospital graph")
+  load(file="tests/rkes-m3-n8.Rdata")
+  rke = rke.many$rke.all
+  m= max.matching(rke, remove.edges=(c(1,4,6)))
+  TEST.LISTS.EQ(m$matching$utility, 10)
+  m= max.matching(rke, remove.edges=(c(8,9,16,17,7,13,5)))
+  TEST.LISTS.EQ(m$matching$utility, 6)
+  m= max.matching(rke, remove.edges=(c(7,13)))
+  TEST.LISTS.EQ(m$matching$utility, 10)
+  return(T)
 }
 test.get.subgraph = function(args) {
   n = args$n

@@ -359,3 +359,4 @@ get.model.A <- function(rke) {
   TEST.LISTS.EQ(edge.counter, K)
   return(A)
 }
+
