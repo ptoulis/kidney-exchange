@@ -58,7 +58,6 @@ max.matching <- function(rke,
   model.rhs        <- rep(1, n)
   model.sense      <- rep("<=",n)
   
-  
   ## Required regular matching. Put more weights on O-U edges (almost-regular)
   if(regular.matching) {
     OUedges = filter.edges.by.type(rke, "O", "U")
@@ -68,6 +67,7 @@ max.matching <- function(rke,
   ##  Remove the specified edges.
   if(length(remove.edges)>0) {
     model.obj.coefficients[remove.edges] <- -1
+    
     if(length(remove.edges)==K)
       return(get.empty.result())
   }
