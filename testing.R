@@ -44,6 +44,8 @@ TEST.LISTS.GEQ = function(x,y, str="n/a") {
   return(T)
 }
 TEST.SUBSET = function(smaller, bigger, str="n/a)") {
+  smaller = unique(smaller)
+  bigger = unique(bigger)
   throw = function() {
     stop(sprintf("[TEST FAIL]...x is not subset of y : %s", str))
   }
@@ -315,6 +317,18 @@ test.get.external.edges = function(args) {
 test.max.matching = function(args) {
   load(file="tests/rke-20.Rdata")
   TEST.LISTS.EQ(max.matching(rke)$matching$utility, 8)
+}
+test.get.subgraph = function(args) {
+  n = args$n
+  rke = rrke(n)
+  for(t in c("R","S")) {
+    rke.sub   = get.subgraph(rke, type=t)
+    types =  get.pair.types(rke.sub, rke.pairs(rke.sub))
+    TEST.SETS.EQ(types, c(t), str=sprintf("Checking %s subgraph", t))
+    
+    TEST.LISTS.EQ(get.size(rke.sub), length(filter.pairs.by.type(rke, type=t)))
+  }
+  return(T)
 }
 
 

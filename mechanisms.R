@@ -418,9 +418,13 @@ Bonus = function(rke.list, rke.all, strategy.str) {
   all.but.r = get.external.edges( rke.all, filter.pairs.by.type(rke.all, "R") )
   match.r = max.matching(rke.all, IR.constraints=IR.constraints$R, 
                          remove.edges = all.but.r)
-  TEST.SETS.EQ( get.pair.types(rke.all, match.r$matching$matched.ids), c("R"), str=" only R")
+  
+  #ORr = length(which ( get.pair.types(rke.all, match.r$matching$matched.ids) == "O" ) )
+  #ORs = length(which ( get.pair.types(rke.all, match.r$matching$matched.ids) == "O" ) )
+  
+  TEST.SUBSET( get.pair.types(rke.all, match.r$matching$matched.ids), c("R"), str=" only R")
   ## Check if matched.already containts *only* R-S pairs.
-  TEST.SETS.EQ(get.pair.types(rke.all, match.s$matching$matched.ids), c("S"), str="only S pairs")
+  TEST.SUBSET(get.pair.types(rke.all, match.s$matching$matched.ids), c("S"), str="only S pairs")
   
   matched.ids.R = match.r$matching$matched.ids
   matched.ids.S = match.s$matching$matched.ids
@@ -438,7 +442,8 @@ Bonus = function(rke.list, rke.all, strategy.str) {
   ##   Standard up to here.
   rm(list=c("Us", "Ur"))
   
-  
+  message("Done with R-S subgraphs.")
+  return(1)
   #  3. Match OD/UD pairs.
   k = as.integer(m/2)
   H.sets = list()

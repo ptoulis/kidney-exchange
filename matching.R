@@ -25,6 +25,8 @@ max.matching <- function(rke,
                          remove.edges=c(),
                          timeLimit=120) {
   
+  last.input = list(rke=rke, remove.edges=remove.edges, ir.constraints=IR.constraints)
+  save(last.input, file="debug/last-ip-input.Rdata")
   ## Size of RKE  (# pairs)
   n = get.size(rke)
   ###   1.   Get the model matrix. 
@@ -65,7 +67,7 @@ max.matching <- function(rke,
   }
   ##  Remove the specified edges.
   if(length(remove.edges)>0) {
-    model.obj.coefficients[remove.edges] <- -0.5 
+    model.obj.coefficients[remove.edges] <- -1
     if(length(remove.edges)==K)
       return(get.empty.result())
   }
@@ -134,7 +136,7 @@ max.matching <- function(rke,
                      NodefileStart=0.4,
                      Cuts=3,
                      Presolve=1,
-                     MIPFocus=1,
+                     MIPFocus=0,
                      TimeLimit=timeLimit)
   
   gurobi.result <- gurobi(model, params.new)

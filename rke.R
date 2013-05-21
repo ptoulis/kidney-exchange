@@ -160,7 +160,7 @@ get.pairs.attribute <- function(rke, attr) {
 
 ##  Returns a sub-RKE object of only type=OD/UD, R, S 
 get.subgraph <- function(rke, type) {
-  warning("get.subgraph  not unit-tested")
+
   if(type=="S") {
     pairs.rmv = union(filter.pairs.by.type(rke, "R"), 
                       union(filter.pairs.by.type(rke, "O"), filter.pairs.by.type(rke,"U")))
