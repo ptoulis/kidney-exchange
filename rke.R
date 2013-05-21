@@ -182,7 +182,6 @@ get.subgraph <- function(rke, type) {
   stop("Wrong type requested in get.subgraph")
 }
 get.incident.nodes = function(rke, edges) {
-  warning("get.incident.nodes() not unit-tested")
   ret = c()
   A = get.model.A(rke)
   if(max(edges)> length(rke.edges(rke)))

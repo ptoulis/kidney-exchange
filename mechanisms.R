@@ -442,8 +442,6 @@ Bonus = function(rke.list, rke.all, strategy.str) {
   ##   Standard up to here.
   rm(list=c("Us", "Ur"))
   
-  message("Done with R-S subgraphs.")
-  return(1)
   #  3. Match OD/UD pairs.
   k = as.integer(m/2)
   H.sets = list()
