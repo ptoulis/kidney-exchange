@@ -8,7 +8,17 @@ is.subset = function(bigger, smaller) {
   xandy = intersect(bigger, smaller)
   return(equal.sets(xandy, smaller))
 }
-
+TEST.HAS.KEY = function(x, key, str= "n/a") {
+  throw = function() {
+    print(sprintf("[TEST FAIL]...List() x does not have key %s : %s", key,  str))
+    print(sprintf("keys = %s", names(x) ))
+    stop("Quitting.")
+  }
+  if(! key %in% names(x) )
+    throw()
+  
+  return(T)
+}
 TEST.SETS.DISJOINT = function(x, y, str="n/a") {
   if(length(intersect(x,y))>0)
     stop(sprintf("[TEST FAIL]...Sets x,y not disjoint : %s", str))
@@ -47,6 +57,13 @@ TEST.LISTS.GEQ = function(x,y, str="n/a") {
   }
   s = sum(which(x-y<0))
   if(s >0) throw()
+  return(T)
+}
+TEST.STRINGS.EQ = function(x,y, str="n/a") {
+  throw = function() {
+    stop(sprintf("[TEST FAIL]...Strings x != y : %s", str))
+  }
+  if(x != y) throw()
   return(T)
 }
 TEST.SUBSET = function(smaller, bigger, str="n/a)") {
@@ -186,12 +203,33 @@ test.pool.rke = function(args) {
     if(hpairs!= get.size(rke.list[[i]]))
       throw("Hospital i does not have the same # of pairs.")
     
-    rke.h.pairs=  get.hospital.pairs(rke.all, hid=i)
+    rke.h.pairs=  get.hospital.pairs(rke.all, i)
     rke.h.edges = length(get.internal.edges(rke.all, rke.h.pairs))
     if(rke.h.edges != length(rke.edges(rke.list[[i]])))
       throw("Hospital i does not have the same # of edges")
   }
+  n = args$n
+  m = args$m
+  TEST.LISTS.EQ(  rke.all$map.back(n+1),  1, "Map back 1" )
+  TEST.LISTS.EQ(  rke.all$map.back(2),  2, "Map back 3" )
+  TEST.LISTS.EQ(  rke.all$map.back(m * n-n+3),  3, "Map back 3" )
   
+  trials = 20
+  for(j in 1:trials) {
+    new.id = sample(1:get.size(rke.all), 1)
+    # Get the hospital-internal id
+    hosp.id = rke.all$map.back(new.id)
+    # Get the hospital id of the pair
+    hid = rke.all$hospital[new.id]
+    ## Get the pair objet of the hospital-internal
+    hosp.pair = pair.code.to.pair(rke.list[[hid]]$pc[hosp.id] )
+    # Get the pair object in the rke.all
+    all.pair= pair.code.to.pair( rke.all$pc[new.id] )
+    ##  Test strings
+    TEST.STRINGS.EQ( all.pair$donor, hosp.pair$donor, " Checking donor equality")
+    TEST.STRINGS.EQ(all.pair$patient, hosp.pair$patient, " Checking patient equality")
+    print(sprintf("(%d/%d) Checking random pair %d from H-%d...[OK]", j, trials,new.id, hid))
+  }
   return(T)
   
 }
@@ -266,15 +304,17 @@ test.get.model.A = function(args) {
   TEST.BOOL(Bi, "testing most connected node")
 }
 test.remove.pairs = function(args) {
+  
+   TEST.HAS.KEY(args,"n", str="bad input")
    n = args$n
    rke = rrke(n)
-   rmv= sample(as.integer(n/2), 1)
+   rmv= sample(n, 1)
    pair.ids = sample(1:n, rmv, replace=F)
    rke2 = remove.pairs(rke, pair.ids)
    # 1. test size of remainder
    TEST.LISTS.EQ(get.size(rke2), n-rmv, "size of remainder")
    # 2. test   new-edges =  old-edges - removed.edges
-   rmv.edges = get.incident.edges(rke, pair.ids)
+   rmv.edges = length( get.incident.edges(rke, pair.ids) )
    TEST.LISTS.EQ(length(rke.edges(rke2)),  length(rke.edges(rke)) - rmv.edges, "new edges 1")
    
    kept.pairs = setdiff(1:n, pair.ids)
@@ -289,6 +329,21 @@ test.remove.pairs = function(args) {
      t.left = length( filter.pairs.by.type(rke2, type))
      TEST.LISTS.EQ(t.all, t.left + t.removed, sprintf(" %s pairs", type) )
    }
+   
+   ## Testing the map.back() function
+   trials = 20
+   for(j in 1:trials) {
+     rke = rrke(n)
+     rmv= sample(as.integer(n/2), 1)
+     pair.ids = sample(1:n, rmv, replace=F)
+     rke2 = remove.pairs(rke, pair.ids)
+     
+     new.id = sample(get.size(rke2), 1)
+     old.id = rke2$map.back(new.id)
+     TEST.LISTS.EQ(rke2$pc[new.id], rke$pc[old.id], "Are we talking about the same pair?")
+     print(sprintf("        (%d/%d)  Testing remove.pairs...[OK]",j, trials))
+   }
+   
    return(T)
 }
 test.get.incident.edges = function(args) {
