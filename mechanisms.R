@@ -67,6 +67,21 @@ init.mechanism = function(rke.list, strategy.str) {
   }
   return( list(rke.list=rke.list, util=HospitalUtility)   )
 }
+finalize.mechanism = function(rke.list, rke.all, matched.all.ids) {
+  m = length(rke.list)
+  last.utility = rep(0,m)
+  for(hid in 1:m) {
+    rke.h = rke.list[[hid]]
+    all.h = get.hospital.pairs(rke.all, hid)
+    matched.h = intersect(matched.all.ids, all.h)
+    if(length(all.h) > length(matched.h)+1) {
+      remove.edges = get.internal.edges(rke.all, setdiff(all.h, matched.h))
+      ## perform a last max-matching within the hospital
+      last.utility[hid] = max.matching(rke.all, remove.edges=remove.edges)$matching$utility
+    }
+  }
+  return(last.utility)
+}
 ## Implementation of rCM
 ## deviating: list of hospitals which deviate.
 ##
@@ -80,8 +95,10 @@ rCM <- function(rke.list, rke.all, strategy.str) {
   ## 1. Simply calculate a maximum-matching (this will shuffle the edges by default)
   m.all =  max.matching(rke.all)
   
+  matched.all.ids = m.all$matching$matched.ids
   # 2. Compute the utility.
-  HospitalUtility = HospitalUtility + get.hospitals.utility(rke.all, m.all)
+  HospitalUtility = HospitalUtility + get.hospitals.utility(rke.all, m.all) +
+                    finalize.mechanism(rke.list, rke.all, matched.all.ids)
   
   return(HospitalUtility)
 }
@@ -289,7 +306,7 @@ xCM <- function(rke.list, rke.all, strategy.str) {
   Us = get.hospitals.utility(rke.all, match.s)
   Ur = get.hospitals.utility(rke.all, match.r)
   
-  HospitalUtility = HospitalUtility +Ur+ Us+ Uo
+  HospitalUtility = HospitalUtility +Ur+ Us+ Uo +finalize.mechanism(rke.list, rke.all, matched.already)
   
   return(HospitalUtility)
 }
@@ -309,7 +326,7 @@ ud.lottery = function(rke,
                       theta,
                       QS) {
   
-  warning("UD lottery does not have a unit test.")
+  #warning("UD lottery does not have a unit test.")
   Qh = QS$Q
   Sh = QS$S
   
@@ -402,6 +419,7 @@ Bonus = function(rke.list, rke.all, strategy.str) {
   x = init.mechanism(rke.list, strategy.str)
   HospitalUtility = x$util
   rke.list = x$rke.list
+
   
   ## Pair code (useful when setting constraints)
   pc.AB = pair.code(list(donor="A", patient="B"))
@@ -502,7 +520,7 @@ Bonus = function(rke.list, rke.all, strategy.str) {
       HospitalUtility = HospitalUtility + get.hospitals.utility(rke.all, Mj)
     }
   }
-  
+  HospitalUtility = HospitalUtility + finalize.mechanism(rke.list, rke.all, matched.already)
   return(HospitalUtility)
 }
 
