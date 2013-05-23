@@ -6,15 +6,79 @@
 source("rke.R")
 source("matching.R")
 
+Sample.Setup <- function(m, n, strategy.str, uniform.pra=T) {
+  
+  rke.list = rrke.many(m=m, n=n, uniform.pra= uniform.pra)
+  rke.all = pool.rke(rke.list)
+  
+  x = init.mechanism(rke.list, strategy.str)
+  setup = list()
+  
+  reported.rke.list = list()
+  ## hidden.pairs = ids in terms of rke.all  that were hidden
+  hidden.pairs = c()
+  #  1b.  Populate the reported and hidden graphs.
+  for(h in 1:m) {
+    x.h = x[[h]]
+    reported.rke.list[[h]] = remove.pairs(rke.list[[h]], 
+                                          x.h$hide)
+    hidden.h = x.h$hide
+    if(length(hidden.h)>0)
+        hidden.pairs = c(hidden.pairs, 
+                           sapply(hidden.h, function(i) 
+                                            rke.all$map.fwd(i, h)))
+  }
+  ##  Save the "setup" object
+  ## This is important in order to compare mechanisms
+  ## on the same sets of hospitals and pooled graphs.
+  setup$reported.rke.list = reported.rke.list
+  setup$reported.rke.all = remove.pairs(rke.all, hidden.pairs)
+  setup$rke.list = rke.list
+  setup$rke.all = rke.all
+  return(setup)
+  
+}
+##  Runs a mechanism
+Run.Mechanism = function(setup, mech) {
+  
+  reported.rke.list = setup$reported.rke.list
+  reported.rke.all = setup$reported.rke.all
+  rke.list = setup$rke.list
+  rke.all = setup$rke.all
+  
+  ## 3. Run the mechanism
+  mech.out.ids = do.call(mech, args=list(rke.list=reported.rke.list, 
+                                         rke.all = reported.rke.all) )
+
+  ## 4. Compute utility from mechanism
+  Util = get.hospitals.utility(reported.rke.all, mech.out.ids)
+
+  ## 5.  Utility from final internal matches. 
+  ##     
+  for(h in 1: length(rke.list)) {
+    rke.h = rke.list[[h]]
+    matched.ids.in.reported.all = intersect( get.hospital.pairs(reported.rke.all, h), 
+                                  mech.out.ids )
+    matched.ids.in.all = reported.rke.all$map.back(matched.ids.in.reported.all)
+    matched.ids.in.hosp = rke.all$map.back(matched.ids.in.all)
+    
+    rke.remainder = remove.pairs(rke.h, matched.ids.in.hosp)
+    m.h = max.matching(rke.remainder)
+    Util[h] = Util[h] + m.h$matching$utility
+
+  }
+  return(Util)
+}
+
+
 ## Given the matching, and the input graphs, 
 ##  calculate the utilities/hospital 
 ##  Returns    k x 1  vector,     with the matches for every hospital
-get.hospitals.utility <- function(rke.all, m.all) {
+get.hospitals.utility <- function(rke.all, matched.ids) {
     ## find no. of hospitals 
     m = length(unique(rke.all$hospital))
     vals = matrix(0, nrow=m, ncol=1)
-    ## get the pair ids in the match.
-    matched.ids = m.all$matching$matched.ids
+   
     ## get the hospitals for every pair.
     matched.hospitals =rke.all$hospital[matched.ids]
     
@@ -27,20 +91,30 @@ get.hospitals.utility <- function(rke.all, m.all) {
 
 ##  Given an RKE and a type of deviation, 
 ##  determine which pairs you will *hide*
+# Returns:    list(  hide= c(..),   report=c(...) )
 play.strategy <- function(rke, type) {
-  if(type=="t")
-    return(c())
-  if(type=="c") {
+  ret = list(report=c(), hide=c())
+  
+  if(type=="t") {
+    ret$hide = c()
+  } else if(type=="c") {
     ## TO-DO(ptoulis): If the max matching is timed-out, this will return empty match
     ## which is equivalent to being truthful. Needs a fix?
     m = max.matching(rke)
-    return(m$matching$matched.ids)
+    ret$hide = m$matching$matched.ids
+  }  else if(type=="r") {
+    pairs.AB = filter.pairs.by.donor.patient(rke, "A","B")
+    pairs.BA = filter.pairs.by.donor.patient(rke, "B","A")
+    pairs.O = filter.pairs.by.type(rke,"O")
+    ## want to hide the "short" side of R
+    hide.R= pairs.AB
+    if(length(pairs.BA) < length(pairs.AB))
+      hide.R = pairs.BA
+    
+     ret$hide = c(hide.R)
   }
-  if(type=="r") {
-    ## TO-DO(ptoulis): Implement the long-R attack.
-    stop("Long-R-attack not implemented.")
-  }
-  stop("Not Implemented")
+  ret$report = setdiff(1:get.size(rke), ret$hide)
+  return(ret)
 }
 
 read.strategy.str = function(strategy.str) {
@@ -51,56 +125,31 @@ read.strategy.str = function(strategy.str) {
   return(strategies)
 }
 
-## Initializes every mechanism. Do not change.
+## Initializes every mechanism + plays strategy
+## Returns:  list(  hid => play.strategy )
 init.mechanism = function(rke.list, strategy.str) {
 
-  m = length(rke.list)
-  HospitalUtility = matrix(0, nrow=m, ncol=1)
-  
+  m = length(rke.list)  
   strategies = read.strategy.str(strategy.str)
+  strategy.list = list()
   
   for(hid in 1:m) {
     rke.h = rke.list[[hid]]
-    matched.internally = play.strategy(rke.h, type=strategies[hid])
-    HospitalUtility[hid,1] = length(matched.internally)
-    rke.list[[hid]] = remove.pairs(rke.h, matched.internally)
+    strategy.list[[hid]] = play.strategy(rke.h, type=strategies[hid])
   }
-  return( list(rke.list=rke.list, util=HospitalUtility)   )
+  return( strategy.list )
 }
-finalize.mechanism = function(rke.list, rke.all, matched.all.ids) {
-  m = length(rke.list)
-  last.utility = rep(0,m)
-  for(hid in 1:m) {
-    rke.h = rke.list[[hid]]
-    all.h = get.hospital.pairs(rke.all, hid)
-    matched.h = intersect(matched.all.ids, all.h)
-    if(length(all.h) > length(matched.h)+1) {
-      remove.edges = get.internal.edges(rke.all, setdiff(all.h, matched.h))
-      ## perform a last max-matching within the hospital
-      last.utility[hid] = max.matching(rke.all, remove.edges=remove.edges)$matching$utility
-    }
-  }
-  return(last.utility)
-}
+
 ## Implementation of rCM
-## deviating: list of hospitals which deviate.
-##
-##  Return:  kx1   matrix of utilities
-rCM <- function(rke.list, rke.all, strategy.str) {
-  
-  x = init.mechanism(rke.list, strategy.str)
-  rke.list = x$rke.list
-  HospitalUtility = x$util
-  
+## Returns:   c(...)   = matched ids
+rCM <- function(rke.list, rke.all) {
+
   ## 1. Simply calculate a maximum-matching (this will shuffle the edges by default)
   m.all =  max.matching(rke.all)
   
   matched.all.ids = m.all$matching$matched.ids
   # 2. Compute the utility.
-  HospitalUtility = HospitalUtility + get.hospitals.utility(rke.all, m.all) +
-                    finalize.mechanism(rke.list, rke.all, matched.all.ids)
-  
-  return(HospitalUtility)
+  return(matched.all.ids)
 }
 
 
@@ -205,18 +254,15 @@ g.share = function(z, x) {
 
 ## TO-DO(ptoulis): Don't really care much about correctness
 ## as long as it has good properties, we can treat it as a black box.
-xCM <- function(rke.list, rke.all, strategy.str) {
+xCM <- function(rke.list, rke.all) {
   warning("xCM() has no unit-test")
-  # 0. Initialize mechanism
-  m =length(rke.list)
-  x = init.mechanism(rke.list, strategy.str)
-  HospitalUtility = x$util
-  rke.list = x$rke.list
+  
+  m = length(rke.list)
+  matched.all.ids = c()
   
   ##  1. Compute IR constraints
   IR.constraints = compute.ir.constraints(rke.list, types=c("S", "R"))
-  
-  
+
   z.AB = IR.constraints$z.ab
   z.BA = IR.constraints$z.ba
   ###  Done with per-hospital
@@ -279,36 +325,29 @@ xCM <- function(rke.list, rke.all, strategy.str) {
   sedges = match.s$matching$matched.edges
   
   TEST.SETS.DISJOINT(redges, sedges, "S and R edges")
-  
-  matched.already = union(match.r$matching$matched.ids, 
+  ###  Update the matching output
+  matched.all.ids = union(match.r$matching$matched.ids, 
                           match.s$matching$matched.ids)
   matched.edges.already = union( redges, sedges )
   
   ## Match OD's individually.
-  Uo = matrix(rep(0, m), nrow=m)
   for(hid in 1:m) {
     Gh = get.hospital.pairs(rke.all, hid)
-    Gh.remainder = setdiff(Gh, intersect(Gh, matched.already))
+    Gh.remainder = setdiff(Gh, intersect(Gh, matched.all.ids))
     
     match.Gh = max.matching(rke.all, regular.matching=T, 
                             remove.edges= get.external.edges(rke.all, Gh.remainder))
     
     ## Make sure OD ids are not R or S pairs
     TEST.SETS.DISJOINT(match.Gh$matching$matched.ids, 
-                       matched.already, str="OD and matched_already pairs")
+                       matched.all.ids, str="OD and matched_already pairs")
     TEST.SETS.DISJOINT(match.Gh$matching$matched.edges, matched.edges.already,
                        str="Matched edges already")
     
-    Uo = Uo + get.hospitals.utility(rke.all, match.Gh)
-    matched.already = c(matched.already, match.Gh$matching$matched.ids)
+    matched.Gh.ids = match.Gh$matching$matched.ids
+    matched.all.ids = c(matched.all.ids,  matched.Gh.ids)
   }
-  
-  Us = get.hospitals.utility(rke.all, match.s)
-  Ur = get.hospitals.utility(rke.all, match.r)
-  
-  HospitalUtility = HospitalUtility +Ur+ Us+ Uo +finalize.mechanism(rke.list, rke.all, matched.already)
-  
-  return(HospitalUtility)
+  return(matched.all.ids)
 }
 
 
@@ -412,14 +451,11 @@ Bonus.QS = function(rke.all)  {
   ret = list(Q=Qh, S=Sh)
 }
 ## Bonus mechanism. Ashlagi & Roth (2013)
-Bonus = function(rke.list, rke.all, strategy.str) {
+Bonus = function(rke.list, rke.all) {
   
+  matched.all.ids = c()
   ## 0. Initialize mechanism
   m = length(rke.list)
-  x = init.mechanism(rke.list, strategy.str)
-  HospitalUtility = x$util
-  rke.list = x$rke.list
-
   
   ## Pair code (useful when setting constraints)
   pc.AB = pair.code(list(donor="A", patient="B"))
@@ -449,16 +485,7 @@ Bonus = function(rke.list, rke.all, strategy.str) {
   
   TEST.SETS.DISJOINT(matched.ids.R, matched.ids.S)
   
-  matched.already = c(matched.ids.R, matched.ids.S)
-  
-  Us = get.hospitals.utility(rke.all, match.s)
-  Ur = get.hospitals.utility(rke.all, match.r)
-  
-  ## Update utilities.
-  ##  (amazing bug here:  HospitalUtil*y = ....    does not spit out any errors!)
-  HospitalUtility = HospitalUtility + Ur + Us
-  ##   Standard up to here.
-  rm(list=c("Us", "Ur"))
+  matched.all.ids = c(matched.ids.R, matched.ids.S)
   
   #  3. Match OD/UD pairs.
   k = as.integer(m/2)
@@ -513,14 +540,12 @@ Bonus = function(rke.list, rke.all, strategy.str) {
       Mj = max.matching(rke.all, regular.matching=F, 
                            remove.edges= exclude.edges)
       ## Test if newly matched have already been matched.
-      TEST.SETS.DISJOINT(Mj$matching$matched.ids, matched.already, str="Matched now vs. already")
+      TEST.SETS.DISJOINT(Mj$matching$matched.ids, matched.all.ids, str="Matched now vs. already")
       
-      matched.already = c(matched.already, Mj$matching$matched.ids)
-      
-      HospitalUtility = HospitalUtility + get.hospitals.utility(rke.all, Mj)
+      matched.all.ids = c(matched.all.ids, Mj$matching$matched.ids)
+
     }
   }
-  HospitalUtility = HospitalUtility + finalize.mechanism(rke.list, rke.all, matched.already)
-  return(HospitalUtility)
+  return(matched.all.ids)
 }
 

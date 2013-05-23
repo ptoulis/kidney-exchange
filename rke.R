@@ -30,6 +30,7 @@ rrke <- function(n,
                  uniform.pra = T,
                  blood.type.distr = list(O=0.5, A=0.3, B=0.15, AB=0.05),
                  verbose=F) {
+    if(n==0) return(empty.rke() )
     # 1. Sample the pairs
     ##   each one has a code and a PRA
     pairs.obj = rpairs(n, 
@@ -108,7 +109,21 @@ pool.rke <- function(rke.list) {
   }
   # clean up
   rm(list=c("P.all", "B.all"))
-  
+  rke.all$map.back = function(new.ids) {
+    ## should return the old hospital id
+    ret = c()
+    for(id in new.ids) {
+      if(id > get.size(rke.all) || id <0)
+        stop("invalid new.id in map.back()")
+      hosp.id = rke.all$hospital[id]
+      old.id = id - min(which(rke.all$hospital==hosp.id))+1
+      ret = c(ret, old.id)
+    }
+    return( ret )
+  }
+  rke.all$map.fwd = function(old.id, hid) {
+    return( min(which(rke.all$hospital==hid) ) + old.id-1 )
+  }
   return(rke.all)
 }
 
@@ -116,30 +131,59 @@ pool.rke <- function(rke.list) {
 # Used to represent deviation strategies ("hide")
 remove.pairs <- function(rke, pair.ids) {
   
-  ### this is a delicate process, so we add some extra checks.
-  if(length(pair.ids)==0)
-    return(rke)
   all.pairs = rke.pairs(rke)
   if(! is.subset(all.pairs, pair.ids))
     stop("Pair ids to remove should be a subset!")
   
-  if(equal.sets(pair.ids, all.pairs))
-    return(empty.rke())
-  
-  rke.new = list()
-  rke.new$pras = rke$pras[-pair.ids]
-  rke.new$pc = rke$pc[-pair.ids]
-  rke.new$P = rke$P[-pair.ids, -pair.ids]
-  rke.new$B = rke$B[-pair.ids, -pair.ids]
-  ## this is necessary. R messes up splicing! 
-  ## if you take out n-1 of the dimensions it will return a vector instead of a matrix!!! argh!
-  if(length(pair.ids) == length(all.pairs)-1) {
-    rke.new$P = matrix(rke.new$P, nrow=1, ncol=1)
-    rke.new$B = matrix(rke.new$B, nrow=1, ncol=1)
+  ## First create the map-back function.
+  count = 0
+  map.ids = c()
+  for(i in 1:get.size(rke)) {
+    if(i %in% pair.ids) {
+      map.ids[i] = 0
+    } else {
+      count = count+1
+      map.ids[i] = count
+    }
   }
-  rke.new$uniform.pra = rke$uniform.pra
-  if("hospital" %in% names(rke))
-    rke.new$hospital = rke$hospital[-pair.ids]
+  ## map.ids= [1,2,0,0,0,3,0,0,4,5,0,0,6]
+  
+  map.back = function(new.ids) {
+    ## should return the old hospital id
+    ret = c()
+    for(id in new.ids) {
+      if(id > get.size(rke.new) || id <0)
+        stop("invalid new.id in map.back()")
+      ret = c(ret, which(map.ids==id))
+    }
+    return( ret )
+  }
+  
+  ## define rke.new
+  rke.new = list()
+  
+  if(equal.sets(pair.ids, all.pairs))
+  { 
+    rke.new = empty.rke() 
+  } else if(length(pair.ids)==0) {
+    rke.new = rke
+  } else { 
+    rke.new$pras = rke$pras[-pair.ids]
+    rke.new$pc = rke$pc[-pair.ids]
+    rke.new$P = rke$P[-pair.ids, -pair.ids]
+    rke.new$B = rke$B[-pair.ids, -pair.ids]
+    ## this is necessary. R messes up splicing! 
+    ## if you take out n-1 of the dimensions it will return a vector instead of a matrix!!! argh!
+    if(length(pair.ids) == length(all.pairs)-1) {
+      rke.new$P = matrix(rke.new$P, nrow=1, ncol=1)
+      rke.new$B = matrix(rke.new$B, nrow=1, ncol=1)
+    }
+    rke.new$uniform.pra = rke$uniform.pra
+    if("hospital" %in% names(rke))
+      rke.new$hospital = rke$hospital[-pair.ids]
+  }
+  
+  rke.new$map.back = map.back  
   return(rke.new)
 }
 keep.pairs = function(rke, pair.ids) {
@@ -193,11 +237,11 @@ get.incident.nodes = function(rke, edges) {
 }
 get.incident.edges = function(rke, pair.ids) {
   
-  if(length(pair.ids)==0) return(c())
   A = get.model.A(rke)
-  Ai = A[pair.ids,]
+  if(length(pair.ids) == 0 || ncol(A)==0) return(c())
+  Ai = matrix( A[pair.ids,], ncol=ncol(A) )
   if(length(pair.ids)==1)
-    return(which(sum(Ai)>0))
+    return(which(Ai>0))
   
   return(which(apply(Ai, 2, sum)>0))
 }
@@ -208,7 +252,8 @@ get.internal.edges = function(rke, pair.ids) {
   pair.ids = c(pair.ids)
   if(length(pair.ids)<2) return(c())
   A = get.model.A(rke)
-  Ai = A[pair.ids,]
+  if(ncol(A)==0) return(c())
+  Ai = matrix( A[pair.ids,], ncol=ncol(A) )
   
   return(which(apply(Ai, 2, sum)==2))
 }
@@ -303,7 +348,7 @@ filter.out.edges.by.type <- function(rke, t1, t2) {
 }
 ##  Returns only those pairs of specific donor-patient types.
 filter.pairs.by.donor.patient <- function(rke, dtype, ptype) {
-  
+  if(get.size(rke)==0) return(c() )
   if(dtype=="*") 
     dtype = c("O", "A", "B", "AB")
   else dtype = c(dtype)
@@ -324,6 +369,7 @@ filter.pairs.by.donor.patient <- function(rke, dtype, ptype) {
   return(which(membership==T))
 }
 filter.pairs.by.type <- function(rke, type) {
+  if(get.size(rke)==0) return(c()) 
   return(which(get.pairs.attribute(rke, "type")==type))
 }
 
