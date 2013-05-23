@@ -92,9 +92,9 @@ TEST.RKE.EQ = function(x,y, str="n/a") {
   if(vcount(gx)!= vcount(gy)) throw("vcount")
   if(ecount(gx) != ecount(gy)) throw("ecount")
   if(length(get.diameter(gx)) != length(get.diameter(gy))) throw("diameter")
-  if(mean(alpha.centrality(gx)) != mean(alpha.centrality(gy))) throw("centrality")
-  if(mean(degree.distribution(gx)) != mean(degree.distribution(gy))) throw("degree")
-  
+  #if(mean(alpha.centrality(gx)) != mean(alpha.centrality(gy))) throw("centrality")
+  if(mean(degree.distribution(gx)) != mean(degree.distribution(gy))) throw("degree mean")
+  if(sd(degree.distribution(gx)) != sd(degree.distribution(gy))) throw("degree SD")
   return(T)
   
 }
@@ -237,12 +237,12 @@ test.pool.rke = function(args) {
 test.filters = function(args) {
   load(file="tests/rke-20.Rdata")
   #  rke  is a 20-pair hospital
-  aa = 1
-  oo = 2
+  aa = 0
+  oo = 3
   ab = 2
-  ba = 2
+  ba = 5
   ob = 0
-  ao = 8
+  ao = 5
   
   TEST.LISTS.EQ(aa, length(filter.pairs.by.donor.patient(rke,"A", "A") ), str="filter.pairs.by.dp" )
   TEST.LISTS.EQ(oo, length(filter.pairs.by.donor.patient(rke,"O", "O") ), str="filter.pairs.by.dp"  )
@@ -251,8 +251,8 @@ test.filters = function(args) {
   TEST.LISTS.EQ(ob, length(filter.pairs.by.donor.patient(rke,"O", "B") ), str="filter.pairs.by.dp"  )
   TEST.LISTS.EQ(ao, length(filter.pairs.by.donor.patient(rke,"A", "O") ), str="filter.pairs.by.dp" )
   
-  ud = 12
-  r = 4
+  ud = 9
+  r = 7
   od = 1
   s = 3
   TEST.LISTS.EQ(ud, length(filter.pairs.by.type(rke, "U")), str="filter.pairs.by.type") 
@@ -261,9 +261,9 @@ test.filters = function(args) {
   TEST.LISTS.EQ(s, length(filter.pairs.by.type(rke, "S")), str="filter.pairs.by.type") 
   
   ob.edges = 0
-  oa.edges = 9
+  oa.edges = 5
   ab.o.edges = 0
-  ab.edges = 3
+  ab.edges = 4
   ba.edges = 3
   TEST.LISTS.EQ(ob.edges, length(filter.edges.by.donor.patient(rke, "O","B")), str="filter.edges.by.dp")
   TEST.LISTS.EQ(oa.edges, length(filter.edges.by.donor.patient(rke, "O","A")), str="filter.edges.by.dp") 
@@ -272,11 +272,11 @@ test.filters = function(args) {
   TEST.LISTS.EQ(ba.edges, length(filter.edges.by.donor.patient(rke, "B","A")), str="filter.edges.by.dp") 
   
   re = 3
-  ue = 6
-  oe=9
-  se = 4
+  ue = 2
+  oe=  5
+  se = 5
   sr = 0
-  os = 3
+  os = 2
   TEST.LISTS.EQ(re, length(filter.edges.by.type(rke, "R", "R")), str="filter.edges.by.type") 
   TEST.LISTS.EQ(ue, length(filter.edges.by.type(rke, "U", "*")), str="filter.edges.by.type") 
   TEST.LISTS.EQ(oe, length(filter.edges.by.type(rke, "*", "O")), str="filter.edges.by.type") 
@@ -284,7 +284,11 @@ test.filters = function(args) {
   TEST.LISTS.EQ(sr, length(filter.edges.by.type(rke, "R", "S")), str="filter.edges.by.type") 
   TEST.LISTS.EQ(os, length(filter.edges.by.type(rke, "S", "O")), str="filter.edges.by.type") 
   
-  
+  rke = empty.rke() 
+  TEST.BOOL( length(filter.pairs.by.type(rke))==0, " Testing empty")
+  TEST.BOOL( length(filter.pairs.by.donor.patient(rke, "A", "B"))==0, str = " filter pairs.")
+  TEST.BOOL( length(filter.edges.by.type(rke, "O", "O"))==0, str="filter edges by type") 
+  TEST.BOOL( length(filter.edges.by.donor.patient(rke, "A", "B"))==0, str = " filter edges by dp") 
 }
 test.get.model.A = function(args) {
   load(file="tests/rke-20.Rdata")
@@ -302,6 +306,7 @@ test.get.model.A = function(args) {
   pair.i = pair.code.to.pair(rke$pc[i])
   Bi = (pair.i$donor=="O" && pair.i$patient=="A")
   TEST.BOOL(Bi, "testing most connected node")
+  
 }
 test.remove.pairs = function(args) {
   
@@ -470,20 +475,29 @@ test.init.mechanism = function(args) {
 test.rCM = function(args) {
   m = args$m 
   n = args$n
-  rke.list = rrke.many(m=m, n=n, uniform.pra=T) 
-  rke.all = pool.rke(rke.list)
-  # 1. All truthful
+  
   all.t = paste(rep("t", m), collapse="")
-  U = rCM(rke.list, rke.all, all.t  )
+  all.c = paste(rep("c", m), collapse="")
+
+  setup = Sample.Setup(m=m, n=n, strategy.str=all.t)
+  rke.all = setup$rke.all
   m.all = max.matching(rke.all)
   
-  TEST.LISTS.EQ(m.all$matching$utility, sum(U), "all T-- total utility")
- 
+  Urcm = Run.Mechanism(setup, "rCM")
+  
+  ## Since truthful, reported=all
+  TEST.RKE.EQ(setup$rke.all, setup$reported.rke.all)
+  ## Test whether the utilities are the same.
+  TEST.LISTS.EQ(m.all$matching$utility, sum(Urcm), "all T-- total utility")
+  rm(Urcm)
+  
   ## 2. All deviate
-  all.c = paste(rep("c", m), collapse="")
-  U = rCM(rke.list, rke.all, all.c )
+  setup = Sample.Setup(m=m, n=n, strategy.str=all.c)
+  rke.list = setup$rke.list
+  
+  Urcm = Run.Mechanism(setup, "rCM")
   m.ind = sapply(1:m, function(hid) max.matching(rke.list[[hid]])$matching$utility)
-  TEST.LISTS.GEQ(U, m.ind, "rCM at least as good as selfish matching")
+  TEST.LISTS.GEQ( sum(Urcm), sum(m.ind), "rCM at least as good as selfish matching")
   
 }
 test.g.share = function(args) {
