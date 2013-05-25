@@ -6,6 +6,7 @@
 source("rke.R")
 source("matching.R")
 
+## Sampling a setup = { rke.list, reported.rke.list, ...}
 Sample.Setup <- function(m, n, strategy.str, uniform.pra=T) {
   
   rke.list = rrke.many(m=m, n=n, uniform.pra= uniform.pra)
@@ -364,7 +365,7 @@ ud.lottery = function(rke,
                       Hn, 
                       theta,
                       QS) {
-  
+  warning("UD-lottery is not unit-tested.")
   #warning("UD lottery does not have a unit test.")
   Qh = QS$Q
   Sh = QS$S
@@ -450,9 +451,10 @@ Bonus.QS = function(rke.all)  {
   ##  TO-DO(ptoulis): How do you know if you computed Qh, Sh correctly???
   ret = list(Q=Qh, S=Sh)
 }
+
 ## Bonus mechanism. Ashlagi & Roth (2013)
 Bonus = function(rke.list, rke.all) {
-  
+  warning("Bonus is not unit-tested.")
   matched.all.ids = c()
   ## 0. Initialize mechanism
   m = length(rke.list)
@@ -486,19 +488,20 @@ Bonus = function(rke.list, rke.all) {
   TEST.SETS.DISJOINT(matched.ids.R, matched.ids.S)
   
   matched.all.ids = c(matched.ids.R, matched.ids.S)
-  
   #  3. Match OD/UD pairs.
   k = as.integer(m/2)
   H.sets = list()
   H.sets[[1]] = sample(1:m, size=k, replace=F)
   H.sets[[2]] = setdiff(1:m, H.sets[[1]])
-  
+
   ## Underdemanded PC codes
   ud.pc = pair.codes.per.type("U")
   # Compute Q-S, Q[hid][X-Y] = how many #X-Y in hospital hid
   # S[hid][X-Y] = {}  ids of X-Y in hospital hid 
   QS.obj = Bonus.QS(rke.all)
   
+  #print("QS")
+  #print(QS.obj)
   
   ## For all under-demanded pairs  X-Y
   for(i in ud.pc) {

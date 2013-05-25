@@ -326,7 +326,7 @@ plot.rke = function(rke) {
       more = sprintf("/ H%d", rke$hospital[i])
     g = set.vertex.attribute(g, name="label", index=i, value=pair.to.str(pair, more) )
   }
-  par(mar=c(0,0,0,0))
+  #par(mar=c(0,0,0,0))
   plot.igraph(g,layout=layout.auto, edge.label= 1:ecount(g) )
 }
 pair.codes.per.type=  function(type)
