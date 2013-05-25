@@ -1,5 +1,4 @@
 ##  Tables of the paper. 
-source("experiments.R")
 ## Code to save into latex table.
 library(xtable)
 
@@ -122,71 +121,69 @@ table.violations = function(sizes=c(50), sims=10) {
      return(D)
 }
 
-
-relative.gain = function(m=3, 
-                         n.sizes=c(20), 
-                         mech, 
-                         strategy.str,
-                         trials=10) {
-  
-  A = matrix(0, nrow=m, ncol=trials)
-  
-  
+## Compute the relative gain for _hid.interest_ 
+# mechanism _mech_ under _setup_, for two different strategies
+# Returns:  2 x trials   matrix of utiliies.
+relative.gain = function(kpd1, kpd2, mech, hid)
+{
+  U1 = Run.Mechanism(kpd1, mech=mech)
+  U2 = Run.Mechanism(kpd2, mech=mech)
+  c(U1[hid], U2[hid])
 }
-##   Table 3.   rCM and xCM scenarios. Do it size-by-size
-table.rCMech = function(sizes, mech="rCM", sims=10) {
-   ## Return matrix.
-    k = 3
-    M = matrix(NA, nrow=k * 4, ncol=1+length(sizes))
-    colnames(M) = c("Hospital/size(n)", sizes)
-    ## Scenarios
-    dev = list(A=c(), B=c(1), C=c(2,3), D=c(1,2,3))
+
+##  Run a scenarion for a specific mechanism.
+relative.gain.scenario = function(scenario, mech, m, n, trials) {
+  
+  h1.str.list = list("rCM" = list(A="c", B="c", C="c", D="c"),
+                     "xCM" = list(A="c", B="r", C="c", D="r"),
+                     "Bonus"=list(A="c", B="r", C="c", D="r") )
+  
+  others.list = list("rCM" = list(A="t", B="c", C="t", D="c"),
+                "xCM" = list(A="t", B="t", C="t", D="t"),
+                "Bonus"=list(A="t", B="t", C="t", D="t"))
+  
+  uniform.pra.list = list(A=T, B=T, C=F, D=F)
+  
+  ## define the parameters based on mechanism + scenario
+  h1.strategy = h1.str.list[[mech]][[scenario]]
+  others = rep(others.list[[mech]][[scenario]],  m-1)
+  uniform.pra = uniform.pra.list[[scenario]]  
+  
+  A = matrix(NA, nrow=2, ncol=trials)
+  
+  for(i in 1:trials) {
+    rke.list = rrke.many(m=m, n=n, uniform.pra=uniform.pra)
+    rke.all = pool.rke(rke.list)
+    ## e.g. Scenario A ->  str1 = "ctt"        str2 = "ttt"
+    str1 = paste(c(h1.strategy, others), collapse="")
+    ## str2 =  baseline strategy profile.
+    str2 = paste(c("t", others), collapse="")
     
-    ## Converts an intermed result to a vector.
-    to.vector = function(x) {
-        ##  x= [[hospital]]  = Data.frame
-        v = c()
-        for(i in 1:k) {
-            b = x[[i]]
-            b=  b[,5]
-            index = which(b<=0)
-            if(length(index)>0) {
-                warning(sprintf("Found %d zeroes. LP output unstable.", length(index)))
-            }
-            ## Get only those who did not time out.
-            b = b[b>0]
-            
-            ##  Get the "MatchTotal"
-            ## Remove 0's
-            
-            m = mean(b)
-            se = bootstrap(b)
-            v[i] = sprintf("%.2f (%.2f)", m, se)
-        }
-        return(v)
-    }
+    kpd1 = kpd.create(rke.list, rke.all=rke.all, str1)
+    kpd2 = kpd.create(rke.list, rke.all=rke.all, str2)
     
-    ## For all scenarios
-    for(j in 1:length(names(dev))) {
-        scenario = names(dev)[j]
-        deviating = c(dev[[scenario]])
-        ## For all sizes
-        for(i in 1:length(sizes) ) {
-            size = sizes[i]
-            
-            x = e34.many.runs(k=k, sizes=c(size),mechanism=mech, 
-                              deviating=deviating, 
-                              sims=sims)
-            # x[[size]][[hospital]]
-            start.row=1+(j-1)*k
-            end.row = j * k
-            M[start.row:end.row, 1] = sapply(1:k, function(j) sprintf("H%d%s",j,
-                                                                      ifelse(j %in% deviating,"d","")))
-        
-           M[start.row:end.row, i+1] = to.vector(x[[1]])
-        }
-    }
-    return(M)
+    utils = relative.gain(kpd1, kpd2, mech=mech, hid=1)
+    A[1,i] = utils[1]
+    A[2,i] = utils[2]
+  }
+  
+  return(A)
+}
+
+##  Create tables 3,4,5 : Mechanisms.
+table.mechs = function(mech, m=3, sizes=c(20), trials=10) {
+  ## Return matrix.
+  results = list()  
+  scenarios = c("A", "B", "C", "D")
+  for(scen in scenarios)   {
+    results[[scen]] = list()
+    for(n in sizes)
+      results[[scen]][[sprintf("%d",n)]] = relative.gain.scenario(scenario=scen,
+                                                                  mech=mech,
+                                                                  m=m, n=n, trials=trials)
+  }
+  
+  return(results)
 }
 
 

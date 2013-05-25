@@ -6,14 +6,12 @@
 source("rke.R")
 source("matching.R")
 
-## Sampling a setup = { rke.list, reported.rke.list, ...}
-Sample.Setup <- function(m, n, strategy.str, uniform.pra=T) {
+
+## Sampling a kpd = { rke.list, reported.rke.list, ...}
+kpd.create <- function(rke.list, rke.all, strategy.str) {
   
-  rke.list = rrke.many(m=m, n=n, uniform.pra= uniform.pra)
-  rke.all = pool.rke(rke.list)
-  
+  m = length(rke.list)
   x = init.mechanism(rke.list, strategy.str)
-  setup = list()
   
   reported.rke.list = list()
   ## hidden.pairs = ids in terms of rke.all  that were hidden
@@ -29,23 +27,26 @@ Sample.Setup <- function(m, n, strategy.str, uniform.pra=T) {
                            sapply(hidden.h, function(i) 
                                             rke.all$map.fwd(i, h)))
   }
-  ##  Save the "setup" object
+  ##  Save the "kpd" object
   ## This is important in order to compare mechanisms
   ## on the same sets of hospitals and pooled graphs.
-  setup$reported.rke.list = reported.rke.list
-  setup$reported.rke.all = remove.pairs(rke.all, hidden.pairs)
-  setup$rke.list = rke.list
-  setup$rke.all = rke.all
-  return(setup)
+  kpd = list()
+  kpd$reported.rke.list = reported.rke.list
+  kpd$reported.rke.all = remove.pairs(rke.all, hidden.pairs)
+  kpd$rke.list = rke.list
+  kpd$rke.all = rke.all
+  return(kpd)
   
 }
+
+
 ##  Runs a mechanism
-Run.Mechanism = function(setup, mech) {
+Run.Mechanism = function(kpd, mech) {
   
-  reported.rke.list = setup$reported.rke.list
-  reported.rke.all = setup$reported.rke.all
-  rke.list = setup$rke.list
-  rke.all = setup$rke.all
+  reported.rke.list = kpd$reported.rke.list
+  reported.rke.all = kpd$reported.rke.all
+  rke.list = kpd$rke.list
+  rke.all = kpd$rke.all
   
   ## 3. Run the mechanism
   mech.out.ids = do.call(mech, args=list(rke.list=reported.rke.list, 
