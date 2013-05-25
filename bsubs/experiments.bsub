@@ -1,8 +1,0 @@
-#BSUB -u ptoulis@fas.harvard.edu
-#BSUB -J "Experiments[1-400]"
-#BSUB -e out/odyssey/exp_%I.err
-#BSUB -o out/odyssey/exp_%I.out
-
-#BSUB -q short_serial
-
-Rscript /n/home00/ptoulis/GebKidney/odyssey-experimenter.R ${LSB_JOBINDEX} 1
