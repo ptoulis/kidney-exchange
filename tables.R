@@ -122,8 +122,19 @@ table.violations = function(sizes=c(50), sims=10) {
      return(D)
 }
 
+
+relative.gain = function(m=3, 
+                         n.sizes=c(20), 
+                         mech, 
+                         strategy.str,
+                         trials=10) {
+  
+  A = matrix(0, nrow=m, ncol=trials)
+  
+  
+}
 ##   Table 3.   rCM and xCM scenarios. Do it size-by-size
-table.mech = function(sizes, mech="rCM", sims=10) {
+table.rCMech = function(sizes, mech="rCM", sims=10) {
    ## Return matrix.
     k = 3
     M = matrix(NA, nrow=k * 4, ncol=1+length(sizes))
