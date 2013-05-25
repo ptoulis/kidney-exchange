@@ -1,2 +1,3 @@
 *.log
 *.Rhistory
+debug/*
