@@ -257,7 +257,6 @@ g.share = function(z, x) {
 ## TO-DO(ptoulis): Don't really care much about correctness
 ## as long as it has good properties, we can treat it as a black box.
 xCM <- function(rke.list, rke.all) {
-  warning("xCM() has no unit-test")
   
   m = length(rke.list)
   matched.all.ids = c()
@@ -288,7 +287,7 @@ xCM <- function(rke.list, rke.all) {
   ## 3.   Match R internally
   ## TO-DO(ptoulis): Slow for some reason
   all.but.r = filter.out.edges.by.type(rke.all, "R","R")
-  Kq = c()
+
   match.r = list()
   q = 0    
   ## Pair code (useful when setting constraints)
@@ -296,7 +295,8 @@ xCM <- function(rke.list, rke.all) {
   pc.BA = pair.code(list(donor="B", patient="A"))
   pc.R = c(pc.AB, pc.BA)
   ## TO-DO(ptoulis): Bug empty graphs cycle forever
-  while(length(Kq)==0) {
+  keep.running = T
+  while(keep.running) {
     ir.constraints = list()
     for(h in 1:m)
       ir.constraints[[h]] = rep(0, length(Pair.Codes))
@@ -309,9 +309,8 @@ xCM <- function(rke.list, rke.all) {
     ## Do the matching.
     match.r = max.matching(rke.all, IR.constraints = ir.constraints,
                            remove.edges = all.but.r)
-    Kq = match.r$matching$matched.ids
+    keep.running = "INFEASIBLE" %in% names(match.r);
     q = q + 1
-    print(q)
   }
   #print(sprintf("Final q* = %d", q))
   ## remove some stuff that are not needed anymore

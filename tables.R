@@ -132,7 +132,8 @@ relative.gain = function(kpd1, kpd2, mech, hid)
 }
 
 ##  Run a scenarion for a specific mechanism.
-relative.gain.scenario = function(scenario, mech, m, n, trials) {
+relative.gain.scenario = function(scenario, mech, m, n, trials,
+                                  pb, pb.start) {
   
   h1.str.list = list("rCM" = list(A="c", B="c", C="c", D="c"),
                      "xCM" = list(A="c", B="r", C="c", D="r"),
@@ -150,8 +151,6 @@ relative.gain.scenario = function(scenario, mech, m, n, trials) {
   uniform.pra = uniform.pra.list[[scenario]]  
   
   A = matrix(NA, nrow=2, ncol=trials)
-  cat(sprintf("\nRelative gain scenario %s n=%d", scenario, n))
-  pb = txtProgressBar(style=3,min=0, max=trials)
   
   for(i in 1:trials) {
     rke.list = rrke.many(m=m, n=n, uniform.pra=uniform.pra)
@@ -167,7 +166,7 @@ relative.gain.scenario = function(scenario, mech, m, n, trials) {
     utils = relative.gain(kpd1, kpd2, mech=mech, hid=1)
     A[1,i] = utils[1]
     A[2,i] = utils[2]
-    setTxtProgressBar(pb, value=i)
+    setTxtProgressBar(pb, value=pb.start + i)
   }
   
   return(A)
@@ -178,20 +177,26 @@ table.mechs = function(mech, m=3, sizes=c(20), trials=10) {
   ## Return matrix.
   results = list()  
   scenarios = c("A", "B", "C", "D")
-  N = length(scenarios) * length(sizes)
+  print(sprintf("Running scenarios for mech=%s m=%d #sizes=%d", mech, m, length(sizes)))
+  
+  N = length(scenarios) * length(sizes) * trials
   pb = txtProgressBar(style=3,min=0, max=N)
   cnt = 0
   filename = sprintf("experiments/mech-%s-m%d.Rdata", mech,m)
   
-  for(scen in scenarios)   {
+  for(sce.i in 1:length(scenarios))   {
+    scen = scenarios[sce.i]
     results[[scen]] = list()
-    for(n in sizes) {
+    for(size.j in 1:length(sizes)) {
       
+      n = sizes[size.j]
+      pb.start = length(sizes) * trials * (sce.i-1) + trials * (size.j-1)
       results[[scen]][[sprintf("%d",n)]] = relative.gain.scenario(scenario=scen,
                                                                   mech=mech,
-                                                                  m=m, n=n, trials=trials)
+                                                                  m=m, n=n, trials=trials,
+                                                                  pb, pb.start=pb.start)
       cnt = cnt + 1
-      setTxtProgressBar(pb, value=cnt)
+      #setTxtProgressBar(pb, value=cnt)
       save(results, file=filename)
     }
    

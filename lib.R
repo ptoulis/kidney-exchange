@@ -322,9 +322,14 @@ plot.rke = function(rke) {
     pair = pair.code.to.pair(rke$pc[i])
     g = set.vertex.attribute(g, name="color", index=i, value=pair.color(pair=pair))
     more = ""
-    if("hospital" %in% names(rke))
+    if("hospital" %in% names(rke) && length(rke$hospital)>0)
       more = sprintf("/ H%d", rke$hospital[i])
-    g = set.vertex.attribute(g, name="label", index=i, value=pair.to.str(pair, more) )
+    
+    label  = pair.to.str(pair, "")
+    if(nchar(more)>0)
+      label  = pair.to.str(pair, more)
+    g = set.vertex.attribute(g, name="label", index=i, value=label)
+
   }
   #par(mar=c(0,0,0,0))
   plot.igraph(g,layout=layout.auto, edge.label= 1:ecount(g) )

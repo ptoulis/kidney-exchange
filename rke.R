@@ -26,7 +26,11 @@ empty.rke <- function() {
    return(obj)
 }
 
-## Samples a rrke object.
+## Samples a RKE object.
+# n = # of pairs in the graph, 
+# uniform.pra = {T,F} = whether to use uniform PRA sensitivity for pairs
+# blood.type.distr =  distribution of blood types
+# Returns:  RKE object
 rrke <- function(n, 
                  uniform.pra = T,
                  blood.type.distr = list(O=0.5, A=0.3, B=0.15, AB=0.05),
@@ -64,8 +68,38 @@ rrke <- function(n,
     return(obj)
 }
 
-
-
+## Create a RKE object on demand. Useful for debugging.
+## pair = LIST of donor("A"), patient("B")
+## pairs = LIST of pair
+## edges = LIST of c(1,2) =   pair #1 edge with pair #2 etc
+## Returns : RKE object
+rke.create <- function(pairs.pc= c(), edges=c() )
+{
+  if(length(pairs)==0) return(empty.rke())
+  if(! length(edges) %% 2 ==0)
+    stop("Edges has to be even-sized.")
+  pc = pairs.pc
+  n = length(pc)
+  #TODO(ptoulis): Maybe also defining PRAs of hospitals?
+  pras = rep(0.2, length(pc))  ## assume uniform-pra.
+  P = matrix(0, nrow=n, ncol=n)
+  B = matrix(0, nrow=n, ncol=n)
+  # Define the Blood-type compatibilities.
+  for(i in 1:n)
+    for(j in 1:i)
+      { B[i,j] = (pc[j] %in% compatible.codes(pc[i]))
+        B[j,i] = B[i,j] }
+  
+  diag(B) <- 0
+  for(e in 1:length(edges)/2) {
+    i = 2 *(e-1)+1
+    j = i+1
+    P[edges[i], edges[j]] <- 1
+    P[edges[j], edges[j]] <- 1
+  }
+  diag(P) <- 0
+  return(list(pc=pc,  pras=pras, P=P, B=B, hospital=c(), uniform.pra=T))
+}
 
 #  k = # hospitals
 #  n = # pairs/hospital

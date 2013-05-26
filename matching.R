@@ -213,7 +213,7 @@ max.matching <- function(rke,
   }
   if(gurobi.result$status=="INF_OR_UNBD")
   {
-    warning("Infeasile solution")
+    warning("Infeasible solution")
     empty.result = get.empty.result()
     empty.result$INFEASIBLE = 1
     return(empty.result)

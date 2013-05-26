@@ -540,24 +540,15 @@ test.g.share = function(args) {
   
   
 }
-test.xCM = function() {
-  source("rke2.R")
-  source("mechanisms.R")
-  ##  Now test mechanism. First test if rCM >= xCM
-  trials = 100
-  for(i in 1:trials) {
-    rke.list = rrke.many(m=3, n=20)
-    sumr = sum(rCM(rke.list, "ttt"))
-    sumx = sum(xCM(rke.list, "ttt"))
-    if(sumr >= sumx) {
-      print("[PASS]...")
-      
-    } else {
-      print("[FAIL].. Saving state.")
-      save(rke.list, file="debug/xcm-fail.Rdata")
-      break()
-    }
-  }
+test.xCM = function(args) {
+  pc = c(10,10,10,7,7,7)
+  edges = c()
+  rke = rke.create(pc, edges)
+  rke.list = list()
+  rke.list[[1]] = rke
+  rke.all = pool.rke(rke.list)
+  x = xCM(rke.list, rke.all)
+  TEST.LISTS.EQ(length(x), 0, str="Empty xCM output")
 }
 
 test.Bonus.QS = function(args) {
