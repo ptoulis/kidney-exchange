@@ -64,6 +64,9 @@ rrke <- function(n,
     return(obj)
 }
 
+
+
+
 #  k = # hospitals
 #  n = # pairs/hospital
 rrke.many <- function(m=3, n=60, uniform.pra) {

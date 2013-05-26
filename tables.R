@@ -150,6 +150,8 @@ relative.gain.scenario = function(scenario, mech, m, n, trials) {
   uniform.pra = uniform.pra.list[[scenario]]  
   
   A = matrix(NA, nrow=2, ncol=trials)
+  cat(sprintf("\nRelative gain scenario %s n=%d", scenario, n))
+  pb = txtProgressBar(style=3,min=0, max=trials)
   
   for(i in 1:trials) {
     rke.list = rrke.many(m=m, n=n, uniform.pra=uniform.pra)
@@ -165,6 +167,7 @@ relative.gain.scenario = function(scenario, mech, m, n, trials) {
     utils = relative.gain(kpd1, kpd2, mech=mech, hid=1)
     A[1,i] = utils[1]
     A[2,i] = utils[2]
+    setTxtProgressBar(pb, value=i)
   }
   
   return(A)

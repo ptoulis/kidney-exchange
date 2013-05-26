@@ -295,7 +295,7 @@ xCM <- function(rke.list, rke.all) {
   pc.AB = pair.code(list(donor="A", patient="B"))
   pc.BA = pair.code(list(donor="B", patient="A"))
   pc.R = c(pc.AB, pc.BA)
-  ## TO-DO(ptoulis): very slow!!
+  ## TO-DO(ptoulis): Bug empty graphs cycle forever
   while(length(Kq)==0) {
     ir.constraints = list()
     for(h in 1:m)
@@ -311,6 +311,7 @@ xCM <- function(rke.list, rke.all) {
                            remove.edges = all.but.r)
     Kq = match.r$matching$matched.ids
     q = q + 1
+    print(q)
   }
   #print(sprintf("Final q* = %d", q))
   ## remove some stuff that are not needed anymore
