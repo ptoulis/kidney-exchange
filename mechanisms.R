@@ -312,7 +312,7 @@ xCM <- function(rke.list, rke.all) {
     Kq = match.r$matching$matched.ids
     q = q + 1
   }
-  print(sprintf("Final q* = %d", q))
+  #print(sprintf("Final q* = %d", q))
   ## remove some stuff that are not needed anymore
   rm(IR.constraints)
   
