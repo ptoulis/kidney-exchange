@@ -189,7 +189,7 @@ table.mechs = function(mech, m=3, sizes=c(20), trials=10) {
                                                                   m=m, n=n, trials=trials)
       cnt = cnt + 1
       setTxtProgressBar(pb, value=cnt / N)
-      save(results, filename)
+      save(results, file=filename)
     }
     print("")
   }
