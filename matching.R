@@ -211,6 +211,13 @@ max.matching <- function(rke,
     empty.result$TIMEOUT=T
     return(empty.result)
   }
+  if(gurobi.result$status=="INF_OR_UNBD")
+  {
+    warning("Infeasile solution")
+    empty.result = get.empty.result()
+    empty.result$INFEASIBLE = 1
+    return(empty.result)
+  }
   
   old.x = rep(0,K)
   ## Fix shuffling
