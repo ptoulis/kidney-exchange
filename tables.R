@@ -178,6 +178,8 @@ table.mechs = function(mech, m=3, sizes=c(20), trials=10) {
   N = length(scenarios) * length(sizes)
   pb = txtProgressBar(style=3)
   cnt = 0
+  filename = sprintf("experiments/mech-%s-m%d.Rdata", mech)
+  
   for(scen in scenarios)   {
     results[[scen]] = list()
     for(n in sizes) {
@@ -187,9 +189,11 @@ table.mechs = function(mech, m=3, sizes=c(20), trials=10) {
                                                                   m=m, n=n, trials=trials)
       cnt = cnt + 1
       setTxtProgressBar(pb, value=cnt / N)
+      save(results, filename)
     }
+    print("")
   }
-  
+
   return(results)
 }
 
