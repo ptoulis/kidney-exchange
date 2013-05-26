@@ -175,12 +175,19 @@ table.mechs = function(mech, m=3, sizes=c(20), trials=10) {
   ## Return matrix.
   results = list()  
   scenarios = c("A", "B", "C", "D")
+  N = length(scenarios) * length(sizes)
+  pb = txtProgressBar(style=3)
+  cnt = 0
   for(scen in scenarios)   {
     results[[scen]] = list()
-    for(n in sizes)
+    for(n in sizes) {
+      
       results[[scen]][[sprintf("%d",n)]] = relative.gain.scenario(scenario=scen,
                                                                   mech=mech,
                                                                   m=m, n=n, trials=trials)
+      cnt = cnt + 1
+      setTxtProgressBar(pb, value=cnt / N)
+    }
   }
   
   return(results)
