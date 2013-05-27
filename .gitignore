@@ -1,3 +1,4 @@
 *.log
 *.Rhistory
 debug/*
+experiments/*
