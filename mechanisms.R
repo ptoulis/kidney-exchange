@@ -51,7 +51,10 @@ Run.Mechanism = function(kpd, mech) {
   ## 3. Run the mechanism
   mech.out.ids = do.call(mech, args=list(rke.list=reported.rke.list, 
                                          rke.all = reported.rke.all) )
-
+  ## Sometimes we get a list instead of a vector.
+  ##Not sure why. R is such a bad language
+  mech.out.ids = as.numeric(mech.out.ids)
+  
   ## 4. Compute utility from mechanism
   Util = get.hospitals.utility(reported.rke.all, mech.out.ids)
 

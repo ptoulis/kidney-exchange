@@ -48,7 +48,7 @@ table.to.tex = function(results, filename) {
 ##   Synopsis.    D = table.matchings(sizes = c(50,100,200, 300), m=2, trials=100)
 ##               table.to.tex(D, filename="out/assumptions.tex")
 table.matchings = function(sizes=c(50), 
-                           m= 5, 
+                           m= 3, 
                            trials=10) {
     colnames = c("size ($n$)", "selfish", "together", "together (theoretical)", "surplus/$\\sqrt{n}$")
     ncols = length(colnames) ## size-experimental matches - theoretical matches  - (same for non-PRA)
