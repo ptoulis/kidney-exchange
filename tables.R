@@ -205,5 +205,29 @@ table.mechs = function(mech, m=3, sizes=c(20), trials=10) {
   return(results)
 }
 
+table.mech.to.graph = function() {
+  
+  files = list.files(path="experiments/", pattern="mech", full.names=T)
+  for(filename in files) {
+    x = filename
+    m = regexec(text=x, pattern="mech-(.*?)-")
+    mech = regmatches(x, m)[[1]][2]
+    load(filename)
+    # assume:  results.
+    png.file = sprintf("experiments/png/mech-%s.png", mech)
+    print(sprintf("Saving in filename %s ", png.file))
+    png(file= png.file)
+    par(mfrow=c(2,2) )
+    for(i in names(results) ) {
+      obj=  results[[i]]
+      for(j in names(obj)) {
+        A = obj[[j]]  ## 2 x trials 
+        obj[[j]] = A[1,] / A[2,]
+      }
+      boxplot(obj, ylim=c(0.5, 2), main=sprintf("mech=%s scenario= %s", mech, i ), ylab="ratio (str/base)", xlab="size")
+    }
+    dev.off();
+  }
+}
 
 
