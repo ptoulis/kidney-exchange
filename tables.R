@@ -230,4 +230,62 @@ table.mech.to.graph = function() {
   }
 }
 
+table.efficiency = function(m=4, sizes=c(20), uniform.pra, trials=10) {
+  #  Save results here
+  results = list()
 
+  # Compare rCM at canonical deviation
+  # xCM at truthful
+  # Bonus at b-strategy
+  all.str = function(ch) 
+    paste(rep(ch, m), collapse="")
+  
+  config = list("xCM" = list(mech="xCM", str = all.str("t")),
+                "rCM_c" = list(mech="rCM", str= all.str("c")),
+                "rCM_t" = list(mech="rCM", str= all.str("t")),
+                "Bonus_c" = list(mech="Bonus", str= all.str("c")),
+                "Bonus_b" = list(mech="Bonus", str= all.str("b") ),
+                "Bonus_r" = list(mech="Bonus", str= all.str("r")))
+  
+  # total # iterations
+  N = length(sizes) * trials * length(names(config) )
+  # progress bar
+  pb = txtProgressBar(style=3, min=0, max=N)
+  count = 0
+  
+  
+  for(mech.name in names(config) ) 
+    results[[mech.name]] = list()
+  
+  for(i in 1:length(sizes)) {
+    ## n = size of hospital
+    n = sizes[i]
+    n.str = sprintf("%d", n)
+    # Initialize the mechanisms
+    for(mech.name in names(config) )
+      results[[mech.name]][[n.str]] = c()
+    
+    
+    for(j in 1:trials) {
+      # Sample rke.list/rke.all
+      rke.list = rrke.many(m=m, n=n, uniform.pra=uniform.pra)
+      rke.all = pool.rke(rke.list)
+      
+      # Iterate over mechanisms to figure out efficiency
+      for(mech.name in names(config)) {
+        strategy = config[[mech.name]][["str"]]
+        mech = config[[mech.name]][["mech"]]
+        
+        kpd = kpd.create(rke.list, rke.all=rke.all,  strategy)
+        welfare = sum( Run.Mechanism(kpd=kpd, mech=mech) )
+        results[[mech.name]][[n.str]] = c( results[[mech.name]][[n.str]], welfare )
+        count = count + 1
+        setTxtProgressBar(pb, value=count)
+      } # iterate over all mechanisms.
+      
+      save(results, file=sprintf("experiments/efficiency-pra-%s.Rdata", uniform.pra))
+    }  # trials
+  } # iterate over all sizes.
+  
+  return(results)
+}

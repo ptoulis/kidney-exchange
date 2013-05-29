@@ -117,15 +117,26 @@ play.strategy <- function(rke, type) {
       hide.R = pairs.BA
     
      ret$hide = c(hide.R)
+  } else if(type== "b") {
+    pairs.AB = filter.pairs.by.donor.patient(rke, "A","B")
+    pairs.BA = filter.pairs.by.donor.patient(rke, "B","A")
+    pairs.O = filter.pairs.by.type(rke,"O")
+    ## want to hide the "short" side of R
+    hide.R= pairs.AB
+    if(length(pairs.BA) < length(pairs.AB))
+      hide.R = pairs.BA
+    ##  Hide long-R pairs and O pairs.
+    ret$hid = c(hide.R, pairs.O)
   }
+  
   ret$report = setdiff(1:get.size(rke), ret$hide)
   return(ret)
 }
 
 read.strategy.str = function(strategy.str) {
   strategies = strsplit(strategy.str,split="")[[1]]
-  if(length(intersect(strategies, c("t","c", "r")))==0) {
-    stop("Strategies should be t,c,r")
+  if(length(intersect(strategies, c("t","c", "r", "b")))==0) {
+    stop("Strategies should be t,c,r, b")
   }
   return(strategies)
 }
