@@ -244,7 +244,6 @@ table.efficiency = function(m=4, sizes=c(20), uniform.pra, trials=10) {
                 "rCM_c" = list(mech="rCM", str= all.str("c")),
                 "rCM_t" = list(mech="rCM", str= all.str("t")),
                 "Bonus_c" = list(mech="Bonus", str= all.str("c")),
-                "Bonus_b" = list(mech="Bonus", str= all.str("b") ),
                 "Bonus_r" = list(mech="Bonus", str= all.str("r")))
   
   # total # iterations
@@ -283,7 +282,7 @@ table.efficiency = function(m=4, sizes=c(20), uniform.pra, trials=10) {
         setTxtProgressBar(pb, value=count)
       } # iterate over all mechanisms.
       
-      save(results, file=sprintf("experiments/efficiency-pra-%s.Rdata", uniform.pra))
+      save(results, file=sprintf("experiments/efficiency-pra-%s-m%d.Rdata", uniform.pra, m))
     }  # trials
   } # iterate over all sizes.
   
@@ -314,3 +313,31 @@ table.efficiency.to.graph = function() {
     dev.off();
   }
 }
+
+## Efficiency for many hospitals
+table.efficiency.many.hospitals = function(many.m = c(4), n = 25, uniform.pra=F, trials=10) {
+  for(m in many.m) 
+    table.efficiency(m=m, 
+                     sizes=c(n), 
+                     uniform.pra=uniform.pra, 
+                     trials=trials)
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

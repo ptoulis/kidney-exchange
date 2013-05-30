@@ -277,7 +277,9 @@ xCM <- function(rke.list, rke.all) {
   
   ##  1. Compute IR constraints
   IR.constraints = compute.ir.constraints(rke.list, types=c("S", "R"))
-
+  
+  loginfo("Done with IR constraints")
+  
   z.AB = IR.constraints$z.ab
   z.BA = IR.constraints$z.ba
   ###  Done with per-hospital
@@ -298,6 +300,7 @@ xCM <- function(rke.list, rke.all) {
   match.s = max.matching(rke.all, IR.constraints=IR.constraints$S,
                          remove.edges = all.but.s)
   
+  loginfo("Done with S-matchings")
   ## 3.   Match R internally
   ## TO-DO(ptoulis): Slow for some reason
   all.but.r = filter.out.edges.by.type(rke.all, "R","R")
@@ -326,7 +329,10 @@ xCM <- function(rke.list, rke.all) {
     keep.running = "INFEASIBLE" %in% names(match.r);
     q = q + 1
   }
-  #print(sprintf("Final q* = %d", q))
+  
+  loginfo("Done with S-matchings")
+  
+  #loginfo(sloginfof("Final q* = %d", q))
   ## remove some stuff that are not needed anymore
   rm(IR.constraints)
   
@@ -346,14 +352,18 @@ xCM <- function(rke.list, rke.all) {
                           match.s$matching$matched.ids)
   matched.edges.already = union( redges, sedges )
   
+
   ## Match OD's individually.
   for(hid in 1:m) {
+    loginfo(sprintf("Matching hospital %d", hid))
+    
     Gh = get.hospital.pairs(rke.all, hid)
     Gh.remainder = setdiff(Gh, intersect(Gh, matched.all.ids))
-    
+    remove.edges = get.external.edges(rke.all, Gh.remainder)
+    loginfo(sprintf("Total edges %d -- Removed %d", length( rke.edges(rke.all)), length(remove.edges)))
     match.Gh = max.matching(rke.all, regular.matching=T, 
                             remove.edges= get.external.edges(rke.all, Gh.remainder))
-    
+    loginfo("Matched")
     ## Make sure OD ids are not R or S pairs
     TEST.SETS.DISJOINT(match.Gh$matching$matched.ids, 
                        matched.all.ids, str="OD and matched_already pairs")
@@ -469,7 +479,7 @@ Bonus.QS = function(rke.all)  {
 
 ## Bonus mechanism. Ashlagi & Roth (2013)
 Bonus = function(rke.list, rke.all) {
-  warning("Bonus is not unit-tested.")
+  logwarn("Bonus is not unit-tested.")
   matched.all.ids = c()
   ## 0. Initialize mechanism
   m = length(rke.list)
@@ -514,9 +524,6 @@ Bonus = function(rke.list, rke.all) {
   # Compute Q-S, Q[hid][X-Y] = how many #X-Y in hospital hid
   # S[hid][X-Y] = {}  ids of X-Y in hospital hid 
   QS.obj = Bonus.QS(rke.all)
-  
-  #print("QS")
-  #print(QS.obj)
   
   ## For all under-demanded pairs  X-Y
   for(i in ud.pc) {

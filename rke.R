@@ -5,6 +5,10 @@ rm(list=ls())
 source("lib.R")
 source("testing.R")
 source("tables.R")
+library(logging)
+basicConfig()
+logReset() # remove handlers
+
 ##      The main data structure.
 ##        rke2 = KE pool object (one hospital)
 ##               {  pc=> [1,2,1,1,4,13,...]    # pair codes
