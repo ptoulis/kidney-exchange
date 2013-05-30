@@ -289,3 +289,28 @@ table.efficiency = function(m=4, sizes=c(20), uniform.pra, trials=10) {
   
   return(results)
 }
+
+table.efficiency.to.graph = function() {
+  files = list.files(path="experiments/", pattern="efficiency-", full.names=T)
+  for(filename in files) {
+    x = filename
+    m = regexec(text=x, pattern="pra-(.*?)\\.")
+    uniform.pra = regmatches(x, m)[[1]][2]
+    load(filename)
+    # assume:  results.
+    png.file = sprintf("experiments/png/efficiency-uniform-PRA-%s.png", uniform.pra)
+    print(sprintf("Saving in filename %s ", png.file))
+    png(file= png.file)
+    par(mfrow=c(2,3) )
+    for(i in names(results) ) {
+      obj=  results[[i]]
+      for(j in names(obj)) {
+        A = obj[[j]]  ## 2 x trials 
+        A2 = results[["rCM_t"]][[j]]
+        obj[[j]] = A / A2
+      }
+      boxplot(obj, ylim=c(0.6, 1.1), main=sprintf("mech=%s", i ), ylab="ratio (str/base)", xlab="size")
+    }
+    dev.off();
+  }
+}
