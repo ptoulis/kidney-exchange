@@ -46,11 +46,11 @@ table.to.tex = function(results, filename) {
 tables.all = function() {
   # Table 1. Square-root law.
   D = table.matchings(sizes = c(50, 100, 200, 300), m=2, trials=1000);
-  table.to.tex(D, filename="out/table1-assumptions.tex");
+  table.to.tex(D, filename="experiments/tex/table1-assumptions.tex");
   
   # Table 2. tab
   D = table.violations(sizes = c(50, 100, 200, 300), trials=1000);
-  table.to.tex(D, filename="out/table2-violations.tex");
+  table.to.tex(D, filename="experiments/tex/table2-violations.tex");
   
   # Tables 3,4,5
   table.mechs("rCM", m=3, sizes=c(20, 40, 60, 80, 100), trials=200);
