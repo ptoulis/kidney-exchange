@@ -541,6 +541,7 @@ test.g.share = function(args) {
   
 }
 test.xCM = function(args) {
+  warning("xCM unit-test is not complete.")
   pc = c(10,10,10,7,7,7)
   edges = c()
   rke = rke.create(pc, edges)

@@ -243,7 +243,7 @@ table.efficiency = function(m=4, sizes=c(20), uniform.pra, trials=10) {
   config = list("xCM" = list(mech="xCM", str = all.str("t")),
                 "rCM_c" = list(mech="rCM", str= all.str("c")),
                 "rCM_t" = list(mech="rCM", str= all.str("t")),
-                "Bonus_c" = list(mech="Bonus", str= all.str("c")),
+                #"Bonus_c" = list(mech="Bonus", str= all.str("c")),
                 "Bonus_r" = list(mech="Bonus", str= all.str("r")))
   
   # total # iterations
@@ -323,7 +323,33 @@ table.efficiency.many.hospitals = function(many.m = c(4), n = 25, uniform.pra=F,
                      trials=trials)
 }
 
+table.efficiency.many.to.graph = function() {
+  files = list.files(path="experiments/", pattern="efficiency.*?-m", full.names=T)
+  for(filename in files) {
+    x = filename
+    m = regexec(text=x, pattern="-m(.*?)\\.")
+    m.size = as.integer (  regmatches(x, m)[[1]][2]  )
+    load(filename)
+    # assume:  results.
+    png.file = sprintf("experiments/png/efficiency-many-m%s.png", m.size )
+    print(sprintf("Saving in filename %s ", png.file))
 
+    png(file= png.file)
+    par(mfrow=c(2,2) )
+    print(names(results))
+    for(i in names(results) ) {
+      if(i=="rCM_t") next;
+      obj=  results[[i]]
+      for(j in names(obj)) {
+        A = obj[[j]]  ## 2 x trials 
+        A2 = results[["rCM_t"]][[j]]
+        obj[[j]] = A / A2
+      }
+      boxplot(obj, ylim=c(0.6, 1.1), main=sprintf("mech=%s", i ), ylab="ratio (str/base)", xlab="size")
+    }
+    dev.off();
+  }
+}
 
 
 
