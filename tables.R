@@ -59,9 +59,9 @@ tables.all = function() {
   table.mechs.to.graph();
   
   # Table 6, 7
-  table.efficiency(m=4, sizes=c(20. 40, 60, 80, 100), uniform.pra=T, 
+  table.efficiency(m=4, sizes=c(20, 40, 60, 80, 100), uniform.pra=T, 
                    trials=200, filedesc="efficiency");
-  table.efficiency(m=4, sizes=c(20. 40, 60, 80, 100), uniform.pra=F, 
+  table.efficiency(m=4, sizes=c(20, 40, 60, 80, 100), uniform.pra=F, 
                    trials=200, filedesc="efficiency");
   table.efficiency.to.graph()
   
