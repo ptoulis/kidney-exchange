@@ -45,27 +45,35 @@ table.to.tex = function(results, filename) {
 # Run all tests at once. 
 tables.all = function() {
   # Table 1. Square-root law.
+  loginfo("Generating Table 1: mu(n) theorem and assumptions")
   D = table.matchings(sizes = c(50, 100, 200, 300), m=2, trials=1000);
   table.to.tex(D, filename="experiments/tex/table1-assumptions.tex");
   
   # Table 2. tab
+  loginfo("Generating Table 2: Violations.")
   D = table.violations(sizes = c(50, 100, 200, 300), trials=1000);
   table.to.tex(D, filename="experiments/tex/table2-violations.tex");
   
   # Tables 3,4,5
+  loginfo("Generating Scenarios table for rCM")
   table.mechs("rCM", m=3, sizes=c(20, 40, 60, 80, 100), trials=200);
+  loginfo("Generating Scenarios table for xCM")
   table.mechs("xCM", m=3, sizes=c(20, 40, 60, 80, 100), trials=200);
+  loginfo("Generating Scenarios table for Bonus")
   table.mechs("Bonus", m=4, sizes=c(20, 40, 60, 80), trials=200);
   table.mechs.to.graph();
   
   # Table 6, 7
+  loginfo("Generating efficiency table with uniform PRA.")
   table.efficiency(m=4, sizes=c(20, 40, 60, 80, 100), uniform.pra=T, 
                    trials=200, filedesc="efficiency");
+  loginfo("Generating efficiency table with non-uniform PRA.")
   table.efficiency(m=4, sizes=c(20, 40, 60, 80, 100), uniform.pra=F, 
                    trials=200, filedesc="efficiency");
   table.efficiency.to.graph()
   
   # Table 8
+  loginfo("Generating efficiency table with varying m (#of hospitals)")
   table.efficiency.many.hospitals(many.m=c(4,6,8,10,14,18,20), n=25, trials=200)
   table.efficiency.many.to.graph()
 }
