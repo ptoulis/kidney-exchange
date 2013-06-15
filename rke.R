@@ -7,7 +7,7 @@ source("testing.R")
 source("tables.R")
 library(logging)
 basicConfig()
-logReset() # remove handlers
+#logReset() # remove handlers
 
 ##      The main data structure.
 ##        rke2 = KE pool object (one hospital)

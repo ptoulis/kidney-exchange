@@ -9,10 +9,8 @@ source("matching.R")
 
 ## Sampling a kpd = { rke.list, reported.rke.list, ...}
 kpd.create <- function(rke.list, rke.all, strategy.str) {
-  
   m = length(rke.list)
   x = init.mechanism(rke.list, strategy.str)
-  
   reported.rke.list = list()
   ## hidden.pairs = ids in terms of rke.all  that were hidden
   hidden.pairs = c()
@@ -36,7 +34,6 @@ kpd.create <- function(rke.list, rke.all, strategy.str) {
   kpd$rke.list = rke.list
   kpd$rke.all = rke.all
   return(kpd)
-  
 }
 
 
@@ -278,7 +275,7 @@ xCM <- function(rke.list, rke.all) {
   ##  1. Compute IR constraints
   IR.constraints = compute.ir.constraints(rke.list, types=c("S", "R"))
   
-  loginfo("Done with IR constraints")
+  #loginfo("Done with IR constraints")
   
   z.AB = IR.constraints$z.ab
   z.BA = IR.constraints$z.ba
@@ -300,7 +297,6 @@ xCM <- function(rke.list, rke.all) {
   match.s = max.matching(rke.all, IR.constraints=IR.constraints$S,
                          remove.edges = all.but.s)
   
-  loginfo("Done with S-matchings")
   ## 3.   Match R internally
   ## TO-DO(ptoulis): Slow for some reason
   all.but.r = filter.out.edges.by.type(rke.all, "R","R")
@@ -330,12 +326,8 @@ xCM <- function(rke.list, rke.all) {
     q = q + 1
   }
   
-  loginfo("Done with S-matchings")
-  
-  #loginfo(sloginfof("Final q* = %d", q))
   ## remove some stuff that are not needed anymore
   rm(IR.constraints)
-  
   
   #  4. Almost regular matching to the remainder
   ## Notice that match.r, match.s are all on rke.all so that the 
@@ -355,15 +347,12 @@ xCM <- function(rke.list, rke.all) {
 
   ## Match OD's individually.
   for(hid in 1:m) {
-    loginfo(sprintf("Matching hospital %d", hid))
-    
     Gh = get.hospital.pairs(rke.all, hid)
     Gh.remainder = setdiff(Gh, intersect(Gh, matched.all.ids))
     remove.edges = get.external.edges(rke.all, Gh.remainder)
-    loginfo(sprintf("Total edges %d -- Removed %d", length( rke.edges(rke.all)), length(remove.edges)))
     match.Gh = max.matching(rke.all, regular.matching=T, 
                             remove.edges= get.external.edges(rke.all, Gh.remainder))
-    loginfo("Matched")
+ 
     ## Make sure OD ids are not R or S pairs
     TEST.SETS.DISJOINT(match.Gh$matching$matched.ids, 
                        matched.all.ids, str="OD and matched_already pairs")
@@ -390,7 +379,7 @@ ud.lottery = function(rke,
                       Hn, 
                       theta,
                       QS) {
-  warning("UD-lottery is not unit-tested.")
+  #warning("UD-lottery is not unit-tested.")
   #warning("UD lottery does not have a unit test.")
   Qh = QS$Q
   Sh = QS$S
@@ -479,7 +468,7 @@ Bonus.QS = function(rke.all)  {
 
 ## Bonus mechanism. Ashlagi & Roth (2013)
 Bonus = function(rke.list, rke.all) {
-  logwarn("Bonus is not unit-tested.")
+  #logwarn("Bonus is not unit-tested.")
   matched.all.ids = c()
   ## 0. Initialize mechanism
   m = length(rke.list)

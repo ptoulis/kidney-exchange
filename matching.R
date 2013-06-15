@@ -28,12 +28,10 @@ max.matching <- function(rke,
   
   #last.input = list(rke=rke, remove.edges=remove.edges, ir.constraints=IR.constraints)
   #save(last.input, file="debug/last-ip-input.Rdata")
-  loginfo("max-matching request.")
   ## Size of RKE  (# pairs)
   n = get.size(rke)
   ###   1.   Get the model matrix. 
   model.A = get.model.A(rke)
-  loginfo("Retrieved model.A matrix")
   ## Total no. of edges
   K = ncol(model.A) 
   
@@ -59,7 +57,6 @@ max.matching <- function(rke,
   model.obj.coefficients = rep(1,K)
   model.rhs        <- rep(1, n)
   model.sense      <- rep("<=",n)
-  loginfo("Setting regular matching constraints")
   ## Required regular matching. Put more weights on O-U edges (almost-regular)
   if(regular.matching) {
     OUedges = filter.edges.by.type(rke, "O", "U")
@@ -68,7 +65,6 @@ max.matching <- function(rke,
   }
   ##  Remove the specified edges.
   if(length(remove.edges)>0) {
-    loginfo("Removing edges : remove_edges > 0")
     n = get.size(rke)
     if(length(remove.edges)==K)
       return(get.empty.result())
@@ -85,7 +81,6 @@ max.matching <- function(rke,
     map.ids = c()
     map.edges = c()
     count = 0
-    loginfo("populating ids")
     for(i in original.ids) {
       if(i %in% rm.ids) {
         map.ids[i]=0 
@@ -109,11 +104,10 @@ max.matching <- function(rke,
       ids = which(model.A[,ed]==1)
       rke$P[ids, ids] <- 0
     }
-    loginfo("Removing edges...")
+  
     # map.ids = [1,2, 0, 0, 3, ,....]     so that 5 -> mapped to 3  etc.
     # map.edges has similar meaning.
     rke2 = remove.pairs(rke, rm.ids)
-    loginfo(sprintf("Size of new rke = %d", get.size(rke2)))
     keep.ids = setdiff(original.ids, rm.ids)
     rm(rke)   ## just to be safe you wont' use it again
     
@@ -125,8 +119,7 @@ max.matching <- function(rke,
           es = model.A[old.nodes,]
           which(colSums(es)==2)
       });
-    loginfo("Invoking max-mathing on rke2")
-    ## Make the matching without "Remove.edges" -- easier
+     ## Make the matching without "Remove.edges" -- easier
     m2 = max.matching(rke2, 
                       IR.constraints=IR.constraints, 
                       remove.edges=c(), 
@@ -244,17 +237,19 @@ max.matching <- function(rke,
   result$gurobi = gurobi.result
   #########
   
-  if(  prod(unique(sort(result$gurobi$x)) %in% c(0,1))==1)
-  {
+  if(  prod(unique(sort(result$gurobi$x)) %in% c(0,1))==1) {
     return(result)
-  }   else {
-    warning("Gurobi unstable output. Saving problematic RKE object AND retrying..")
-    save(rke, file="debug/unstable.Rdata")
-    #stop("loginfo submit this file to ptoulis@fas.harvard.edu")
-    return (max.matching(rke, 
-                         regular.matching,
-                         IR.constraints,
-                         shuffle.edges))
+  } else {
+      # Sometimes GUROBI gives results that are not in (0,1)
+      # although we have set the variables to be binary (maybe i am missing something)
+      # For that reason we call the function again. Empirically, there is no danger of 
+     # infinite recursion although this is something that needs to be fixed.
+      logwarn("Gurobi unstable output. Saving problematic RKE object AND retrying..")
+      save(rke, file="debug/unstable.Rdata")
+      return (max.matching(rke, 
+                           regular.matching,
+                           IR.constraints,
+                           shuffle.edges))
   }
   
 }
