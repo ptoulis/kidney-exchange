@@ -42,9 +42,22 @@ table.to.tex = function(results, filename) {
     close(fileConn)
 }
 
+# Run all tests at once. 
+tables.all = function() {
+  # Table 1. Square-root law.
+  D = table.matchings(sizes = c(50, 100, 200, 300), m=2, trials=1000);
+  table.to.tex(D, filename="out/table1-assumptions.tex");
+  
+  # Table 2. tab
+  D = table.violations(sizes = c(50, 100, 200, 300), trials=1000);
+  table.to.tex(D, filename="out/table2-violations.tex");
+  
+  
+}
+
 ###      FUNCTIONS TO CREATE THE TABLES
 ##  Table 1.   Theorem 1 (expected value of maximum matchings.)
-##    n | selifh | together | m(n)   | surplus
+##    n | selfish | together | m(n)   | surplus
 ##   Synopsis.    D = table.matchings(sizes = c(50,100,200, 300), m=2, trials=100)
 ##               table.to.tex(D, filename="out/assumptions.tex")
 table.matchings = function(sizes=c(50), 
@@ -104,23 +117,102 @@ table.matchings = function(sizes=c(50),
 
 
 ##  Table 2. Violations
-##  Call   table.violations(c(50, 100..),  sims=100)
-table.violations = function(sizes=c(50), sims=10) {
-     x = E2(sizes=sizes, sims=sims)
+##  Sample usage:
+##  ------------------------------------------------------
+##  D = table.violations(c(50, 100..),  sims=100)
+##  table.to.tex(D, filename="out/violations.tex")
+table.violations = function(sizes=c(50), trials=10) {
+     x = E2(sizes=sizes, sims=trials)
      ##   x[[size]]
      ##  Results matrix.
      M = matrix(NA, nrow=length(sizes), ncol=7)
      SE = matrix(NA, nrow=length(sizes), ncol=7)
      for(i in 1:length(sizes)) {
          result = x[[i]]
-         
          M[i,] = apply(result, 2, mean)
          SE[i,] = apply(result, 2, bootstrap)
      }
-     D = combine.mat.se(M, SE)
+     D = add.se(M, SE)
      return(D)
 }
+##   
+##     Experiments  2 :   Violations of Regularity and PM assumptions.
+##
+###   results[[i]] = sims x 6
 
+##    i = hospital size (=20 * i)
+##    sims = no. of simulations
+##   The data columns are: Regular,  R,  O-O, A-A, B-B, AB-AB
+##     where each one counts the no. of violations for each case (regularity, R, and S subgraphs)
+##   1.  To get the mean regularity violations at size=60
+##         apply(res[[3]], 2, mean)[,1]    (b/c column 1 has regularity violations)
+E2 <- function(sizes=c(50), sims=100) {
+  col.names= colnames(e2.once(20))
+  
+  results = list()
+  pb = txtProgressBar(style=3)
+  total.N = length(sizes) * sims
+  val = 0
+  for(i in 1:length(sizes)) {
+    size = sizes[i]
+    results[[i]] = matrix(0, nrow=0, ncol=length(col.names))
+    colnames(results[[i]]) = col.names
+    for(j in 1:sims) {
+      ## Calling e2.once()
+      res = as.vector(e2.once(size))
+      results[[i]] = rbind(results[[i]], c(res))
+      val = val+1
+      
+      setTxtProgressBar(pb, value=val/total.N)
+    }
+  }
+  return(results)
+}
+## Violations (for one specific size)
+e2.once <- function(size) {
+  #ns = 20 * 1:size
+  #A = matrix(0, a)
+  
+  ## Sample the RKE object 
+  rke = rrke(size)
+  
+  ## Get OR, OS edges.
+  OR = filter.edges.by.type(rke,"O", "R")
+  OS = filter.edges.by.type(rke, "O","S")
+  to.remove =union(OR,OS)
+  
+  ###
+  Rs = c()
+  ## Return # of A-B or B-A pairs
+  getRtypeL <- function(arg_rke, Rtype) {
+    if(Rtype==1)
+      return(length(filter.pairs.by.donor.patient(arg_rke, "A","B")))
+    return(length(filter.pairs.by.donor.patient(arg_rke, "B","A")))
+  }
+  Rs[1] = getRtypeL(rke, 1)
+  Rs[2] = getRtypeL(rke, 2)
+  r.short.side = which.min(Rs)
+  ## Do the same or S
+  
+  m = max.matching(rke, remove.edges=to.remove)
+  
+  rke2.remainder = remove.pairs(rke, m$matching$matched.ids)
+  types.left = get.pairs.attribute(rke2.remainder, "type")
+  
+  ## 1. Regularity violations = count remaining OD's
+  RegViols = sum(types.left=="O")
+  if(RegViols>3)
+    save(rke, file="debug/e2.Rdata")
+  ## 2. R-violations = count remaining size of short R side
+  RViols = getRtypeL(rke2.remainder, r.short.side)
+  ## 3. S-violations = count >2 for each X-X
+  SViols = sapply(Blood.Types, function(abo) 
+    max(0,length(filter.pairs.by.donor.patient(rke2.remainder, abo,abo))-1))
+  ## Done checking violations
+  M  = matrix(c(size, RegViols, RViols, SViols), nrow=1, ncol=7)
+  colnames(M) = c("n","Reg.", "R", "OO", "AA","BB","ABAB")
+  return(M)
+}
 ## Compute the relative gain for _hid.interest_ 
 # mechanism _mech_ under _setup_, for two different strategies
 # Returns:  2 x trials   matrix of utiliies.
@@ -182,7 +274,7 @@ table.mechs = function(mech, m=3, sizes=c(20), trials=10) {
   N = length(scenarios) * length(sizes) * trials
   pb = txtProgressBar(style=3,min=0, max=N)
   cnt = 0
-  filename = sprintf("experiments/mech-%s-m%d.Rdata", mech,m)
+  filename = sprintf("experiments/mech-%s-m%d.Rdata", mech, m)
   
   for(sce.i in 1:length(scenarios))   {
     scen = scenarios[sce.i]
@@ -201,7 +293,6 @@ table.mechs = function(mech, m=3, sizes=c(20), trials=10) {
     }
    
   }
-  print("")
   return(results)
 }
 
