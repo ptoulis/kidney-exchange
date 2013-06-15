@@ -123,8 +123,7 @@ test.repeat = function(test, args, trials) {
   for(t in 1:trials) {
     res = test(args)
     print(sprintf("t=%d/%d:   [OK]", t, trials))
-  }
-  
+  }  
 }
 
 
@@ -137,7 +136,7 @@ test.rpra = function(args) {
   n = args$n
   ## sample PRA uniformly
   for(pra.mode in c(T,F)) {
-    pra1 = rpra(n,is.uniform=pra.mode)
+    pra1 = rpra(n, is.uniform=pra.mode)
     pra2 = pra1
     
     Q = rpra.matrix(pra1, pra2);
@@ -186,10 +185,8 @@ test.rrke = function(args) {
   TEST.MEAN.EQ(reps, mu0=Pc, str="rrke() -- testing OD/UD=pc")
   # 2. dumb test. Check whether the size is ok.
   TEST.LISTS.EQ(get.size(rrke(n)), n,str="Total size")
-  
-  
-  
 }
+
 test.pool.rke = function(args) {
   throw=function(str) stop(sprintf("[TEST FAIL]...pool.rke() : %s", str))
   rke.list= rrke.many(m=args$m, n=args$n, uniform.pra=T)
@@ -233,6 +230,7 @@ test.pool.rke = function(args) {
   return(T)
   
 }
+
 ## Test all filter.*.by.* functions
 test.filters = function(args) {
   load(file="tests/rke-20.Rdata")
@@ -290,6 +288,7 @@ test.filters = function(args) {
   TEST.BOOL( length(filter.edges.by.type(rke, "O", "O"))==0, str="filter edges by type") 
   TEST.BOOL( length(filter.edges.by.donor.patient(rke, "A", "B"))==0, str = " filter edges by dp") 
 }
+
 test.get.model.A = function(args) {
   load(file="tests/rke-20.Rdata")
   A = get.model.A(rke)
@@ -308,6 +307,7 @@ test.get.model.A = function(args) {
   TEST.BOOL(Bi, "testing most connected node")
   
 }
+
 test.remove.pairs = function(args) {
   
    TEST.HAS.KEY(args,"n", str="bad input")
@@ -351,6 +351,7 @@ test.remove.pairs = function(args) {
    
    return(T)
 }
+
 test.get.incident.edges = function(args) {
   n = args$n
   rke = rrke(n)
@@ -362,6 +363,7 @@ test.get.incident.edges = function(args) {
   # 1. Ad-hoc = function output
   TEST.LISTS.EQ(nedges.theor, length(edges))
 }
+
 test.get.external.edges = function(args) {
   m = 3
   n=30
@@ -379,6 +381,7 @@ test.get.external.edges = function(args) {
                 "utility of 1 hospital")
 
 }
+
 ## Tests for matching.R
 test.max.matching = function(args) {
   for(filename in  list.files("tests",full.names=T,pattern="rke-res")) {
@@ -399,6 +402,7 @@ test.max.matching = function(args) {
   TEST.LISTS.EQ(m$matching$utility, 10)
   return(T)
 }
+
 test.get.subgraph = function(args) {
   n = args$n
   rke = rrke(n)
@@ -447,6 +451,7 @@ test.ir.constraints = function(args) {
   }   
   return(T)
 }
+
 test.init.mechanism = function(args) {
   m = args$m
   n = args$n 
@@ -470,8 +475,8 @@ test.init.mechanism = function(args) {
                 str="c- rke test")
   }
   return(T)
-  
 }
+
 test.rCM = function(args) {
   m = args$m 
   n = args$n
@@ -500,6 +505,7 @@ test.rCM = function(args) {
   TEST.LISTS.GEQ( sum(Urcm), sum(m.ind), "rCM at least as good as selfish matching")
   
 }
+
 test.g.share = function(args) {
   n = 10
   k = 20
@@ -537,9 +543,8 @@ test.g.share = function(args) {
   reps= replicate(1000, {  which.max(g.share(z,x))==i})
 
   TEST.MEAN.EQ(reps, mu0=1/5, str="20% prob.")
-  
-  
 }
+
 test.xCM = function(args) {
   warning("xCM unit-test is not complete.")
   pc = c(10,10,10,7,7,7)
@@ -599,7 +604,6 @@ test.Bonus.QS = function(args) {
   TEST.LISTS.EQ( sapply(ud.pcs, function(i) length(QS$S[[1]][[i]])), x, str="UD matches in H1")
   TEST.LISTS.EQ( sapply(ud.pcs, function(i) length(QS$S[[2]][[i]])), z, str="UD matches in H2")
   TEST.LISTS.EQ( sapply(ud.pcs, function(i) length(QS$S[[3]][[i]])), z, str="UD matches in H3")
-    
-  
+
   return(T)
 }
