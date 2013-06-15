@@ -52,6 +52,13 @@ tables.all = function() {
   D = table.violations(sizes = c(50, 100, 200, 300), trials=1000);
   table.to.tex(D, filename="out/table2-violations.tex");
   
+  # Tables 3,4,5
+  table.mechs("rCM", m=3, sizes=c(20, 40, 60, 80, 100), trials=200);
+  table.mechs("xCM", m=3, sizes=c(20, 40, 60, 80, 100), trials=200);
+  table.mechs("Bonus", m=4, sizes=c(20, 40, 60, 80), trials=200);
+  table.mechs.to.graph();
+  
+  # Table 6
   
 }
 
@@ -224,16 +231,17 @@ relative.gain = function(kpd1, kpd2, mech, hid)
 }
 
 ##  Run a scenarion for a specific mechanism.
+## To be called from table.mechs()
 relative.gain.scenario = function(scenario, mech, m, n, trials,
                                   pb, pb.start) {
-  
+  # What H-1 is doing per mechanism, per scenario
   h1.str.list = list("rCM" = list(A="c", B="c", C="c", D="c"),
                      "xCM" = list(A="c", B="r", C="c", D="r"),
                      "Bonus"=list(A="c", B="r", C="c", D="r") )
-  
+  # What other hospitals are doing per mechanism, per scenario
   others.list = list("rCM" = list(A="t", B="c", C="t", D="c"),
-                "xCM" = list(A="t", B="t", C="t", D="t"),
-                "Bonus"=list(A="t", B="t", C="t", D="t"))
+                     "xCM" = list(A="t", B="t", C="t", D="t"),
+                     "Bonus"=list(A="t", B="t", C="t", D="t"))
   
   uniform.pra.list = list(A=T, B=T, C=F, D=F)
   
@@ -241,7 +249,10 @@ relative.gain.scenario = function(scenario, mech, m, n, trials,
   h1.strategy = h1.str.list[[mech]][[scenario]]
   others = rep(others.list[[mech]][[scenario]],  m-1)
   uniform.pra = uniform.pra.list[[scenario]]  
-  
+  # output matrix  2 x trials
+  # strategy profile = S
+  # row 1 = utility of mech under S
+  # row 2 = utility of H1 when Si = "t", and S_{-i} (same for others)
   A = matrix(NA, nrow=2, ncol=trials)
   
   for(i in 1:trials) {
@@ -251,7 +262,7 @@ relative.gain.scenario = function(scenario, mech, m, n, trials,
     str1 = paste(c(h1.strategy, others), collapse="")
     ## str2 =  baseline strategy profile.
     str2 = paste(c("t", others), collapse="")
-    
+    # Create the Kidney-Paired Donation market
     kpd1 = kpd.create(rke.list, rke.all=rke.all, str1)
     kpd2 = kpd.create(rke.list, rke.all=rke.all, str2)
     
@@ -264,23 +275,30 @@ relative.gain.scenario = function(scenario, mech, m, n, trials,
   return(A)
 }
 
-##  Create tables 3,4,5 : Mechanisms.
+##  Create tables 3,4,5
+## Sample usage
+## ------------------------------
+## table.mechs("rCM", m=3, sizes=c(20, 40), trials=100)
+## # saves a file as "experiments/mech-rCM-m3-trials100.Rdata"
+## 
 table.mechs = function(mech, m=3, sizes=c(20), trials=10) {
-  ## Return matrix.
+  # data structure of results
+  # results[[scenario.id]][[size]] = Matrix (relative.gain.scenario)
   results = list()  
+  ## each mechanism has 4 scenarios
   scenarios = c("A", "B", "C", "D")
   print(sprintf("Running scenarios for mech=%s m=%d #sizes=%d", mech, m, length(sizes)))
-  
+  # total number of trials
   N = length(scenarios) * length(sizes) * trials
   pb = txtProgressBar(style=3,min=0, max=N)
   cnt = 0
-  filename = sprintf("experiments/mech-%s-m%d.Rdata", mech, m)
+  # output filename
+  filename = sprintf("experiments/mech-%s-m%d-trials%d.Rdata", mech, m, trials)
   
   for(sce.i in 1:length(scenarios))   {
     scen = scenarios[sce.i]
     results[[scen]] = list()
     for(size.j in 1:length(sizes)) {
-      
       n = sizes[size.j]
       pb.start = length(sizes) * trials * (sce.i-1) + trials * (size.j-1)
       results[[scen]][[sprintf("%d",n)]] = relative.gain.scenario(scenario=scen,
@@ -296,7 +314,7 @@ table.mechs = function(mech, m=3, sizes=c(20), trials=10) {
   return(results)
 }
 
-table.mech.to.graph = function() {
+table.mechs.to.graph = function() {
   
   files = list.files(path="experiments/", pattern="mech", full.names=T)
   for(filename in files) {
@@ -305,7 +323,7 @@ table.mech.to.graph = function() {
     mech = regmatches(x, m)[[1]][2]
     load(filename)
     # assume:  results.
-    png.file = sprintf("experiments/png/mech-%s.png", mech)
+    png.file = sprintf("experiments/png/tables345-mech-%s.png", mech)
     print(sprintf("Saving in filename %s ", png.file))
     png(file= png.file)
     par(mfrow=c(2,2) )
@@ -321,15 +339,22 @@ table.mech.to.graph = function() {
   }
 }
 
-table.efficiency = function(m=4, sizes=c(20), uniform.pra, trials=10) {
+# Creates Table 6 and 7
+# Sample usage
+# -------------------------------------
+# table.efficiency(m=4, sizes=c(20, 40, 60, 80), uniform.pra=T, trials=100, 
+#                 filedesc="efficiency")
+# ## saves ONE file in "experiments/efficiency-pra-TRUE-m4-trials100"
+# table.efficiency.to.graph() 
+table.efficiency = function(m=4, sizes=c(20), uniform.pra, trials=10, filedesc="") {
   #  Save results here
   results = list()
-
+  loginfo("")
+  loginfo(sprintf("Running table efficiency m=%d uniform=%s", m, uniform.pra));
   # Compare rCM at canonical deviation
   # xCM at truthful
-  # Bonus at b-strategy
-  all.str = function(ch) 
-    paste(rep(ch, m), collapse="")
+  # Bonus at r-strategy
+  all.str = function(ch)  paste(rep(ch, m), collapse="")
   
   config = list("xCM" = list(mech="xCM", str = all.str("t")),
                 "rCM_c" = list(mech="rCM", str= all.str("c")),
@@ -338,12 +363,11 @@ table.efficiency = function(m=4, sizes=c(20), uniform.pra, trials=10) {
                 "Bonus_r" = list(mech="Bonus", str= all.str("r")))
   
   # total # iterations
-  N = length(sizes) * trials * length(names(config) )
+  N = length(sizes) * trials * length(names(config))
   # progress bar
   pb = txtProgressBar(style=3, min=0, max=N)
   count = 0
-  
-  
+  # Initialize the results data structure.
   for(mech.name in names(config) ) 
     results[[mech.name]] = list()
   
@@ -354,8 +378,7 @@ table.efficiency = function(m=4, sizes=c(20), uniform.pra, trials=10) {
     # Initialize the mechanisms
     for(mech.name in names(config) )
       results[[mech.name]][[n.str]] = c()
-    
-    
+  
     for(j in 1:trials) {
       # Sample rke.list/rke.all
       rke.list = rrke.many(m=m, n=n, uniform.pra=uniform.pra)
@@ -363,23 +386,29 @@ table.efficiency = function(m=4, sizes=c(20), uniform.pra, trials=10) {
       
       # Iterate over mechanisms to figure out efficiency
       for(mech.name in names(config)) {
+        # (i, j, mech.name) = (size, trial, mechanism)
         strategy = config[[mech.name]][["str"]]
         mech = config[[mech.name]][["mech"]]
         
         kpd = kpd.create(rke.list, rke.all=rke.all,  strategy)
         welfare = sum( Run.Mechanism(kpd=kpd, mech=mech) )
+        # Append welfare to the mechanism vector.
         results[[mech.name]][[n.str]] = c( results[[mech.name]][[n.str]], welfare )
         count = count + 1
         setTxtProgressBar(pb, value=count)
       } # iterate over all mechanisms.
       
-      save(results, file=sprintf("experiments/efficiency-pra-%s-m%d.Rdata", uniform.pra, m))
+      save(results, file=sprintf("experiments/%s-pra-%s-m%d-trials%d.Rdata", 
+                                 filedesc, uniform.pra, m, trials))
     }  # trials
   } # iterate over all sizes.
   
   return(results)
 }
 
+# Takes all files in "experiments" that match "efficiency-" and 
+# creates a 2x2 boxplot, where block = mechanism, x-axis = hospital size, 
+# y-size = efficiency ratio
 table.efficiency.to.graph = function() {
   files = list.files(path="experiments/", pattern="efficiency-", full.names=T)
   for(filename in files) {
@@ -391,7 +420,7 @@ table.efficiency.to.graph = function() {
     png.file = sprintf("experiments/png/efficiency-uniform-PRA-%s.png", uniform.pra)
     print(sprintf("Saving in filename %s ", png.file))
     png(file= png.file)
-    par(mfrow=c(2,3) )
+    par(mfrow=c(2,2) )
     for(i in names(results) ) {
       obj=  results[[i]]
       for(j in names(obj)) {
@@ -406,40 +435,59 @@ table.efficiency.to.graph = function() {
 }
 
 ## Efficiency for many hospitals
+# Table 8: Sample usage
+# ------------------------
+# table.efficiency.many.hospitals(many.m = c(4, 6, 8, 10, 14, 16), 
+#                                 n=25, trials=100, filedesc="varyhospitals")
+# ## saves in files "experiments/varyhospitals-pra-FALSE-mN-trials100.Rdata"
 table.efficiency.many.hospitals = function(many.m = c(4), n = 25, uniform.pra=F, trials=10) {
   for(m in many.m) 
     table.efficiency(m=m, 
                      sizes=c(n), 
                      uniform.pra=uniform.pra, 
-                     trials=trials)
+                     trials=trials, 
+                     filedesc="varyhospitals")
 }
 
+## Searches for files matching "varyhospitals-" and then 
+## creates ONE png file 2x2 boxplot, where x-axis = #hospitals.
 table.efficiency.many.to.graph = function() {
-  files = list.files(path="experiments/", pattern="efficiency.*?-m", full.names=T)
+  files = list.files(path="experiments/", pattern="varyhospitals.*?-m", full.names=T)
+  # boxplot to print (should be a list over hospital sizes)
+  # i.e.  = [[mech.id]][[m.size]]
+  boxplot.obj = list()
+  
   for(filename in files) {
     x = filename
-    m = regexec(text=x, pattern="-m(.*?)\\.")
+    m = regexec(text=x, pattern="-m(.*?)-")
     m.size = as.integer (  regmatches(x, m)[[1]][2]  )
+    m.size.str = sprintf("%d", m.size)
     load(filename)
-    # assume:  results.
-    png.file = sprintf("experiments/png/efficiency-many-m%s.png", m.size )
-    print(sprintf("Saving in filename %s ", png.file))
-
-    png(file= png.file)
-    par(mfrow=c(2,2) )
-    print(names(results))
-    for(i in names(results) ) {
-      if(i=="rCM_t") next;
-      obj=  results[[i]]
-      for(j in names(obj)) {
-        A = obj[[j]]  ## 2 x trials 
-        A2 = results[["rCM_t"]][[j]]
-        obj[[j]] = A / A2
+    # assume:  results. = [[mech]][[size]] = c(utility)
+    for(mech.id in names(results) ) {
+      
+      if(length(results[[mech.id]]) != 1)
+        stop("results should have size 1 (just one hospital size)")
+      
+      #loginfo(sprintf("Mechanism is %s m.size.str = %s", mech.id, m.size.str))
+      if (!mech.id %in% names(boxplot.obj)) {
+        boxplot.obj[[mech.id]] = list();
       }
-      boxplot(obj, ylim=c(0.6, 1.1), main=sprintf("mech=%s", i ), ylab="ratio (str/base)", xlab="size")
+      mech.utils = results[[mech.id]][[1]] # only one size.
+      true.utils = results[["rCM_t"]][[1]]
+      boxplot.obj[[mech.id]][[m.size.str]] = mech.utils / true.utils
     }
-    dev.off();
   }
+  loginfo(names(boxplot.obj));
+  png.file = sprintf("experiments/png/efficiency-varyhospitals.png")
+  loginfo(sprintf("Saving in filename %s ", png.file))
+  
+  png(file= png.file)
+  par(mfrow=c(2,2) )
+  for(mech.id in names(boxplot.obj))
+    boxplot(boxplot.obj[[mech.id]], ylim=c(0.6, 1.1), 
+          main=sprintf("mech=%s", mech.id ), ylab="ratio (str/base)", xlab="#hospitals")
+  dev.off();
 }
 
 
