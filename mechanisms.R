@@ -100,7 +100,7 @@ play.strategy <- function(rke, type) {
   if(type=="t") {
     ret$hide = c()
   } else if(type=="c") {
-    ## TO-DO(ptoulis): If the max matching is timed-out, this will return empty match
+    ## TODO(ptoulis): If the max matching is timed-out, this will return empty match
     ## which is equivalent to being truthful. Needs a fix?
     m = max.matching(rke)
     ret$hide = m$matching$matched.ids
