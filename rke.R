@@ -2,7 +2,7 @@
 # 2012, Random Graph models for Kidney Exchanges
 ## Jan 2013, new version of rke.R
 rm(list=ls())
-source("lib.R")
+source("terminology.R")
 source("testing.R")
 source("tables.R")
 library(logging)
@@ -26,7 +26,8 @@ empty.rke <- function() {
               pras=c(),
               P=matrix(0, nrow=0, ncol=0),
               B=matrix(0, nrow=0, ncol=0),
-              hospital=c())
+              hospital=c(),
+              class="RKE")
    return(obj)
 }
 
@@ -50,8 +51,8 @@ rrke <- function(n,
     pair.codes = pairs.obj$codes
     pras = pairs.obj$pras
     
-    bin.PRA.matrix =rpra.matrix(pras, pras,same.hospital=T, verbose)
-    bin.B.matrix =  get.bin.blood.matrix(pair.codes, verbose)
+    bin.PRA.matrix = rpra.matrix(pras, pras, same.hospital=T, verbose)
+    bin.B.matrix = get.bin.blood.matrix(pair.codes, verbose)
     
      ## Define object to return.
     obj = list()
@@ -60,6 +61,7 @@ rrke <- function(n,
     obj$B = bin.B.matrix
     obj$pras = pras
     obj$uniform.pra = uniform.pra
+    class(obj) <- "RKE"
     ###  Checks 
     #print(sum(get.P(obj)==bin.PRA.matrix) == n^2)
     #print(sum(get.B(obj)==bin.B.matrix) == n^2)
@@ -108,7 +110,6 @@ rke.create <- function(pairs.pc= c(), edges=c() )
 #  k = # hospitals
 #  n = # pairs/hospital
 rrke.many <- function(m=3, n=60, uniform.pra) {
-  
   x = list()
   for(i in sample(1:m)) 
     x[[i]] = rrke(n,uniform.pra=uniform.pra)
