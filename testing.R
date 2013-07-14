@@ -1,5 +1,5 @@
 ## Unit tests.
-source("lib.R")
+source("terminology.R")
 equal.sets = function(x,y) {
   if(length(x) != length(y)) return(F)
   return(length(setdiff(x,y))==0)
@@ -117,7 +117,13 @@ TEST.BOOL = function(x, str="n/a")
   return(T)
 }
 
-
+CHECK_pair <- function(pair) {
+  
+}
+CHECK_pair_code <- function(pair.code) {
+  if (pair.code <= 0 || pair.code > 16)
+    stop("Pair code should be in 1,16")
+}
 
 test.repeat = function(test, args, trials) {
   for(t in 1:trials) {
@@ -125,9 +131,6 @@ test.repeat = function(test, args, trials) {
     print(sprintf("t=%d/%d:   [OK]", t, trials))
   }  
 }
-
-
-
 
 ## Tests for lib.R
 test.rpra = function(args) {
@@ -162,6 +165,12 @@ test.rpra = function(args) {
   return(T)
 }
 
+test.rpra.matrix <- function(args) {
+  pras <- rpra(n=6)
+  x <- sapply(1:1000, function(i) { P = rpra.matrix(pras, pras, symmetric=F); 
+                                   P[2,3]})
+  TEST.MEAN.EQ(x, mu0=(1-kUniformPRA)**2)
+}
 ## Tests for  rke.R
 test.rrke = function(args) {
   throw=function(str) stop(sprintf("[TEST FAIL]...rrke() : %s", str))
