@@ -1,5 +1,7 @@
-##   Panos Toulis  ptoulis@fas.harvard.edu
-## Contains code implementing different KPD mechanisms. 
+# Copyright 2013 Panos Toulis, David C.Parkes
+# Author: Panos Toulis(ptoulis@fas.harvard.edu)
+#
+# Contains code implementing different KPD mechanisms. 
 ##  Currently supported:   rCM,  xCM
 ## A mechanism receives a combined donor-patient graph and outputs a matching. 
 ## (note: code returns a vector of utilities (matches/hospital)
