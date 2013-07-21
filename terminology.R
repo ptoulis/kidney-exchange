@@ -3,6 +3,7 @@
 source("testing.R")
 library(plyr)
 library(logging)
+library(stringr)
 basicConfig()
 # Terminology:
 # (1) A "blood-type" is in {"O", "A", "B", "AB"} and represents a blood-type
@@ -27,6 +28,7 @@ basicConfig()
 # (4) An RKE ("random kidney exchange") defines a multi-hospital exchange pool.
 #     It is a LIST of a <pairs> and <edges> objects. It also contains an adjacency
 #     matrix Aij, where Aij = 1 if pair i can donate to pair j.
+kAccuracy = 10^5
 kBloodTypes  <- c("O", "A", "B", "AB")
 kBloodCodes  <- c(1, 2, 3, 6)
 kBloodTypeDistribution <- c(50, 30, 15, 5) / 100
@@ -48,7 +50,7 @@ kUniformPRA <- 0.2
 kNonUniformPRA <- c(0.05, 0.45, 0.9)
 kNonUniformPRADistribution <- c(0.7, 0.2, 0.1)
 kPairTypes <- c("R" ,"U", "O", "S")
-kPairTypeColors <- list(R="yellow", U="gray", O="green", S="blue")
+kPairTypeColors <- list(R="yellow", U="gray", O="green", S="cyan")
 # PAIRS object
 # kPairs = 16 x 7 matrix:  Basic structure
 # pc  donor  patient prob blood-type compatible     str  pair.type
@@ -130,7 +132,7 @@ empty.rke <- function() {
 }
 empty.pairs <- function() subset(kPairs, desc=="non.exists")
 empty.edges <- function(size) {
-  empty.data = rep(NA, size)
+  empty.data = rep(0, size)
   obj = data.frame(
     pair.id1=empty.data, 
     pair.id2=empty.data,
@@ -164,9 +166,10 @@ CHECK_edges <- function(edges) {
   num.edges1 = length(unique(edges$pair.id1))
   CHECK_EQ(nrow(edges), num.edges1^2, msg="Cover all (pair1, pair2) combinations")
   CHECK_SETEQ(edges$pair.id1, edges$pair.id2, msg="Set(pairs1)=Set(pairs2)")
+  CHECK_TRUE(all(!duplicated(edges$edge.id)), "No duplicate edge ids.")
 }
 
-sample.pairs.edges <- function(pairs, verbose=F) {
+sample.pairs.edges <- function(pairs, respect.edges=data.frame(), verbose=F) {
   # Given pairs, it will compute cross-compatilibities, based on blood-types
   # and cross-match PRA compatibilities.
   # Algorithm goes as follows:
@@ -181,32 +184,48 @@ sample.pairs.edges <- function(pairs, verbose=F) {
   num.dyads <- nrow(edges.row)
   if (verbose) loginfo("Grid expanded.")
   edges = empty.edges(num.dyads)
+  if (verbose) loginfo("Created empty edges")
   edges$pair.id1 = pairs$pair.id[edges.row$id1]
   edges$pair.id2 = pairs$pair.id[edges.row$id2]
   if (verbose) loginfo("Grid for id rows expanded.")
-  edges$d1 = pairs$donor[edges.row$id1]  # donor of pair 1
-  edges$p2 = pairs$patient[edges.row$id2]  # patient of pair 2
-  edges$pra2 = pairs$pra[edges.row$id2]  # PRA of patient of 2
-  rm(edges.row)
+  tmp.d1 = pairs$donor[edges.row$id1]  # donor of pair 1
+  tmp.p2 = pairs$patient[edges.row$id2]  # patient of pair 2
+  tmp.pra2 = pairs$pra[edges.row$id2]  # PRA of patient of 2
   if (verbose) loginfo("PRA computed.")
   # whether donor1 -> patient2 in terms of blood-type
-  edges$blood.compatible = with(edges, as.numeric(p2 %% d1==0))
+  edges$blood.compatible = as.numeric(tmp.p2 %% tmp.d1==0)
   if (verbose) loginfo("Blood-type compatibility computed.")
   # whether donor1 -> patient2 in terms of PRA
-  edges$pra.compatible = rbinom(num.dyads, size=1, prob=(1-edges$pra2))
-  edges$self.loop = as.numeric(edges$pair.id1 == edges$pair.id2)
-  edges$can.donate = edges$blood.compatible * 
-                     edges$pra.compatible * 
-                     (1-edges$self.loop)
-  rownames(edges) <- 1:num.dyads
+  edges$pra.compatible = rbinom(num.dyads, size=1, prob=(1-tmp.pra2))
   if (verbose) loginfo("PRA compatilibity computed.")
-  #z = subset(z, id1 != id2)
-  for (f in c("d1", "p2", "pra2"))
-    edges[[f]] <- NULL
+  edges$self.loop = as.numeric(with(edges, pair.id1==pair.id2))
+  #as.numeric(edges$pair.id1 == edges$pair.id2)
+  if (verbose) loginfo("Self-loop computed.")
+  edges$edge.id = with(edges, as.integer(kAccuracy * (log(2) * pair.id1 + log(3) * pair.id2)))
+  #apply(subset(edges, select=c(pair.id1, pair.id2)), 1, function(x) paste(x, collapse=":"))
+  if (verbose) loginfo("Edge-id computed..")
+  edges$can.donate = with(edges, blood.compatible * pra.compatible * (1-self.loop))
+  #rownames(edges) <- 1:num.dyads
+  if (verbose) loginfo("Donation variable computed")
+  rm(list=c("tmp.d1", "tmp.p2", "tmp.pra2"))
+  if (verbose) loginfo("Removed some fields")
+  if (nrow(respect.edges) > 0) {
+    # need to respect the defined edges.
+    matched.edge.ids = intersect(edges$edge.id, respect.edges$edge.id)
+    edges.match.rows <- which(edges$edge.id %in% matched.edge.ids)
+    respect.match.rows <- which(respect.edges$edge.id %in% matched.edge.ids)
+    if (verbose) loginfo("Matched rows computed.")
+    CHECK_EQ(length(respect.match.rows), length(edges.match.rows),
+                    msg="Find all respected edges")
+    if (length(edges.match.rows) > 0)
+      edges[edges.match.rows, ] <- respect.edges[respect.match.rows, ]
+  }
+  if (verbose) loginfo("Respected earlier edges")
   return(edges)
 }
 
 map.edges.A <- function(edges) {
+  # Creates the adj matrix of this edges object.
   CHECK_edges(edges)
   num.pairs = length(unique(edges$pair.id1))
   A = matrix(edges$can.donate, nrow=num.pairs)
@@ -217,8 +236,7 @@ map.edges.A <- function(edges) {
   return(A)
 }
 
-rrke <- function(n, pair.ids=1:n,
-                 hospital.id=1,
+rrke <- function(n, pair.ids=1:n, hospital.id=1,
                  uniform.pra=T,
                  blood.type.distr=kBloodTypeDistribution,
                  verbose=F) {
@@ -228,6 +246,8 @@ rrke <- function(n, pair.ids=1:n,
   #       hospital.id = which hospital they belong to
   #       uniform.pra = use uniform PRA or not
   #       blood.type.distr = distribution over blood types.
+  # pair.ids will be unique for this hospital.
+  CHECK_EQ(length(pair.ids), n, msg="Should have #pair.ids=n")
   rke = empty.rke()
   if(n==0) return(rke)
   CHECK_EQ(length(pair.ids), n, msg="#pair ids = n")
@@ -235,7 +255,8 @@ rrke <- function(n, pair.ids=1:n,
   pairs = rpairs(n, hospital.id=hospital.id, uniform.pra=uniform.pra,
                      blood.type.distr=blood.type.distr, pair.ids=pair.ids)
   if (verbose) loginfo("Pairs were sampled.")
-  edges = sample.pairs.edges(pairs)
+  edges = sample.pairs.edges(pairs, verbose=verbose)
+  if (verbose) loginfo("Edges were sampled")
   # Create the RKE object.
   rke = empty.rke()
   rke$pairs = pairs
@@ -243,14 +264,28 @@ rrke <- function(n, pair.ids=1:n,
   rke$edges = edges # subset(as.data.frame(edges), pair.id1 != pair.id2)
   # number edges. These will be edge ids.
   rke$A = map.edges.A(rke$edges)
+  if (verbose) loginfo("Adj matrix was created")
   return(rke)
 }
 
-append.rke <- function(rke1, rke2) {
+append.rke <- function(rke1, rke2, verbose=F) {
+  # Combines two RKE objects into one.
+  warning("Append is not unit-tested")
   CHECK_rke(rke1)
   CHECK_rke(rke2)
-  CHECK_TRUE(all(!is.element(rke1$pairs$pair.id, rke$pairs$pair.id)),
-                 msg="RKEs should not have the same pairs.")
+  if (nrow(rke1$pairs) == 0)
+    return(rke2)
+  if (nrow(rke2$pairs) == 0)
+    return(rke1)
+  CHECK_TRUE(all(!is.element(rke1$pairs$pair.id, rke2$pairs$pair.id)),
+             msg="RKEs should not have the same pairs.")
+  rke.all = empty.rke()
+  all.edges = rbind(rke1$edges, rke2$edges)
+  rke.all$pairs = rbind(rke1$pairs, rke2$pairs)
+  rke.all$edges = sample.pairs.edges(rke.all$pairs, respect.edges=all.edges,
+                                     verbose=verbose)
+  rke.all$A = map.edges.A(rke.all$edges)
+  return(rke.all)
 }
 
 mu.thm = function(n) {
