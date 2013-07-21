@@ -1,128 +1,58 @@
 ## Unit tests.
-source("terminology.R")
-equal.sets = function(x,y) {
-  if(length(x) != length(y)) return(F)
-  return(length(setdiff(x,y))==0)
-}
-is.subset = function(bigger, smaller) {
-  xandy = intersect(bigger, smaller)
-  return(equal.sets(xandy, smaller))
-}
-TEST.HAS.KEY = function(x, key, str= "n/a") {
-  throw = function() {
-    print(sprintf("[TEST FAIL]...List() x does not have key %s : %s", key,  str))
-    print(sprintf("keys = %s", names(x) ))
-    stop("Quitting.")
-  }
-  if(! key %in% names(x) )
-    throw()
-  
-  return(T)
-}
-TEST.SETS.DISJOINT = function(x, y, str="n/a") {
-  if(length(intersect(x,y))>0)
-    stop(sprintf("[TEST FAIL]...Sets x,y not disjoint : %s", str))
-  return(T)
-}
-## Testing set-equality
-TEST.SETS.EQ = function(x, y, str="n/a") {
-  x = unique(x)
-  y = unique(y)
-  throw = function() {
-    print(sprintf("[TEST FAIL]...Lists x,y not equal at this tol level : %s", str))
-    print(sprintf("x = %s", paste(head(x,5), collapse=",")))
-    print(sprintf("y = %s", paste(head(y,5), collapse=",")))
-    stop("Quitting.")
-  }
-  if(length(x) != length(y))
-    throw()
-  if(length(setdiff(x,y))>0)
-    throw()
-  return(T)
-}
-TEST.LISTS.EQ = function(x,y, str="n/a", tol=0) {
-  throw = function() {
-    print(sprintf("[TEST FAIL]...Lists x,y not equal at this tol level : %s", str))
-    print(sprintf("x = %s", paste(head(x,5), collapse=",")))
-    print(sprintf("y = %s", paste(head(y,5), collapse=",")))
-    stop("Quitting.")
-  }
-  s = sum(which(abs(x-y)>tol))
-  if(s >0) throw()
-  return(T)
-}
-TEST.LISTS.GEQ = function(x,y, str="n/a") {
-  throw = function() {
-    stop(sprintf("[TEST FAIL]...Does not hold x >= y : %s", str))
-  }
-  s = sum(which(x-y<0))
-  if(s >0) throw()
-  return(T)
-}
-TEST.STRINGS.EQ = function(x,y, str="n/a") {
-  throw = function() {
-    stop(sprintf("[TEST FAIL]...Strings x != y : %s", str))
-  }
-  if(x != y) throw()
-  return(T)
-}
-TEST.SUBSET = function(smaller, bigger, str="n/a)") {
-  smaller = unique(smaller)
-  bigger = unique(bigger)
-  throw = function() {
-    stop(sprintf("[TEST FAIL]...x is not subset of y : %s", str))
-  }
-  if(! is.subset(bigger=bigger, smaller=smaller))
-    throw()
-  return(T)
-}
-## Test whether two RKE's are the same (NOT exact)
-## TEST.RKE.EQ(rrke(10), rrke(10))   should fail
-TEST.RKE.EQ = function(x,y, str="n/a") {
-  throw = function(astr="n/a") {
-    stop(sprintf("[TEST FAIL]..RKEs are not equal : %s : %s", astr, str))
-  }
-  if(get.size(x) != get.size(y))
-    throw("size")
-  
-  library(igraph)
-  gx = rke.to.igraph(x)
-  gy = rke.to.igraph(y)
-  
-  if(vcount(gx)!= vcount(gy)) throw("vcount")
-  if(ecount(gx) != ecount(gy)) throw("ecount")
-  if(length(get.diameter(gx)) != length(get.diameter(gy))) throw("diameter")
-  #if(mean(alpha.centrality(gx)) != mean(alpha.centrality(gy))) throw("centrality")
-  if(mean(degree.distribution(gx)) != mean(degree.distribution(gy))) throw("degree mean")
-  if(sd(degree.distribution(gx)) != sd(degree.distribution(gy))) throw("degree SD")
-  return(T)
-  
-}
-TEST.MEAN.EQ = function(x, mu0, str="n/a") {
-  sd = bootstrap.mean(x)
-  mu = mean(x)
-  ci = c(mu - 2 *sd, mu + 2*sd)
-
-  if(mu0 < ci[1] || mu0 > ci[2])
-    stop(sprintf("[TEST FAIL] Hypothesis test mu=mu0  mu0=%.3f  CI=[%.3f, %.3f]: %s", 
-                 mu0, ci[1], ci[2], str))
-  if(sd> mu/2)
-    warning("SE is probably too high. Try increasing the sample size?")
-  return(T)
-}
-TEST.BOOL = function(x, str="n/a") 
-{
-  if(! x ) 
-    stop(paste("[TEST FAIL]...test.bool: %s", str) )
-  return(T)
+stop.now <- function(x, y, msg) {
+  print(sprintf("[FAIL]: %s", paste(msg, collapse=" : ")))
+  str(x, width=80)
+  str(y, width=80)
+  stop("")
 }
 
-CHECK_pair <- function(pair) {
-  
+CHECK_TRUE <- function(x, msg="n/a") {
+  if (!x)
+    stop.now(x, "n/a (ignore)", c("Logical test failed", msg))
 }
-CHECK_pair_code <- function(pair.code) {
-  if (pair.code <= 0 || pair.code > 16)
-    stop("Pair code should be in 1,16")
+
+CHECK_EQ <- function(x, y, msg="n/a") {
+  if (!all(x==y)) stop.now(x, y, c("Arrays not equal.", msg))
+  return (TRUE)  
+}
+
+CHECK_GE <- function(x, y, msg="n/a") {
+  if (any(x < y))
+    stop.now(x, y, c("Some values are > y", msg))
+}
+
+CHECK_SETEQ <- function(x, y, msg="n/a") {
+  if (!setequal(x, y))
+    stop.now(x,y, c("Sets not equal", msg))
+}
+
+CHECK_MEMBER <- function(element, y, msg="n/a") {
+  if (!all(is.element(element, y))) {
+    stop.now(element, y, sprintf("Element not member of list : %s", msg))
+  }
+  return(TRUE)
+}
+
+CHECK_NEAR <- function(x, y, tol=1e-2, msg="n/a") {
+  if (any(abs(x-y) > tol))
+    stop.now(x, y, c(sprintf("Failed at tolerance %.6f", tol), msg))
+}
+
+CHECK_INTERVAL <- function(x, min, max, msg="n/a") {
+  if(any(x < min) | any(x > max))
+    stop.now(x, c(min, max), c("Not in interval", msg))
+}
+
+CHECK_EXCEPTION <- function(expr, msg="n/a") {
+  out <- tryCatch(eval(expr), error=function(err) { return("ERROR") })
+  CHECK_TRUE(out == "ERROR", msg=c("Did not throw exception", msg))
+}
+bootstrap.mean = function(x) sd(replicate(1000, { mean(sample(x, replace=T)) }))
+CHECK_MU0 <- function(x, mu0, msg="n/a") {
+  # Will bootstrap x to see if mean(x) = mu0
+  boot.se = bootstrap.mean(x)
+  CHECK_INTERVAL(mu0, min=mean(x) - 2 * boot.se, max=mean(x) + 2*boot.se,
+                 msg=c("Not in bootstrap inteval", msg))
 }
 
 test.repeat = function(test, args, trials) {
@@ -132,69 +62,22 @@ test.repeat = function(test, args, trials) {
   }  
 }
 
+test.terminology <- function() {
+  x = rpra(10000, is.uniform=F)
+  test.out = chisq.test(table(x), p=kNonUniformPRADistribution)
+  CHECK_TRUE(test.out$p.value > 0.01,
+             msg=c(sprintf("df=%d", test.out$parameter), test.out$statistic))
+  
+  rke = rrke(1000, uniform.pra=T)
+  CHECK_rke(rke)
+  estim.var = kUniformPRA * (1-kUniformPRA) / 1000
+  CHECK_NEAR(x=mean(rke$edges$pra.compatible), y=1-kUniformPRA,
+             tol= 2 * sqrt(estim.var), msg="Mean obs. PRA")
+  CHECK_SETEQ(subset(rke$pairs, pair.type=="U")$blood.compatible, c(0),
+              msg="U pairs should not be blood-type compatible")
+  
+}
 ## Tests for lib.R
-test.rpra = function(args) {
-  throw=function(str) stop(sprintf("[TEST FAIL]...rpra() hypothesis test fail : %s", str))
-  
-  n = args$n
-  ## sample PRA uniformly
-  for(pra.mode in c(T,F)) {
-    pra1 = rpra(n, is.uniform=pra.mode)
-    pra2 = pra1
-    
-    Q = rpra.matrix(pra1, pra2);
-    if(nrow(Q)!=ncol(Q)) throw("square matrix")
-    if(nrow(Q)!=n) throw("correct size")
-    ## Pick some ij  pair
-    pair = sample(1:n, 2, replace=F)
-    i = pair[1]
-    j = pair[2]
-    reps =replicate(2000, { P = rpra.matrix(pra1, pra2); P[i,j]})
-    mu = mean(reps)
-    se = bootstrap.mean(reps)
-    ci=c(mu-2*se, mu+2*se)
-    pci = pra1[i]
-    pcj = pra2[j]
-    
-    p.theor = (1-pci) * (1-pcj)
-    if(p.theor< ci[1] || p.theor>ci[2])
-      throw(sprintf("Uniform? %s Pij (expected)=%.3f  found=[%.3f, %.3f]",pra.mode,
-                    p.theor,  ci[1], ci[2]))
-    
-  }
-  return(T)
-}
-
-test.rpra.matrix <- function(args) {
-  pras <- rpra(n=6)
-  x <- sapply(1:1000, function(i) { P = rpra.matrix(pras, pras, symmetric=F); 
-                                   P[2,3]})
-  TEST.MEAN.EQ(x, mu0=(1-kUniformPRA)**2)
-}
-## Tests for  rke.R
-test.rrke = function(args) {
-  throw=function(str) stop(sprintf("[TEST FAIL]...rrke() : %s", str))
-  
-  n = args$n
-  trials = 100
-  reps= replicate(trials, {
-    rke = rrke(n)
-    
-    oa = length( filter.pairs.by.donor.patient(rke,"O", "A") )
-    ao = length( filter.pairs.by.donor.patient(rke,"A", "O") )
-    return(ifelse(ao > 0,  oa/ao, NA))
-  });
-  
-  Pc = rpra(1)
-  if(sum(is.na(reps)) > 0.2 * trials) 
-    stop("Too many NA's. Please try to increase n = size of RKE")
-  
-  reps = reps[! is.na(reps)]
-  # 1. test whether UD pairs are 1/pc  more frequent than the reciprocal OD pairs.
-  TEST.MEAN.EQ(reps, mu0=Pc, str="rrke() -- testing OD/UD=pc")
-  # 2. dumb test. Check whether the size is ok.
-  TEST.LISTS.EQ(get.size(rrke(n)), n,str="Total size")
-}
 
 test.pool.rke = function(args) {
   throw=function(str) stop(sprintf("[TEST FAIL]...pool.rke() : %s", str))
@@ -237,7 +120,6 @@ test.pool.rke = function(args) {
     print(sprintf("(%d/%d) Checking random pair %d from H-%d...[OK]", j, trials,new.id, hid))
   }
   return(T)
-  
 }
 
 ## Test all filter.*.by.* functions

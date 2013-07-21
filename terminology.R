@@ -1,368 +1,258 @@
 # Copyright 2013 Panos Toulis, David C.Parkes
-# This file is part of kidney-exchange
-# kidney-exchange is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
-# as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
-# kidney-exchange is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty 
-# of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
-# See the GNU General Public License for more details.
-# You should have received a copy of the GNU General Public License along with kidney-exchange. 
-# If not, see http://www.gnu.org/licenses/.
-
+# Author: Panos Toulis(ptoulis@fas.harvard.edu)
+source("testing.R")
+library(plyr)
+library(logging)
+basicConfig()
 # Terminology:
-# Check also the "testing.R" script and the CHECK_* functions.
 # (1) A "blood-type" is in {"O", "A", "B", "AB"} and represents a blood-type
 #     A "blood-code" is an integer representation, in {1, 2, 3, 6} resp.
 #     A "pair-type" is in {"O", "U", "S", "R"} and represent the over-demanded, 
 #     under-demanded, self-demanded and reciprocal pairs respectively.
-# (2) A "pair" represents a donor-patient pair as {donor, patient, pra, type}.
-#     This includes their blood-types (as <blood-type>), 
-#     PRA as a double in [0,1] for the patient sensitivity,
-#     and type in {"0", "S", "R", "U"}
-#     corresponsind to over-demanded, self-demanded, reciprocal and under-demanded pairs.
-# (3) A "pair-code" is simply an integer from 1-16 which represents 
-#     a donor-patient pair. For example, decode(2) will give you 
-#     the corresponding d-p pair for pair code #2. There are 16 different pair codes.
-
-Blood.Types  <- c("O", "A", "B", "AB")
-Blood.Codes  <- c(1, 2, 3, 6)
-Pair.Codes   <- c(1:16)
-kUniformPRA <- 0.2
-
-## Given a pair -> [ compatible ABO]
-possible.matches <-function(pair) {
-  donor = pair$donor
-  patient = pair$patient
-  dons = sapply(Blood.Codes, function(i) as.blood.code(patient)%%i==0)
-  dons = Blood.Types[which(dons==1)]
-  pats = sapply(Blood.Codes, function(i) i%%as.blood.code(donor)==0)
-  pats = Blood.Types[which(pats==1)]
-  all.types=c()
-  for(i in dons)
-    for(j in pats)
-      all.types <-  c( all.types, sprintf("%s-%s", i,j))
-  return(all.types)     
+#     A "pair-code" is simply an integer from 1-16 which represents 
+#     the 4x4 = 16 total blood-type dyads.
+# (2) A "pairs" object is a DF that represents a collection of donor-patients
+#     These are completely defined by (PairCodes, pra, hospital)
+#     "pair codes" is a dataframe that describes the pairs themselves using 
+#     (i) donor, patient types, (ii) blood.compatibility, (iii) pair as string
+#     (iv) marginal blood-type probabilities. For example, see "kPairs"
+#     that contains all such values for all 16 possible pair codes.
+#  (3) "edges" is a DATAFRAME that contains id1, id2 vector that represent
+#       pair dyads, and compatibility relationships from pair1->pair2.
+#       pair.id1, pair.id2, blood.compatible, pra.compatible, can.donate
+#         2          5          1                 1               1
+#         5          8          1                 0               0
+#       This means that pair 2 can donate to 5 but 5 cannot donate to 8 because
+#       patient of 8 is PRA-sensitive to donor of 5.
+# (4) An RKE ("random kidney exchange") defines a multi-hospital exchange pool.
+#     It is a LIST of a <pairs> and <edges> objects. It also contains an adjacency
+#     matrix Aij, where Aij = 1 if pair i can donate to pair j.
+kBloodTypes  <- c("O", "A", "B", "AB")
+kBloodCodes  <- c(1, 2, 3, 6)
+kBloodTypeDistribution <- c(50, 30, 15, 5) / 100
+get.blood.code.prob <- function(blood.code) {
+  CHECK_MEMBER(blood.code, kBloodCodes, "Checking correct blood code")
+  return(sapply(blood.code, function(i) kBloodTypeDistribution[which(kBloodCodes == i)]))
 }
-
 #   From type (e.g. "O") to numeric code
-as.blood.code <- function(b.type) {
-  if(is.numeric(b.type)) return(b.type)
-  if(! is.vector(b.type))
-    return(Blood.Codes[ which(Blood.Types==b.type)])
-  
-  return( sapply(1:length(b.type), function(j) Blood.Codes[ which(Blood.Types==b.type[j])]) )
+as.blood.code <- function(blood.type) {
+  CHECK_MEMBER(blood.type, kBloodTypes)
+  sapply(blood.type, function(bt) as.vector(kBloodCodes[which(kBloodTypes==bt)]))
 }
-as.blood.type <- function(b.code) {
-  i = which(Blood.Codes==b.code)
-  return(Blood.Types[i])
+as.blood.type <- function(blood.code) {
+  CHECK_MEMBER(blood.code, kBloodCodes)
+  sapply(blood.code,
+         function(bc) as.vector(kBloodTypes[which(kBloodCodes==bc)]))
 }
+kUniformPRA <- 0.2
+kNonUniformPRA <- c(0.05, 0.45, 0.9)
+kNonUniformPRADistribution <- c(0.7, 0.2, 0.1)
+kPairTypes <- c("R" ,"U", "O", "S")
+kPairTypeColors <- list(R="yellow", U="gray", O="green", S="blue")
+# PAIRS object
+# kPairs = 16 x 7 matrix:  Basic structure
+# pc  donor  patient prob blood-type compatible     str  pair.type
+# 1    1      1      0.25      1                   O-O     S
+# 2    2      1      0.15      0                   A-O     U
+#                 ...
+kPairs <- expand.grid(donor=kBloodCodes, patient=kBloodCodes)
+kPairs <- cbind(kPairs,
+                     prob=apply(kPairs, 1, 
+                                function(x) prod(kBloodTypeDistribution[which(kBloodCodes==x[1:2])])))
+kPairs$prob <- as.vector(apply(
+    apply(subset(kPairs, select=c(donor, patient)), 2, get.blood.code.prob),
+    1, prod))
+kPairs$blood.compatible <- as.numeric(with(kPairs, patient %% donor == 0))
+kPairs$symmetric.compatible <- as.numeric(with(kPairs, donor %% patient == 0))
+kPairs <- cbind(kPairs, desc=
+                  apply(kPairs, 1, function(x) paste(as.blood.type(x[1:2]), collapse="-")))
+kPairs$pair.type <- kPairTypes[1+ with(kPairs, 2 *blood.compatible + symmetric.compatible)]
+kPairs$symmetric.compatible <- NULL
+kPairs<- cbind(pc=1:16, kPairs)
+kPairs$pair.color <- laply(kPairs$pair.type, function(i) kPairTypeColors[[i]])
 
-#  Sample blood type.
-rblood <- function(n, probs=c(50,30,15,5)) {
-  return( sample( Blood.Types, size=n, replace=T, prob=probs))
-}
-
-## Sample a PRA value. For now this is constant to 0.2
 rpra <- function(n, is.uniform=T) {
+  ## Sample a PRA value. Uniform returns the same constant value (~0.2)
   if(is.uniform)
     return(rep(kUniformPRA, n))
-  non.uniform.vals = c(0.05, 0.45, 0.9)
-  return(sample(non.uniform.vals, size=n, replace=T, prob=c(0.7, 0.2, 0.1)))
+  return(sample(kNonUniformPRA, size=n,
+                replace=T, prob=kNonUniformPRADistribution))
 }
 
-## The type as overdemanded (O), under-demanded (U), reciprocal (R) and 
-## self-demanded (S)
-pair.type <- function(pair) {
-  bp = as.blood.code(pair$patient)
-  bd = as.blood.code(pair$donor)
-  b = (bp %% bd == 0)
-  if(b) {
-    if(bp==bd) return("S")
-    return("O")
-  } else {
-    if(bp==2 && bd==3) return("R")
-    if(bp==3 && bd==2) return("R")
-    return("U")
-  }
-}
-
-## Returns the color of the pair
-## Used for plotting.
-pair.color <- function(pair) {
-  type= pair.type(pair)
-  if(type=="U") return("gray")
-  if(type=="O") return("green")
-  if(type=="R") return("yellow")
-  if(type=="S") return("cyan")
-}
-
-pair.self.compatible <- function(pair) {
-  ## 1. Donor can donate to patient?
-  b = (as.blood.code(pair$patient) %% as.blood.code(pair$donor) == 0)
-  ## 2. Crossmatch avoided?
-  not.cross = runif(1) >  pair$pra
-  ## return TRUE if blood type compatible AND no crossmatch occured
-  return(b && not.cross)
-}
-pairs.compatible <- function(pair1, pair2) {
-  not.cross = (runif(1) > pair1$pra) && (runif(1) > pair2$pra)
-  if(! not.cross) return(F)
-  ## Check if cross blood-type compatible
-  b1 = (as.blood.code(pair1$patient) %% as.blood.code(pair2$donor) == 0)
-  if(! b1) return(F)
-  b2 = (as.blood.code(pair2$patient) %% as.blood.code(pair1$donor) == 0)
-  if(! b2) return(F)
-  ## Check if no crossmatch occurs
-  return(T)
-}
-
-## Pair code is from 1 to 16
-decode = function(pair.code) {
-  i = pair.code
-  pat = ifelse(i %% 4==0, 4, i%%4); 
-  donor = 1+(i-pat)/4;
-  return(list(donor=donor, patient=pat))
-}
-## Given O-A   compute the PC = pair code
-pair.code = function(pair) {
-  d = which(Blood.Types==pair$donor)
-  p = which(Blood.Types==pair$patient)
-  return( (d-1) * 4  + p)
-}
-compatible.patients <- function(donor.code) {
-  x = c()
-  if(donor.code==1) x = c(1,1,1,1)
-  if(donor.code==2 )x = c(0,1,0,1)
-  if(donor.code==3) x = c(0,0,1,1)
-  if(donor.code==4) x = c(0,0,0,1)
-  
-  return(  rep(x, 4) )
-}
-compatible.donors <- function(pat.code) {
-  x = c()
-  if(pat.code==1) x = c(rep(1,4), rep(0, 12))
-  if(pat.code==2) x = c(rep(1,8), rep(0, 8))
-  if(pat.code==3) x = c(rep(1,4), rep(0,4), rep(1,4), rep(0,4))
-  if(pat.code==4) x = rep(1,16)
-  return(x)
-}
-##  returns the codes that are b-compatible with the pair.
-compatible.codes <- function(pair1) {
-  dec = decode(pair1)
-  mask1 = compatible.patients(dec$donor)
-  #print(mask1)
-  
-  mask2 = compatible.donors(dec$patient)
-  #print(mask2)
-  return( which(mask1 * mask2==1) )
-}
-
-##
-##  Samples a binary matrix, based on probabilities of prob.matrix
-rbin.matrix<- function(prob.matrix) {
-  n = nrow(prob.matrix)
-  a.vec = as.vector(prob.matrix)
-  y = rbinom(length(a.vec), size=1, prob=a.vec)
-  
-  rm(a.vec)    
-  ret.matrix = matrix(y, nrow=n)
-  rm(y)
-  #gc()
-  
-  return(ret.matrix)
-}
-
-##  Samples P = binary cross-match matrix
-## Can have 1 or 2 hospitals. If same we need to treat the diagonal elements differently.
-## If equal to 1, then they can self match.
-rpra.matrix = function(pra.probs1, pra.probs2, same.hospital=T,
-                       symmetric=T, verbose=F) {
-  
-  Us1 = 1-pra.probs1
-  Us2 = 1-pra.probs2
-  ## This   n1 x n2  for n1 pairs of H1 and n2 pairs of H2 (n x n) if only one hospital
-  # Prob(i and j compatible) = (1-pj) * (1-pi)
-  pras.matrix = Us1 %*% t(Us2)
-  if(same.hospital && prod(pra.probs1==pra.probs2)==0)
-    stop("Error. Should give same PRAs when using same hospital. In lib.R")
-  
-  P = rbin.matrix(pras.matrix)
-  if(length(pra.probs1)==1) return(P)
-  
-  if (symmetric) {
-    P = lower.tri(P, diag=T) * P
-    P = ceiling( (P+t(P))/2)
-  }
-  if(same.hospital)
-    diag(P) <- 0
-  rm(list=c("pras.matrix", "Us1", "Us2"))
-  return( P )
-}
-
-get.bin.blood.matrix <- function(pair.codes, verbose=F) {
-  # Returns B = binary blood-type compatibility matrix
+rpairs <- function(n, pair.ids,
+                   uniform.pra,
+                   hospital.id=1,
+                   blood.type.distr=kBloodTypeDistribution) {
+  # Samples pairs for a kidney-exchange.
   # 
-  # Args: pair.codes = vector of pair codes 
-  #
-  #
-  n = length(pair.codes)
-  
-  if(verbose) {
-    print("Sampled pair codes")
-    print(pair.codes)
-  }
-  ### Sample the binary blood-type compatibility matrix.
-  pair.ids = 1:n
-  B = matrix(0, nrow=n, ncol=n)
-  cursor = 1
-  dat = as.data.frame(table(pair.codes))
-  if(verbose)
-    print(dat)
-  for(row.i in 1:nrow(dat)) {
-    #  1.  get one pair code  Y, e.g. Y = 7  (from 1 to 16)
-    p.code = as.numeric(as.vector(dat$pair.codes))[row.i]
-    # 2.  index which are = Y
-    i.range = which(pair.codes==p.code)
-    # 3. Codes of nodes who are compatible with Y
-    compat.vec = compatible.codes(p.code)
-    # 4. index of sampled pair codes = compatibile ones
-    j = which(pair.codes %in% compat.vec)
-    
-    if(verbose) {
-      print(sprintf("Pair code = %d", p.code))
-      print(i.range)
-      print("Compatible vector")
-      print(compat.vec)
-      print("Compatible pairs")
-      print(j)
-      
-    }
-    # 5.  Set those edges equal to 1
-    B[i.range, j] = 1
-  }
-  # cleanup
-  rm(pair.codes)
-  rm(pair.ids)
-  return(B)
-}
-
-# T,F  whether this pair is self-blood-type compatible.
-self.matched.pair = function(pair.code) {
-  return(pair.code %in% compatible.codes(pair.code))
-}
-
-##  For every pair code (PC) compute the probability based on blood-types.
-get.pc.probs = function(blood.type.distr) {
-  bd = blood.type.distr
-  return(  sapply(Pair.Codes, function(pc) { pair = pair.code.to.pair(pc) ;
-                                             bd[[pair$patient]] * bd[[pair$donor]] }) )
-}
-## Samples pairs and their PRAs
-rpairs <- function(n, uniform.pra, 
-                   blood.type.distr,
-                   verbose=F) {
-  out.codes= c()
-  out.pras= c()
-  bd = blood.type.distr
-  
-  ## Find probability for every pair.
-  ## e.g. [0.1,  0.05, ....]  for all 16 pair codes.
-  pair.probs = get.pc.probs(blood.type.distr)
-  
-  while(length(out.codes)<n) {
-    no.samples =  n+100
+  # Args:
+  #   n = #pairs to sample
+  #   uniform.pra = T if PRA=constant or F if PRA is to be drawn from distribution.
+  #   blood.type.distr = the blood-type distribution to use.
+  # Returns:
+  #   A <pairs> object. Recall this is "PairCodes" + PRAs  + hospital info 
+  sample.pairs <- empty.pairs()
+  sample.pras = c()
+  while(nrow(sample.pairs) < n) {
+    no.samples =  n + 100
     ## Sample the pair codes.
-    pair.codes = sample(Pair.Codes, size= no.samples, replace=T, prob=pair.probs)
+    pair.codes = sample(kPairs$pc, size=no.samples, replace=T, prob=kPairs$prob)
     ## Sample their PRAs
-    pras =  rpra(no.samples, is.uniform= uniform.pra)
-    
-    ## Pair-internal crossmatch
-    no.cross = rbinom( no.samples, size=1, prob=1-pras)
+    pras =  rpra(no.samples, is.uniform=uniform.pra)
+    ## Pair-internal PRA compatibilities.
+    pra.compatible = rbinom(no.samples, size=1, prob=1-pras)
     ##  Pair-internal blood-type compatibility.
-    b = as.numeric( sapply(pair.codes, function(i) self.matched.pair(i)) )
-    j = which( b * no.cross==0)
-    if(length(j)>0)
-    {
-      out.codes = c(out.codes, pair.codes[j])
-      out.pras = c(out.pras, pras[j])
+    blood.compatible = kPairs[pair.codes, ]$blood.compatible
+    # enter the pool only if blood incompatible, or pra incompatible.
+    enter.pool = which(blood.compatible * pra.compatible == 0)
+    if(length(enter.pool) > 0) {
+      sample.pairs = rbind(sample.pairs, kPairs[pair.codes[enter.pool], ])
+      sample.pras = c(sample.pras, pras[enter.pool])
     }
   }
-  shuffled = sample(1:length(out.codes), size=n, replace=F)
-  return( list(codes=out.codes[shuffled], pras=out.pras[shuffled]))
+  CHECK_EQ(length(sample.pras), nrow(sample.pairs), "#Sampled PRAs=#pairs")
+  subset.ids <- sample(nrow(sample.pairs), size=n, replace=F)
+  sample.pairs = sample.pairs[subset.ids, ]
+  rownames(sample.pairs) <- 1:nrow(sample.pairs)
+  sample.pairs$hospital = c(sample.pairs$hospital, rep(hospital.id, n))
+  sample.pairs$pra = sample.pras[subset.ids]
+  sample.pairs$pair.id <- pair.ids
+  return(sample.pairs)
 }
 
-
-## Converts a pair code to a pair
-pair.code.to.pair <- function(pair.code) {
-  dec=  decode(pair.code)
-  return(list(donor= Blood.Types[dec$donor], patient=Blood.Types[dec$patient]))
+# RKE definitions
+empty.rke <- function() {
+  obj = list(pairs=empty.pairs(),
+             compatibility=data.frame(),
+             A=matrix(0, nrow=0, ncol=0))
+  class(obj) <- "rke"
+  return(obj)
 }
-to.rke <- function(new.rke) {
-  rke = list(pairs= list(), graph=graph() )
-  # 1. Set the graph
-  rke$graph = graph.adjacency(A=new.rke$A)
-  
-  # 2. Set the pairs.
-  for(i in 1:length(new.rke$pair.codes)) {
-    pair.code = new.rke$pair.codes[i]
-    pair.pra = new.rke$pras[i]
-    
-    i = length(rke$pairs)+1
-    pair = pair.code.to.pair(pair.code)
-    rke$pairs[[i]] = list(donor=pair$donor, 
-                          patient=pair$patient, 
-                          pra=pair.pra,
-                          type=pair.type(pair))
-    
-  }
+empty.pairs <- function() subset(kPairs, desc=="non.exists")
+empty.edges <- function(size) {
+  empty.data = rep(NA, size)
+  obj = data.frame(
+    pair.id1=empty.data, 
+    pair.id2=empty.data,
+    blood.compatible=empty.data,
+    pra.compatible=empty.data,
+    self.loop=empty.data,
+    can.donate=empty.data)
+}
+
+CHECK_rke <- function(rke) {
+  CHECK_MEMBER(c("pairs", "edges", "A"), names(rke), "Match RKE fields.")
+  CHECK_EQ(nrow(rke$pairs), nrow(rke$A))
+  CHECK_MEMBER(as.vector(rke$A), c(0,1), msg="Aij in {0,1}")  # A is binary adjacency matrix.
+  CHECK_SETEQ(diag(rke$A), c(0))  # no self-loops
+  CHECK_INTERVAL(rke$pairs$prob, min=0, max=1, "Correct probabilities")
+  CHECK_EQ(length(unique(rke$pairs$pair.id)), nrow(rke$A), "Pairs should have unique ids")
+  CHECK_EQ(sum(rke$A), sum(rke$edges$can.donate),
+           "Equal #edges in A and EDGES structs.")
+  CHECK_pairs(rke$pairs)
+  CHECK_edges(rke$edges)
+}
+
+CHECK_pairs <- function(pairs) {
+  CHECK_MEMBER(c("pair.id", "donor", "patient", "pc", "hospital"), names(pairs))
+  CHECK_MEMBER(pairs$pair.type, kPairTypes, "Correct pair types.")
+  CHECK_TRUE(all(!duplicated(pairs$pair.id)), "No duplicate pair ids.")
+}
+
+CHECK_edges <- function(edges) {
+  CHECK_MEMBER(c("pair.id1", "pair.id2", "can.donate"), y=names(edges))
+  num.edges1 = length(unique(edges$pair.id1))
+  CHECK_EQ(nrow(edges), num.edges1^2, msg="Cover all (pair1, pair2) combinations")
+  CHECK_SETEQ(edges$pair.id1, edges$pair.id2, msg="Set(pairs1)=Set(pairs2)")
+}
+
+sample.pairs.edges <- function(pairs, verbose=F) {
+  # Given pairs, it will compute cross-compatilibities, based on blood-types
+  # and cross-match PRA compatibilities.
+  # Algorithm goes as follows:
+  #   find all combinations of pairs (pair1, pair2)
+  #   check whether donor1 -> patient2 (blood compatibility)
+  #   check whether patient2 <- donor1 (PRA compatibility)
+  num.pairs = nrow(pairs)
+  # id1 = 1, 2, 4,..n, 1,2,3,...n, ...
+  # id2 = 1,1,1,1,..,2,2,2,2....
+  edges.row = data.frame(id1=rep(c(1:num.pairs), num.pairs),
+                         id2=as.vector(sapply(1:num.pairs, function(i) rep(i, num.pairs))))
+  num.dyads <- nrow(edges.row)
+  if (verbose) loginfo("Grid expanded.")
+  edges = empty.edges(num.dyads)
+  edges$pair.id1 = pairs$pair.id[edges.row$id1]
+  edges$pair.id2 = pairs$pair.id[edges.row$id2]
+  if (verbose) loginfo("Grid for id rows expanded.")
+  edges$d1 = pairs$donor[edges.row$id1]  # donor of pair 1
+  edges$p2 = pairs$patient[edges.row$id2]  # patient of pair 2
+  edges$pra2 = pairs$pra[edges.row$id2]  # PRA of patient of 2
+  rm(edges.row)
+  if (verbose) loginfo("PRA computed.")
+  # whether donor1 -> patient2 in terms of blood-type
+  edges$blood.compatible = with(edges, as.numeric(p2 %% d1==0))
+  if (verbose) loginfo("Blood-type compatibility computed.")
+  # whether donor1 -> patient2 in terms of PRA
+  edges$pra.compatible = rbinom(num.dyads, size=1, prob=(1-edges$pra2))
+  edges$self.loop = as.numeric(edges$pair.id1 == edges$pair.id2)
+  edges$can.donate = edges$blood.compatible * 
+                     edges$pra.compatible * 
+                     (1-edges$self.loop)
+  rownames(edges) <- 1:num.dyads
+  if (verbose) loginfo("PRA compatilibity computed.")
+  #z = subset(z, id1 != id2)
+  for (f in c("d1", "p2", "pra2"))
+    edges[[f]] <- NULL
+  return(edges)
+}
+
+map.edges.A <- function(edges) {
+  CHECK_edges(edges)
+  num.pairs = length(unique(edges$pair.id1))
+  A = matrix(edges$can.donate, nrow=num.pairs)
+  CHECK_EQ(nrow(A), ncol(A), "Adj matrix A is square")
+  CHECK_SETEQ(diag(A), c(0), msg("No self-loops"))
+  rownames(A) = edges$pair.id1[1:num.pairs]
+  colnames(A) = edges$pair.id1[1:num.pairs]
+  return(A)
+}
+
+rrke <- function(n, pair.ids=1:n,
+                 hospital.id=1,
+                 uniform.pra=T,
+                 blood.type.distr=kBloodTypeDistribution,
+                 verbose=F) {
+  # Sample a RKE object
+  #
+  # Args: n = # pairs in the pool.
+  #       hospital.id = which hospital they belong to
+  #       uniform.pra = use uniform PRA or not
+  #       blood.type.distr = distribution over blood types.
+  rke = empty.rke()
+  if(n==0) return(rke)
+  CHECK_EQ(length(pair.ids), n, msg="#pair ids = n")
+  # 1. Sample the pairss
+  pairs = rpairs(n, hospital.id=hospital.id, uniform.pra=uniform.pra,
+                     blood.type.distr=blood.type.distr, pair.ids=pair.ids)
+  if (verbose) loginfo("Pairs were sampled.")
+  edges = sample.pairs.edges(pairs)
+  # Create the RKE object.
+  rke = empty.rke()
+  rke$pairs = pairs
+  # remove self-loops
+  rke$edges = edges # subset(as.data.frame(edges), pair.id1 != pair.id2)
+  # number edges. These will be edge ids.
+  rke$A = map.edges.A(rke$edges)
   return(rke)
 }
 
+append.rke <- function(rke1, rke2) {
+  CHECK_rke(rke1)
+  CHECK_rke(rke2)
+  CHECK_TRUE(all(!is.element(rke1$pairs$pair.id, rke$pairs$pair.id)),
+                 msg="RKEs should not have the same pairs.")
+}
 
 mu.thm = function(n) {
   0.556 * n  -0.338 * sqrt(n)- 2
 }
-
-## This fixes the super-annoying R's sample(c(4), 1) problem --- this could sample any number from 1-4 !!!
-uniform.sample = function(x) {
-  if(length(x)==0)
-    stop("Sample space is empty")
-  if(length(x)==1)
-    return(x)
-  return(sample(x, 1, replace=F))
-}
-## Avoid some annoying R warnings.
-my.sort =function(x) {
-  if(length(x)==0) return(c())
-  return(sort(x))
-}
-rke.to.igraph = function(rke) {
-  library(igraph) 
-  A = rke$P * rke$B
-  return(graph.adjacency(A, mode="undirected"))
-}
-bootstrap.mean = function(x) sd(replicate(1000, { mean(sample(x, replace=T)) }))
-
-pair.to.str = function(pair, more) sprintf("%s-%s%s", pair$donor, pair$patient, more)
-##  Add plot functions
-plot.rke = function(rke) {
-  library(igraph)
-  g = rke.to.igraph(rke)
-  for(i in 1:get.size(rke)) {
-    pair = pair.code.to.pair(rke$pc[i])
-    g = set.vertex.attribute(g, name="color", index=i, value=pair.color(pair=pair))
-    more = ""
-    if("hospital" %in% names(rke) && length(rke$hospital)>0)
-      more = sprintf("/ H%d", rke$hospital[i])
-    
-    label  = pair.to.str(pair, "")
-    if(nchar(more)>0)
-      label  = pair.to.str(pair, more)
-    g = set.vertex.attribute(g, name="label", index=i, value=label)
-    
-  }
-  #par(mar=c(0,0,0,0))
-  plot.igraph(g,layout=layout.auto, edge.label= 1:ecount(g) )
-}
-pair.codes.per.type=  function(type)
-  which( sapply(Pair.Codes, function(i) pair.type(pair.code.to.pair(i)))==type)
-
