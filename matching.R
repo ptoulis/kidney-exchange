@@ -14,6 +14,7 @@ empty.match.result <- function() {
 max.matching <- function(rke, regular.matching=F,
                          IR.constraints=list(),
                          timeLimit=120) {
+  CHECK_rke(rke)
   num.pairs = rke.size(rke)
   num.edges = length(rke.edge.ids(rke))
   if (num.edges == 0) {

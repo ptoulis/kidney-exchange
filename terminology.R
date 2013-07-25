@@ -22,7 +22,7 @@ basicConfig()
 #       pair dyads, and compatibility relationships from pair1->pair2.
 #       pair.id1, pair.id2, blood.compatible, pra.compatible, can.donate
 #         2          5          1                 1               1
-#         5          8          1                 0               0
+#         5          8          1                 1               0
 #       This means that pair 2 can donate to 5 but 5 cannot donate to 8 because
 #       patient of 8 is PRA-sensitive to donor of 5.
 # (4) An RKE ("random kidney exchange") defines a multi-hospital exchange pool.
@@ -156,7 +156,7 @@ CHECK_rke <- function(rke) {
 }
 
 CHECK_pairs <- function(pairs) {
-  warning("kPairs does not pass this test. Confusing.")
+  warning("kPairs does not pass this test. Fix it.")
   CHECK_MEMBER(c("pair.id", "donor", "patient", "pc", "hospital"), names(pairs))
   CHECK_MEMBER(pairs$pair.type, kPairTypes, "Correct pair types.")
   CHECK_TRUE(all(!duplicated(pairs$pair.id)), "No duplicate pair ids.")
@@ -166,7 +166,7 @@ CHECK_edges <- function(edges) {
   CHECK_MEMBER(c("pair.id1", "pair.id2", "can.donate"), y=names(edges))
   CHECK_TRUE(all(!duplicated(edges$edge.id)), "No duplicate edge ids.")
   num.pairs = length(unique(edges$pair.id1))
-  CHECK_TRUE(all(edges$can.donate == 1), msg="Only edges with donate=1 should be kept")
+  # CHECK_TRUE(all(edges$can.donate == 1), msg="Only edges with donate=1 should be kept")
   warning("CHECK_edges not complete.")
 }
 
@@ -177,6 +177,9 @@ generate.pairs.edges <- function(pairs, keep.edges, verbose=F) {
   #   find all combinations of pairs (pair1, pair2)
   #   check whether donor1 -> patient2 (blood compatibility)
   #   check whether patient2 <- donor1 (PRA compatibility)
+  # This function will sample edges according to blood-type and PRA compatbilities
+  # but will also respect the "keep.edges" (<edges> object)
+  # i.e. if i->j in keep edges then i->j also in the new edges.
   num.pairs = nrow(pairs)
   # id1 = 1, 2, 4,..n, 1,2,3,...n, ...
   # id2 = 1,1,1,1,..,2,2,2,2....
@@ -245,9 +248,11 @@ map.edges.adjacency <- function(edges, all.pair.ids) {
 }
 
 update.rke.new.pairs <- function(rke, keep.edges) {
-  # remove self-loops
+  # It will generate edges for this RKE object but will have
+  # the "keep.edges" fixed. Should be called when "pairs" in the RKE object
+  # are changed (e.g. when removing pairs, see remove.pairs in rke.R)
   edges = generate.pairs.edges(rke$pairs, keep.edges=keep.edges)
-  rke$edges = subset(edges, can.donate == 1)
+  rke$edges = edges#subset(edges, can.donate == 1)
   # number edges. These will be edge ids.
   rke$A = map.edges.adjacency(rke$edges, rke$pairs$pair.id)
   return (rke)

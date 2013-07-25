@@ -61,7 +61,7 @@ rke.keep.pairs = function(rke, pair.ids) {
   return(rke.remove.pairs(rke, rm.pairs))
 }
 
-rke.edge.ids = function(rke) rke$edges$edge.id
+rke.edge.ids = function(rke) subset(rke$edges, can.donate==1, select=c(edge.id))
 rke.pair.ids = function(rke) rke$pairs$pair.id
 
 rke.2way.cycles <- function(rke) {
@@ -127,9 +127,11 @@ rke.3way.cycles <- function(rke) {
 
 plot.rke = function(rke, vertex.size=20) {
   library(igraph)
+  CHECK_rke(rke)
   g = graph.adjacency(rke$A, mode="directed")
   V(g)$color = rke$pairs$pair.color
   V(g)$label = str_c("H", rke$pairs$hospital, "#", rke$pairs$desc, rke$pairs$pair.id)
   par(mar=c(0,0,0,0))
+  par(mfrow=c(1,1))
   plot.igraph(g,layout=layout.auto, vertex.size=vertex.size)
 }
