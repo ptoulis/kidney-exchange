@@ -1,59 +1,31 @@
-## Matching functions. 
-##########################################################################
-##   Maximum matching ##
-## Returns { gurobi =>     { objvalue,  x = [0,1,...] },
-##          matching =>  {matched.ids, matched.edges...} 
-## x_i = 1  only if  edge i  is included in the maximum matching.
-## Shuffling the edges eliminates bias in edge matching.
+# TODO(ptoulis): Better documentation here.
+# TODO(ptoulis): Implementation for directed graph.
 library(gurobi)
-##  Helper function to max.matching()
-get.matched.ids <- function(model.A, edge.ids) {
-  ids = c()
-  for(edge in edge.ids) {
-    edge.ids = which(model.A[, edge]==1)
-    ids = c(ids, edge.ids)
-  }
-  return(unique(ids))
+
+empty.match.result <- function() {
+  return(list(matched.edges=c(),
+              matched.pairs=c(),
+              utility=0,
+              not.matched.pairs=c()))
 }
 
 ##   Maximum  2min / maximum matching.
 ##  Can return NA if time out.
-max.matching <- function(rke, 
-                         regular.matching=F,
+max.matching <- function(rke, regular.matching=F,
                          IR.constraints=list(),
-                         shuffle.edges=T,
-                         remove.edges=c(),
                          timeLimit=120) {
-  
-  #last.input = list(rke=rke, remove.edges=remove.edges, ir.constraints=IR.constraints)
-  #save(last.input, file="debug/last-ip-input.Rdata")
-  ## Size of RKE  (# pairs)
-  n = get.size(rke)
-  ###   1.   Get the model matrix. 
-  model.A = get.model.A(rke)
-  ## Total no. of edges
-  K = ncol(model.A) 
-  
-  get.empty.result <- function() {
-    return(list(gurobi=list(objval=0, x=c()),
-                matching=list(matched.edges=c(),
-                              matched.ids=c(),
-                              utility=0,
-                              not.matched.ids=c())))
+  num.pairs = rke.size(rke)
+  num.edges = length(rke.edge.ids(rke))
+  if (num.edges == 0) {
+    warning("Empty RKE object")
+    return (empty.match.result())
   }
-  if(K==0) {
-    #loginfo("No edges. Max matching is empty");
-    return( get.empty.result() )
-  }
-  
-  ## Need to create  A matrix :  Aij = 1 iff edge j is incident on node i
-  
-  ###   Define Gurobi model 
-  ##  The Gurobi defines the problem as: 
-  ##   A * x   <sense>   rhs   ,  sense in {"<=", ">="}
-  ##  First n constraints = RKE nodes constraints
-  ##  1.  No node should be double counted in matching
-  model.obj.coefficients = rep(1,K)
+  # Define Gurobi model 
+  # Gurobi defines the problem as: 
+  # A * x   <sense>   rhs   ,  sense in {"<=", ">="}
+  # First n constraints = RKE nodes constraints
+  # 1.  No node should be double counted in matching
+  model.coeffs = rep(1, )
   model.rhs        <- rep(1, n)
   model.sense      <- rep("<=",n)
   ## Required regular matching. Put more weights on O-U edges (almost-regular)
@@ -73,7 +45,7 @@ max.matching <- function(rke,
     rm.ids = which(rowSums(A2)==0)
     ## check if the incident pairs are the entire set of pairs.
     if(length(rm.ids)== n )
-      return(get.empty.result() )
+      return(get.empty.result())
     ## We know that the matching will be non-empty
     original.ids = 1:n
     original.edges = 1:K

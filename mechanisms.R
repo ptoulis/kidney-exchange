@@ -8,7 +8,6 @@
 source("rke.R")
 source("matching.R")
 
-
 ## Sampling a kpd = { rke.list, reported.rke.list, ...}
 kpd.create <- function(rke.list, rke.all, strategy.str) {
   m = length(rke.list)
@@ -51,7 +50,6 @@ Run.Mechanism = function(kpd, mech) {
   mech.out.ids = do.call(mech, args=list(rke.list=reported.rke.list, 
                                          rke.all = reported.rke.all) )
   ## Sometimes we get a list instead of a vector.
-  ##Not sure why. R is such a bad language
   mech.out.ids = as.numeric(mech.out.ids)
   
   ## 4. Compute utility from mechanism
