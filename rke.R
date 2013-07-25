@@ -3,6 +3,7 @@
 ## Jan 2013, new version of rke.R
 rm(list=ls())
 source("terminology.R")
+library(plyr)
 
 rrke.many <- function(m=3, n=60, uniform.pra, verbose=F) {
   # Create an RKE objects with many hospitals.
@@ -72,8 +73,8 @@ rke.2way.cycles <- function(rke) {
   cycles.two = apply(which((A * t(A)) == 1, arr.ind=T), 2, function(i) pair.ids[i])
   if (length(cycles.two) == 0)
     return(matrix(0, nrow=0, ncol=2))
-  x = as.matrix(apply(cycles.two, 1, function(r) r[2] > r[1]), ncol=2)
-  return(cycles.two[which(x), ])
+  x = apply(cycles.two, 1, function(r) r[2] > r[1])
+  return(matrix(cycles.two[which(x), ], ncol=2))
 }
 
 rke.3way.cycles <- function(rke) {
@@ -119,12 +120,25 @@ rke.3way.cycles <- function(rke) {
   # Take only those cycles where the ids only increase or decrease
   # i.e. 3,2,1  or 1,2,3
   # In 3-way cycles one will always exist
+  if (nrow(cycles.3way) == 0)
+    return(cycles.3way)
   x = t(apply(cycles.3way, 1, diff))
   x = apply(x, 1, function(r) all(r < 0) || all(r > 0))
-  ret = cycles.3way[which(x), ]
+  ret = matrix(cycles.3way[which(x), ], ncol=3)
   # map back to pair ids.
   pair.ids = as.numeric(rownames(A))
   return (apply(ret, 2, function(i) pair.ids[i]))
+}
+
+rke.edge.id <- function(rke, id1, id2) {
+  # Returns the id for the edge id1->id2
+  # Stops if edge does not exist
+  result = subset(rke$edges, can.donate==1 & pair.id1==id1 & pair.id2==id2)
+  if (nrow(result) == 1)
+    return(result$edge.id)
+  if (nrow(result) == 0)
+    stop(sprintf("No edge exists for %d->%d", id1, id2))
+  stop(sprintf("Duplicate edge for id1=%d, id2=%d", id1, id2))
 }
 
 plot.rke = function(rke, vertex.size=20) {
@@ -132,6 +146,8 @@ plot.rke = function(rke, vertex.size=20) {
   CHECK_rke(rke)
   g = graph.adjacency(rke$A, mode="directed")
   V(g)$color = rke$pairs$pair.color
+  # igraph orders edges by source node.
+  E(g)$color = arrange(subset(rke$edges, can.donate==1), pair.id1)$edge.color
   V(g)$label = str_c("H", rke$pairs$hospital, "#", rke$pairs$desc, rke$pairs$pair.id)
   par(mar=c(0,0,0,0))
   par(mfrow=c(1,1))

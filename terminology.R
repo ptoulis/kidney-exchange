@@ -139,7 +139,8 @@ empty.edges <- function(size) {
     blood.compatible=empty.data,
     pra.compatible=empty.data,
     self.loop=empty.data,
-    can.donate=empty.data)
+    can.donate=empty.data,
+    edge.color=empty.data)
 }
 
 CHECK_rke <- function(rke) {
@@ -209,6 +210,7 @@ generate.pairs.edges <- function(pairs, keep.edges, verbose=F) {
   #apply(subset(edges, select=c(pair.id1, pair.id2)), 1, function(x) paste(x, collapse=":"))
   if (verbose) loginfo("Edge-id computed..")
   edges$can.donate = with(edges, blood.compatible * pra.compatible * (1-self.loop))
+  edges$edge.color <- rep("black", nrow(edges))
   #rownames(edges) <- 1:num.dyads
   if (verbose) loginfo("Donation variable computed")
   rm(list=c("tmp.d1", "tmp.p2", "tmp.pra2"))

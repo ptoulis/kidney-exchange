@@ -26,6 +26,16 @@ CHECK_SETEQ <- function(x, y, msg="n/a") {
     stop.now(x,y, c("Sets not equal", msg))
 }
 
+CHECK_DISJOINT <- function(x, y, msg="n/a") {
+  if(length(intersect(x, y)) > 0)
+    stop.now(x, y, c("Sets are not disjoint", msg))
+}
+
+CHECK_UNIQUE <- function(x, msg="n/a") {
+  if (any(duplicated(x)))
+    stop.now(x, "na", c("Duplicates exist", msg))
+}
+
 CHECK_MEMBER <- function(element, y, msg="n/a") {
   if (!all(is.element(element, y))) {
     stop.now(element, y, sprintf("Element not member of list : %s", msg))

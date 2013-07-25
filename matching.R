@@ -4,12 +4,11 @@ library(gurobi)
 
 empty.match.result <- function() {
   return(list(matched.edges=c(),
-              matched.pairs=c(),
               utility=0,
               not.matched.pairs=c()))
 }
 
-map.gurobiResult <- function(gurobi.result) {
+map.gurobiResult <- function(gurobi.result, rke, cycles.2way, cycles.3way) {
   if(gurobi.result$status=="TIME_LIMIT" | gurobi.result$status=="INF_OR_UNBD") {
     warning("Time limit or infinity.")
     empty.result = get.empty.result()
@@ -17,19 +16,45 @@ map.gurobiResult <- function(gurobi.result) {
     return(empty.result)
   }
   
-  which(gurobi.result$x==1)
-  return(gurobi.result$x)
-  matched.ids = my.sort(get.matched.ids(get.model.A(rke), matched.edges) )
-  original.ids = rke.pairs(rke)
-  not.matched.ids =  my.sort(setdiff(original.ids, matched.ids)) 
+  # The convention is:  x[2-cycles, 3-cycles]
+  num.2cycles = nrow(cycles.2way)
+  matched.cycles = which(gurobi.result$x == 1)
+  cycles2.matched = matched.cycles[matched.cycles <= num.2cycles]
+  cycles3.matched = setdiff(matched.cycles, cycles2.matched) - num.2cycles
   
-  result = get.empty.result()
-  result$matching$matched.edges= matched.edges
-  result$matching$matched.ids = matched.ids###    TO -DO   count the matched. idsmatched.ids
-  result$matching$not.matched.ids = not.matched.ids
-  result$matching$utility = length(matched.ids)
-  result$matching$timeout = F
-  result$gurobi = gurobi.result
+  pairs.matched2 = as.vector(cycles.2way[cycles2.matched, ])
+  pairs.matched3 = as.vector(cycles.3way[cycles3.matched, ])
+  original.ids = rke.pair.ids(rke)
+  matched.ids = c(pairs.matched2, pairs.matched3)
+  not.matched.ids =  setdiff(original.ids, matched.ids)
+  # Checks
+  CHECK_DISJOINT(pairs.matched2, pairs.matched3, "pairs in 2-cycles != pairs in 3-cycles")
+  CHECK_UNIQUE(pairs.matched2, msg="Unique 2-cycle matches")
+  CHECK_UNIQUE(pairs.matched3, msg="Unique 3-cycle matches")
+  CHECK_MEMBER(pairs.matched2, original.ids, msg="Valid matched ids")
+  CHECK_MEMBER(pairs.matched3, original.ids, msg="Valid matched ids")
+  CHECK_EQ(length(matched.ids), 2 * length(cycles2.matched) + 3 * length(cycles3.matched))
+  # Return final result.
+  result = empty.match.result()
+  matched.edges <- c()
+  for (c2 in cycles2.matched) {
+    ids = cycles.2way[c2,]
+    edge.id1 = rke.edge.id(rke, ids[1], ids[2])
+    edge.id2 = rke.edge.id(rke, ids[2], ids[1])
+    matched.edges <- c(matched.edges, c(edge.id1, edge.id2))
+  }
+  for (c3 in cycles3.matched) {
+    ids = cycles.3way[c3,]
+    edge.id1 = rke.edge.id(rke, ids[1], ids[2])
+    edge.id2 = rke.edge.id(rke, ids[2], ids[3])
+    edge.id3 = rke.edge.id(rke, ids[3], ids[1])
+    matched.edges <- c(matched.edges, c(edge.id1, edge.id2, edge.id3))
+  }
+  result$matched.edges <- matched.edges
+  result$matched.ids = matched.ids
+  result$not.matched.ids = not.matched.ids
+  result$utility = length(matched.ids)
+  result$timeout = F
   return(result)
 }
 
@@ -69,8 +94,9 @@ max.matching <- function(rke, enable.3way=F,
   model.A2cycle <- matrix(NA, nrow=num.pairs, ncol=0)
   model.A3cycle <- matrix(NA, nrow=num.pairs, ncol=0)
   pair.ids = rke.pair.ids(rke)
-  model.A2cycle = t(sapply(pair.ids, function(i) rowSums(Cycles2way == i)))
-  if (enable.3way) 
+  if (nrow(Cycles2way) > 0)
+    model.A2cycle = t(sapply(pair.ids, function(i) rowSums(Cycles2way == i)))
+  if (enable.3way & nrow(Cycles3way) > 0) 
     model.A3cycle <- t(sapply(pair.ids, function(i) rowSums(Cycles3way == i)))
   CHECK_MEMBER(unique(model.A2cycle), c(0,1))
   CHECK_MEMBER(unique(model.A3cycle), c(0,1))
@@ -93,7 +119,10 @@ max.matching <- function(rke, enable.3way=F,
                      TimeLimit=timeLimit)
   
   gurobi.result <- gurobi(model, params.new)
-  match.out = map.gurobiResult(gurobi.result)
+  match.out = map.gurobiResult(gurobi.result, rke, Cycles2way, Cycles3way)
+  edge.index = which(rke$edges$edge.id %in% match.out$matched.edges)
+  rke$edges$edge.color[edge.index] <- rep("red", length(match.out$matched.edges))
+  plot.rke(rke)
   if(all(is.element(gurobi.result$x, c(0,1)))) {
     return(match.out)
   } else {
