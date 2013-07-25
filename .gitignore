@@ -5,4 +5,4 @@ experiments/*
 tests/*
 null.R
 .Rproj.user
-.Rproj
+*Rproj
