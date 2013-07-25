@@ -70,7 +70,9 @@ rke.2way.cycles <- function(rke) {
   A = rke$A
   pair.ids = as.numeric(rownames(A))
   cycles.two = apply(which((A * t(A)) == 1, arr.ind=T), 2, function(i) pair.ids[i])
-  x = apply(cycles.two, 1, function(r) r[2] > r[1])
+  if (length(cycles.two) == 0)
+    return(matrix(0, nrow=0, ncol=2))
+  x = as.matrix(apply(cycles.two, 1, function(r) r[2] > r[1]), ncol=2)
   return(cycles.two[which(x), ])
 }
 

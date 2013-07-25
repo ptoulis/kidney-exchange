@@ -235,10 +235,12 @@ map.edges.adjacency <- function(edges, all.pair.ids) {
   n = length(all.pair.ids)
   A <<- matrix(0, nrow=n, ncol=n)
   subset.edges = subset(edges, can.donate == 1)
+  get.pairIdIndex <- function(id) which(all.pair.ids == id)
   ddply(subset.edges, .(pair.id2),
         function(inlinks) {
-          to.id = inlinks$pair.id2[1]
-          A[inlinks$pair.id1, to.id] <<- 1
+          to.id = get.pairIdIndex(inlinks$pair.id2[1])
+          in.ids = sapply(inlinks$pair.id1, get.pairIdIndex)
+          A[in.ids, to.id] <<- 1
         })
   CHECK_SETEQ(diag(A), c(0), msg="No self-loops")
   CHECK_EQ(sum(A), sum(edges$can.donate), "A has correct #edges.")
