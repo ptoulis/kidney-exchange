@@ -28,6 +28,13 @@ basicConfig()
 # (4) An RKE ("random kidney exchange") defines a multi-hospital exchange pool.
 #     It is a LIST of a <pairs> and <edges> objects. It also contains an adjacency
 #     matrix Aij, where Aij = 1 if pair i can donate to pair j.
+# (5) An RKE pool represent the pool created by several hospital RKE's.
+#     It is defined as a list with "rke.list" having the list of the RKE's of
+#     hospitals, and "rke.all" having the aggregate of the RKEs.
+# (6) A KPD object (Kidney-Paired donations) represents a collection of two
+#     RKE pools: the "real" one that corresponds to what hospitals *have*
+#     and the "reported" one that is the pool created from the pairs
+#     that hospitals report.
 kAccuracy = 10^5
 kBloodTypes  <- c("O", "A", "B", "AB")
 kBloodCodes  <- c(1, 2, 3, 6)
@@ -171,6 +178,19 @@ CHECK_edges <- function(edges) {
   num.pairs = length(unique(edges$pair.id1))
   # CHECK_TRUE(all(edges$can.donate == 1), msg="Only edges with donate=1 should be kept")
   warning("CHECK_edges not complete.")
+}
+
+CHECK_rke.pool <- function(rke.pool) {
+  CHECK_SETEQ(names(rke.pool), c("rke.list", "rke.all"))
+  CHECK_RKE(rke.pool$rke.all)
+  CHECK_RKE(rke.pool$rke.list[[1]]])
+  warning("More tests in CHECK_rke.pool")
+}
+
+CHECK_kpd <- function(kpd) {
+  CHECK_SETEQ(names(kpd), c("reported.pool", "real.pool"))
+  CHECK_rke.pool(kpd$reported.pool)
+  CHECK_rke.pool(kpd$real.poool)
 }
 
 generate.pairs.edges <- function(pairs, keep.edges, verbose=F) {

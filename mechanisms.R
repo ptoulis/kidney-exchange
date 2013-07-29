@@ -9,7 +9,10 @@ source("rke.R")
 source("matching.R")
 
 ## Sampling a kpd = { rke.list, reported.rke.list, ...}
-kpd.create <- function(rke.list, rke.all, strategy.str) {
+kpd.create <- function(rke.pool, strategy.str) {
+  CHECK_rke.pool(rke.pool)
+  rke.list = rke.pool$rke.list
+  rke.all = rke.pool$rke.all
   m = length(rke.list)
   x = init.mechanism(rke.list, strategy.str)
   reported.rke.list = list()
@@ -40,7 +43,7 @@ kpd.create <- function(rke.list, rke.all, strategy.str) {
 
 ##  Runs a mechanism
 Run.Mechanism = function(kpd, mech) {
-  
+  CHECK_kpd(kpd)
   reported.rke.list = kpd$reported.rke.list
   reported.rke.all = kpd$reported.rke.all
   rke.list = kpd$rke.list
@@ -112,7 +115,6 @@ play.strategy <- function(rke, type) {
     hide.R= pairs.AB
     if(length(pairs.BA) < length(pairs.AB))
       hide.R = pairs.BA
-    
      ret$hide = c(hide.R)
   } else if(type== "b") {
     pairs.AB = filter.pairs.by.donor.patient(rke, "A","B")
@@ -132,9 +134,7 @@ play.strategy <- function(rke, type) {
 
 read.strategy.str = function(strategy.str) {
   strategies = strsplit(strategy.str,split="")[[1]]
-  if(length(intersect(strategies, c("t","c", "r", "b")))==0) {
-    stop("Strategies should be t,c,r, b")
-  }
+  CHECK_MEMBER(strategies, c("t","c", "r", "b"), msg="Correct strategy spec")
   return(strategies)
 }
 

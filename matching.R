@@ -1,5 +1,4 @@
-# TODO(ptoulis): Better documentation here.
-# TODO(ptoulis): Implementation for directed graph.
+# TODO(ptoulis): Documentation
 library(gurobi)
 
 empty.match.result <- function() {

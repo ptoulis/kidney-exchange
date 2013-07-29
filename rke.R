@@ -1,27 +1,28 @@
 # Panos Toulis, David C.Parkes
 # 2012, Random Graph models for Kidney Exchanges
-## Jan 2013, new version of rke.R
 rm(list=ls())
 source("terminology.R")
 library(plyr)
 
-rrke.many <- function(m=3, n=60, uniform.pra, verbose=F) {
-  # Create an RKE objects with many hospitals.
+rrke.pool <- function(m=3, n=60, uniform.pra, verbose=F) {
+  # Create a "rke pool" object.
   #
   # Args: m = #hospitals, n = #pairs
-  # Returns: RKE object
   if (m == 0 | n == 0)
     return(empty.rke())
   all.pairs = 1:(m*n)
   get.pair.ids <- function(hid) (1+(hid-1)*n):(hid*n)
   rke.all = rrke(n, pair.ids=get.pair.ids(1), uniform.pra=uniform.pra, hospital.id=1)
+  rke.list = list()
+  rke.list[[1]] = rke.all
   if (m >= 2)
     for(hospital.id in 2:m) {
       rke = rrke(n, pair.ids=get.pair.ids(hospital.id),
                  uniform.pra=uniform.pra, hospital.id=hospital.id)
-      rke.all = append.rke(rke.all, rke, verbose=verbose)
+      rke.all = rke.add(rke.all, rke, verbose=verbose)
+      rke.list[[hospital.id]] <- rke
     }
-  return(rke.all)
+  return(list(rke.list=rke.list, rke.all=rke.all))
 }
 
 ## Total number of pairs in the graph
