@@ -150,6 +150,7 @@ CHECK_rke <- function(rke) {
   CHECK_SETEQ(diag(rke$A), c(0))  # no self-loops
   CHECK_INTERVAL(rke$pairs$prob, min=0, max=1, "Correct probabilities")
   CHECK_EQ(length(unique(rke$pairs$pair.id)), nrow(rke$A), "Pairs should have unique ids")
+  CHECK_EQ(rownames(rke$A), rke$pairs$pair.id, msg="rownames A == pair.id?")
   CHECK_EQ(sum(rke$A), sum(rke$edges$can.donate),
            "Equal #edges in A and EDGES structs.")
   CHECK_pairs(rke$pairs)
@@ -161,6 +162,7 @@ CHECK_pairs <- function(pairs) {
   CHECK_MEMBER(c("pair.id", "donor", "patient", "pc", "hospital"), names(pairs))
   CHECK_MEMBER(pairs$pair.type, kPairTypes, "Correct pair types.")
   CHECK_TRUE(all(!duplicated(pairs$pair.id)), "No duplicate pair ids.")
+  CHECK_TRUE(all(pairs$pair.id > 0), msg="All pair ids should be > 0")
 }
 
 CHECK_edges <- function(edges) {

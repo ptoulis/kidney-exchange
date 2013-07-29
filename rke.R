@@ -65,16 +65,65 @@ rke.keep.pairs = function(rke, pair.ids) {
 rke.edge.ids = function(rke) subset(rke$edges, can.donate==1, select=c(edge.id))
 rke.pair.ids = function(rke) rke$pairs$pair.id
 
+rke.cycles <- function(rke, include.3way=F) {
+  # Computes 2-way (and) 3-way cycles for a specific rke object
+  #
+  # Returns:
+  # A data-frame with (type, id1, id2, id3) indicating that
+  # this is a "type"-way exchange id1->id2->id3
+  # If type=2 then id3=NA and if type=3 then it is assumed id3->id1 
+  A2 = rke.2way.cycles(rke)
+  A3 <- matrix(0, nrow=0, ncol=3)
+  if (include.3way) 
+    A3 <- rke.3way.cycles(rke)
+  out = list(type=c(), pair.id1=c(), pair.id2=c(), pair.id3=c())
+  num.2cycles <- nrow(A2)
+  num.3cycles <- nrow(A3)
+  num.all <- num.2cycles + num.3cycles
+  if (num.all > 0) {
+    out$type <- rep(2, num.2cycles)
+    out$pair.id1 <- A2[,1]
+    out$pair.id2 <- A2[,2]
+    out$pair.id3 <- rep(0, num.2cycles)
+    out$type = c(out$type, rep(3, num.3cycles))
+    out$pair.id1 <- c(out$pair.id1, A3[,1])
+    out$pair.id2 <- c(out$pair.id2, A3[,2])
+    out$pair.id3 <- c(out$pair.id3, A3[,3])
+  }
+  return (as.data.frame(out))
+}
+
+rke.cycles.membership <- function(rke.cycles) {
+  # Returns a pairs x cycles matrix that contains membership of pairs in cycles.
+  # i.e. Aij = 1 if pair i belongs in cycle j
+  # Row names *have* to be the same as the pair ids
+  # If no cycles, return an empty matrix.
+  all.pairs = rke.pair.ids(rke)
+  # return a pairs x cycles matrix
+  out = matrix(0, nrow=length(all.pairs), ncol=nrow(rke.cycles))
+  if (length(all.pairs) == 0)
+    return(out)
+  subcycles = subset(rke.cycles, select=c(pair.id1, pair.id2, pair.id3))
+  for (i in 1:length(all.pairs))
+    out[i, ] <- as.numeric(rowSums(subcycles == all.pairs[i]))
+  rownames(out) <- all.pairs
+  return(out)
+}
+
 rke.2way.cycles <- function(rke) {
   # Returns a K x 2 matrix of 2-way cycles in the rke object.
   # (K = #2-way cycles)
-  A = rke$A
-  pair.ids = as.numeric(rownames(A))
-  cycles.two = apply(which((A * t(A)) == 1, arr.ind=T), 2, function(i) pair.ids[i])
-  if (length(cycles.two) == 0)
-    return(matrix(0, nrow=0, ncol=2))
-  x = apply(cycles.two, 1, function(r) r[2] > r[1])
-  return(matrix(cycles.two[which(x), ], ncol=2))
+  CHECK_rke(rke)
+  A = rke$A  #  the adjacency matrix
+  pair.ids = rownames(A)
+  CHECK_EQ(pair.ids, rke.pair.ids(rke), msg="Pair ids from A and $pair.id should match")
+  cycles.two = apply(which((A * t(A)) == 1, arr.ind=T), 2, function(i) as.numeric(pair.ids[i]))
+  out = matrix(0, nrow=0, ncol=2)
+  if (length(cycles.two) > 0) {
+    x = apply(cycles.two, 1, function(r) r[2] > r[1])  # remove duplicates
+    out = matrix(cycles.two[which(x), ], ncol=2)
+  }
+  return(out)
 }
 
 rke.3way.cycles <- function(rke) {
@@ -130,15 +179,23 @@ rke.3way.cycles <- function(rke) {
   return (apply(ret, 2, function(i) pair.ids[i]))
 }
 
-rke.edge.id <- function(rke, id1, id2) {
-  # Returns the id for the edge id1->id2
-  # Stops if edge does not exist
-  result = subset(rke$edges, can.donate==1 & pair.id1==id1 & pair.id2==id2)
-  if (nrow(result) == 1)
-    return(result$edge.id)
-  if (nrow(result) == 0)
-    stop(sprintf("No edge exists for %d->%d", id1, id2))
-  stop(sprintf("Duplicate edge for id1=%d, id2=%d", id1, id2))
+rke.edge.by.pair <- function(rke, id.frame) {
+  # Returns the list of edge id for the ids specified.
+  #  Throws exception if not the correcto format (e.g. nuequal lengths)
+  # 
+  # Args:
+  #   id.frame = data.frame with two columns (from->to)
+  CHECK_EQ(class(id.frame), "data.frame", msg="Should be a data frame")
+  CHECK_EQ(ncol(id.frame), 2, msg="from/to ids only")
+  CHECK_MEMBER(0, id.frame, msg="No 0 pair ids")
+  colnames(id.frame) <- c("pair.id1", "pair.id2")
+  CHECK_DISJOINT(id.frame$pair.id1, id.frame$pair.id2, msg="No self-loops")
+  subedges = subset(rke$edges, can.donate == 1)
+  x1 = as.numeric(subedges$pair.id1 %in% id.frame$pair.id1)
+  x2 = as.numeric(subedges$pair.id2 %in% id.frame$pair.id2)
+  out = subedges$edge.id[which(x1 * x2 == 1)]
+  CHECK_EQ(length(out), nrow(id.frame), msg="Not missing any edges")
+  return (out)
 }
 
 plot.rke = function(rke, vertex.size=20) {
