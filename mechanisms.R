@@ -8,35 +8,42 @@
 source("rke.R")
 source("matching.R")
 
-## Sampling a kpd = { rke.list, reported.rke.list, ...}
 kpd.create <- function(rke.pool, strategy.str) {
+  # Creates a KPD from the specific pool.
+  # Proceeds as follows:
+  # (1) Plays the strategy for every hospital
+  # (2) Creates a sub-rke object by removing all pairs that hospitals hide
+  # (3) Creates a KPD object from the reported RKE pool and real RKE pool (input)
+  #
+  # Args:
+  #   rke.pool : The real rke pool object (what the hospitall really own)
+  #   strategy.str : Char vector of strategies (one of "t,b,c,r")
+  #                  Has to be same #length as #hospitals
+  # Returns:
+  #   The KPD object from the reported and real RKE pools.
   CHECK_rke.pool(rke.pool)
   rke.list = rke.pool$rke.list
   rke.all = rke.pool$rke.all
   m = length(rke.list)
-  x = init.mechanism(rke.list, strategy.str)
+  CHECK_EQ(length(strategy.str), m, msg="Correct #of strategies")
+  hospital.action = init.mechanism(rke.list, strategy.str)
   reported.rke.list = list()
   ## hidden.pairs = ids in terms of rke.all  that were hidden
-  hidden.pairs = c()
+  all.hidden.pairs = c()
   #  1b.  Populate the reported and hidden graphs.
-  for(h in 1:m) {
-    x.h = x[[h]]
-    reported.rke.list[[h]] = remove.pairs(rke.list[[h]], 
-                                          x.h$hide)
-    hidden.h = x.h$hide
-    if(length(hidden.h)>0)
-        hidden.pairs = c(hidden.pairs, 
-                           sapply(hidden.h, function(i) 
-                                            rke.all$map.fwd(i, h)))
+  for(hid in 1:m) {
+    hospitalAction = hospital.action[[hid]]
+    reported.rke.list[[h]] = remove.pairs(rke.list[[h]], hospitalAction$hide)
+    all.hidden.pairs = c(all.hidden.pairs, hospitalAction$hide)
   }
   ##  Save the "kpd" object
   ## This is important in order to compare mechanisms
   ## on the same sets of hospitals and pooled graphs.
   kpd = list()
-  kpd$reported.rke.list = reported.rke.list
-  kpd$reported.rke.all = remove.pairs(rke.all, hidden.pairs)
-  kpd$rke.list = rke.list
-  kpd$rke.all = rke.all
+  kpd$reported.pool = list(rke.list=reported.rke.list,
+                           rke.all=remove.pairs(rke.all, all.hidden.pairs))
+  kpd$real.pool = list(rke.list=rke.list, rke.all = rke.all)
+  CHECK_kpd(kpd)
   return(kpd)
 }
 
