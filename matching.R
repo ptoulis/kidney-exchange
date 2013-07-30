@@ -18,9 +18,11 @@ map.gurobiResult <- function(gurobi.result, rke, cycles) {
   
   # The convention is:  x[2-cycles, 3-cycles]
   matched.cycle.ids = which(gurobi.result$x == 1)
-  print (matched.cycle.ids)
+  # print (matched.cycle.ids)
   matched.cycles = cycles[matched.cycle.ids, ]
-  matched.ids <- c(cycles$pair.id1, cycles$pair.id2, cycles$pair.id3)
+  matched.ids <- c(matched.cycles$pair.id1,
+                   matched.cycles$pair.id2, 
+                   matched.cycles$pair.id3)
   matched.ids <- setdiff(matched.ids, c(0))  # remove 0's (id3=for 2-way xchange)
   not.matched.ids = setdiff(rke.pair.ids(rke), matched.ids)
   CHECK_TRUE(all(!duplicated(matched.ids)), msg="No duplicates in matched ids")
@@ -62,7 +64,7 @@ max.matching <- function(rke, include.3way=F,
   # Build A matrix of model (not confused with adj matrix of rke)
   # A2 =  pairs x 2cycles   A2ij = 1 if pair i in j 2-way cycle
   # Similarly, A3ij = 1 if pair i is in j 3-way exchange.
-  model.A <- rke.cycles.membership(Cycles)
+  model.A <- rke.cycles.membership(rke, Cycles)
   CHECK_EQ(nrow(model.A), num.pairs)
   CHECK_EQ(ncol(model.A), nrow(Cycles))
   CHECK_MEMBER(unique(model.A), c(0,1))

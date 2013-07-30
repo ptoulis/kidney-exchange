@@ -32,8 +32,8 @@ rke.remove.pairs <- function(rke, pair.ids) {
   # Used to represent deviation strategies ("hide")
   CHECK_MEMBER(pair.ids, rke.pair.ids(rke))
   rke$pairs = subset(rke$pairs, !is.element(pair.id, pair.ids))
-  rke$edges = sample.pairs.edges(pairs=rke$pairs, respect.edges=rke$edges)
-  rke$A = map.edges.A(rke$edges)
+  rke = rke.update.new.pairs(rke=rke, keep.edges=rke$edges)
+  rke$A = map.edges.adjacency(rke$edges, rke$pairs$pair.id)
   return (rke)
 }
 
@@ -51,7 +51,7 @@ rke.add <- function(rke1, rke2, verbose=F) {
   rke.all = empty.rke()
   all.edges = rbind(rke1$edges, rke2$edges)
   rke.all$pairs = rbind(rke1$pairs, rke2$pairs)
-  rke.all <- update.rke.new.pairs(rke=rke.all, keep.edges=all.edges)
+  rke.all <- rke.update.new.pairs(rke=rke.all, keep.edges=all.edges)
   return(rke.all)
 }
 
@@ -65,7 +65,10 @@ rke.keep.pairs = function(rke, pair.ids) {
 
 rke.edge.ids = function(rke) subset(rke$edges, can.donate==1, select=c(edge.id))
 rke.pair.ids = function(rke) rke$pairs$pair.id
-
+rke.hospital.ids = function(rke) rke$pairs$hospital
+rke.hospital.pairs <- function(rke, hospital.id) {
+  return (rke$pairs$pair.id[which(rke$pairs$hospital == hospital.id)])
+}
 rke.cycles <- function(rke, include.3way=F) {
   # Computes 2-way (and) 3-way cycles for a specific rke object
   #
@@ -94,7 +97,7 @@ rke.cycles <- function(rke, include.3way=F) {
   return (as.data.frame(out))
 }
 
-rke.cycles.membership <- function(rke.cycles) {
+rke.cycles.membership <- function(rke, rke.cycles) {
   # Returns a pairs x cycles matrix that contains membership of pairs in cycles.
   # i.e. Aij = 1 if pair i belongs in cycle j
   # Row names *have* to be the same as the pair ids
@@ -109,6 +112,11 @@ rke.cycles.membership <- function(rke.cycles) {
     out[i, ] <- as.numeric(rowSums(subcycles == all.pairs[i]))
   rownames(out) <- all.pairs
   return(out)
+}
+
+rke.filter.pairs <- function(rke, attr, value) {
+  CHECK_MEMBER(attr, names(rke$pairs))
+  return (rke$pairs$pair.id[which(rke$pairs[[attr]] == value)])
 }
 
 rke.2way.cycles <- function(rke) {
@@ -210,4 +218,8 @@ plot.rke = function(rke, vertex.size=20) {
   par(mar=c(0,0,0,0))
   par(mfrow=c(1,1))
   plot.igraph(g,layout=layout.auto, vertex.size=vertex.size)
+}
+
+rke.matched.hospitals <- function(rke, matched.ids) {
+  return(subset(rke$pairs, pair.id %in% matched.ids)$hospital)
 }

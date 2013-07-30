@@ -35,6 +35,8 @@ basicConfig()
 #     RKE pools: the "real" one that corresponds to what hospitals *have*
 #     and the "reported" one that is the pool created from the pairs
 #     that hospitals report.
+# (7) A strategy is a LIST(report, hide) that are vector of pair id's.
+#    (report U hide) = all pair ids and (report ^ hide) = 0
 kAccuracy = 10^5
 kBloodTypes  <- c("O", "A", "B", "AB")
 kBloodCodes  <- c(1, 2, 3, 6)
@@ -164,9 +166,17 @@ CHECK_rke <- function(rke) {
   CHECK_edges(rke$edges)
 }
 
+CHECK_rke.list <- function(rke.list) {
+  CHECK_TRUE(length(rke.list) > 0, msg="Rke.list should not be empty.")
+  laply(rke.list, CHECK_rke)
+}
+
 CHECK_pairs <- function(pairs) {
   warning("kPairs does not pass this test. Fix it.")
   CHECK_MEMBER(c("pair.id", "donor", "patient", "pc", "hospital"), names(pairs))
+  hids = unique(pairs$hospital)
+  if (length(hids) > 1)
+    CHECK_SETEQ(hids, 1:length(hids), msg="Hospital ids 1, 2,...m")
   CHECK_MEMBER(pairs$pair.type, kPairTypes, "Correct pair types.")
   CHECK_TRUE(all(!duplicated(pairs$pair.id)), "No duplicate pair ids.")
   CHECK_TRUE(all(pairs$pair.id > 0), msg="All pair ids should be > 0")
@@ -182,15 +192,31 @@ CHECK_edges <- function(edges) {
 
 CHECK_rke.pool <- function(rke.pool) {
   CHECK_SETEQ(names(rke.pool), c("rke.list", "rke.all"))
-  CHECK_RKE(rke.pool$rke.all)
-  CHECK_RKE(rke.pool$rke.list[[1]]])
+  CHECK_rke(rke.pool$rke.all)
+  CHECK_rke(rke.pool$rke.list[[1]])
   warning("More tests in CHECK_rke.pool")
 }
 
 CHECK_kpd <- function(kpd) {
   CHECK_SETEQ(names(kpd), c("reported.pool", "real.pool"))
   CHECK_rke.pool(kpd$reported.pool)
-  CHECK_rke.pool(kpd$real.poool)
+  CHECK_rke.pool(kpd$real.pool)
+}
+
+CHECK_strategy <- function(strategy, all.pairs) {
+  if (length(names(strategy)) == 1) {
+    CHECK_SETEQ(all.pairs, strategy[[names(strategy)[1]]], msg="cover all pairs")
+  } else {
+    CHECK_SETEQ(names(strategy), c("hide", "report"))
+    CHECK_DISJOINT(strategy$hide, strategy$report, msg="Report^Hide=0")
+    CHECK_SETEQ(union(strategy$hid, strategy$report), all.pairs, msg="Union=all")
+  }
+}
+
+get.rke.list.hospital.ids <- function(rke.list) {
+  hids = laply(rke.list, function(rke) max(rke.hospital.ids(rke)))
+  CHECK_SETEQ(unique(hids), 1:length(hids), msg="Hospital ids 1,2,3...m")
+  return (hids)
 }
 
 generate.pairs.edges <- function(pairs, keep.edges, verbose=F) {
@@ -273,7 +299,7 @@ map.edges.adjacency <- function(edges, all.pair.ids) {
   return(A)
 }
 
-update.rke.new.pairs <- function(rke, keep.edges) {
+rke.update.new.pairs <- function(rke, keep.edges) {
   # It will generate edges for this RKE object but will have
   # the "keep.edges" fixed. Should be called when "pairs" in the RKE object
   # are changed (e.g. when removing pairs, see remove.pairs in rke.R)
@@ -307,7 +333,7 @@ rrke <- function(n, pair.ids=1:n, hospital.id=1,
   # Create the RKE object.
   rke = empty.rke()
   rke$pairs = pairs
-  rke <- update.rke.new.pairs(rke, keep.edges=NULL)
+  rke <- rke.update.new.pairs(rke, keep.edges=NULL)
   return(rke)
 }
 

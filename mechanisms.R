@@ -25,15 +25,16 @@ kpd.create <- function(rke.pool, strategy.str) {
   rke.list = rke.pool$rke.list
   rke.all = rke.pool$rke.all
   m = length(rke.list)
-  CHECK_EQ(length(strategy.str), m, msg="Correct #of strategies")
-  hospital.action = init.mechanism(rke.list, strategy.str)
+  CHECK_EQ(nchar(strategy.str), m, msg="Correct #of strategies")
+  hospital.action = play.strategies(rke.list, strategy.str)
   reported.rke.list = list()
   ## hidden.pairs = ids in terms of rke.all  that were hidden
   all.hidden.pairs = c()
   #  1b.  Populate the reported and hidden graphs.
   for(hid in 1:m) {
     hospitalAction = hospital.action[[hid]]
-    reported.rke.list[[h]] = remove.pairs(rke.list[[h]], hospitalAction$hide)
+    reported.rke.list[[hid]] = rke.remove.pairs(rke.list[[hid]],
+                                                hospitalAction$hide)
     all.hidden.pairs = c(all.hidden.pairs, hospitalAction$hide)
   }
   ##  Save the "kpd" object
@@ -41,134 +42,112 @@ kpd.create <- function(rke.pool, strategy.str) {
   ## on the same sets of hospitals and pooled graphs.
   kpd = list()
   kpd$reported.pool = list(rke.list=reported.rke.list,
-                           rke.all=remove.pairs(rke.all, all.hidden.pairs))
+                           rke.all=rke.remove.pairs(rke.all, all.hidden.pairs))
   kpd$real.pool = list(rke.list=rke.list, rke.all = rke.all)
   CHECK_kpd(kpd)
   return(kpd)
 }
 
+play.strategy <- function(rke, strategy.str, include.3way=F) {
+  # For the RKE, play the strategy and say which pairs will be hidden
+  # and which ones will be reported to the mechanism.
+  #
+  # Returns:
+  #   A strategy object (see terminology)
+  ret = list()
+  if(strategy.str == "t") {
+    ret$hide = c()
+  } else if(strategy.str == "c") {
+    # TODO(ptoulis): If the max matching is timed-out, this will return empty match
+    # which is equivalent to being truthful. Needs a fix?
+    m = max.matching(rke, include.3way=include.3way)
+    ret$hide = m$matching$matched.ids
+  }  else if(strategy.str == "r") {
+    pairs.AB = rke.filter.pairs(rke, attr="desc", value="A-B")
+    pairs.BA = rke.filter.pairs(rke, attr="desc", value="B-A")
+    pairs.O = rke.filter.pairs(rke, attr="pair.type", value="O")
+    ## want to hide the "short" side of R
+    hide.R = pairs.AB
+    if(length(pairs.BA) < length(pairs.AB))
+      hide.R = pairs.BA
+    ret$hide = c(hide.R)
+  } 
+  all.pairs = rke.pair.ids(rke)
+  ret$report = setdiff(all.pairs, ret$hide)
+  CHECK_strategy(ret, all.pairs)
+  return(ret)
+}
+
+play.strategies = function(rke.list, strategy.str, include.3way=F) {
+  # Initializes the RKE lists before the mechanism is run.
+  # Reads the strategies and then plays them on each element of rke.list.
+  # Calls play.strategy()
+  #
+  # Returns:
+  #   A list(hospital.id => strategy)
+  CHECK_rke.list(rke.list)
+  strategies = strsplit(strategy.str,split="")[[1]]
+  CHECK_MEMBER(strategies, c("t","c", "r", "b"), msg="Correct strategy spec")
+  hids <- get.rke.list.hospital.ids(rke.list)  
+  strategy.list = llply(hids, function(h) play.strategy(rke.list[[h]],
+                                                    strategy.str=strategies[h],
+                                                    include.3way=include.3way))
+  return(strategy.list)
+}
 
 ##  Runs a mechanism
-Run.Mechanism = function(kpd, mech) {
+Run.Mechanism = function(kpd, mech, include.3way=F) {
   CHECK_kpd(kpd)
-  reported.rke.list = kpd$reported.rke.list
-  reported.rke.all = kpd$reported.rke.all
-  rke.list = kpd$rke.list
-  rke.all = kpd$rke.all
+  # unload
+  reported.rke.list = kpd$reported.pool$rke.list
+  reported.rke.all = kpd$reported.pool$rke.all
+  rke.list = kpd$real.pool$rke.list
+  rke.all = kpd$real.pool$rke.all
   
   ## 3. Run the mechanism
-  mech.out.ids = do.call(mech, args=list(rke.list=reported.rke.list, 
-                                         rke.all = reported.rke.all) )
+  mech.out.ids = do.call(mech, args=list(rke.pool=kpd$reported.pool))
   ## Sometimes we get a list instead of a vector.
   mech.out.ids = as.numeric(mech.out.ids)
   
   ## 4. Compute utility from mechanism
   Util = get.hospitals.utility(reported.rke.all, mech.out.ids)
-
-  ## 5.  Utility from final internal matches. 
-  ##     
-  for(h in 1: length(rke.list)) {
+  hids <- get.rke.list.hospital.ids(rke.list)
+  ## 5.  Utility from final internal matches.   
+  for(h in hids) {
     rke.h = rke.list[[h]]
-    matched.ids.in.reported.all = intersect( get.hospital.pairs(reported.rke.all, h), 
-                                  mech.out.ids )
-    matched.ids.in.all = reported.rke.all$map.back(matched.ids.in.reported.all)
-    matched.ids.in.hosp = rke.all$map.back(matched.ids.in.all)
-    
-    rke.remainder = remove.pairs(rke.h, matched.ids.in.hosp)
-    m.h = max.matching(rke.remainder)
+    # For hospital h, find which pairs were matched
+    hosp.matched.ids = intersect(rke.hospital.pairs(reported.rke.all, h),
+                                 mech.out.ids)
+    rke.remainder = rke.remove.pairs(rke.h, hosp.matched.ids)
+    m.h = max.matching(rke.remainder, include.3way=include.3way)
     Util[h] = Util[h] + m.h$matching$utility
-
   }
   return(Util)
 }
 
-
-## Given the matching, and the input graphs, 
-##  calculate the utilities/hospital 
-##  Returns    k x 1  vector,     with the matches for every hospital
 get.hospitals.utility <- function(rke.all, matched.ids) {
-    ## find no. of hospitals 
-    m = length(unique(rke.all$hospital))
-    vals = matrix(0, nrow=m, ncol=1)
-   
-    ## get the hospitals for every pair.
-    matched.hospitals =rke.all$hospital[matched.ids]
-    
-    ## Count matches/hospital. TO-DO(ptoulis): Use "table" here.
-    for(hid in 1:m) {
-       vals[hid,1] = length(which(matched.hospitals==hid)) 
-    }
-    return(vals)
-}
-
-##  Given an RKE and a type of deviation, 
-##  determine which pairs you will *hide*
-# Returns:    list(  hide= c(..),   report=c(...) )
-play.strategy <- function(rke, type) {
-  ret = list(report=c(), hide=c())
+  # Calculates utility per hospital given the supplied matched pair ids.
+  # Returns a m x 1 vector of utilities
+  hids = unique(rke.hospital.ids(rke.all))
+  CHECK_SETEQ(hids, 1:length(hids), msg="Hospital ids 1,2,3...m")
+  vals = matrix(0, nrow=length(hids), ncol=1)
   
-  if(type=="t") {
-    ret$hide = c()
-  } else if(type=="c") {
-    ## TODO(ptoulis): If the max matching is timed-out, this will return empty match
-    ## which is equivalent to being truthful. Needs a fix?
-    m = max.matching(rke)
-    ret$hide = m$matching$matched.ids
-  }  else if(type=="r") {
-    pairs.AB = filter.pairs.by.donor.patient(rke, "A","B")
-    pairs.BA = filter.pairs.by.donor.patient(rke, "B","A")
-    pairs.O = filter.pairs.by.type(rke,"O")
-    ## want to hide the "short" side of R
-    hide.R= pairs.AB
-    if(length(pairs.BA) < length(pairs.AB))
-      hide.R = pairs.BA
-     ret$hide = c(hide.R)
-  } else if(type== "b") {
-    pairs.AB = filter.pairs.by.donor.patient(rke, "A","B")
-    pairs.BA = filter.pairs.by.donor.patient(rke, "B","A")
-    pairs.O = filter.pairs.by.type(rke,"O")
-    ## want to hide the "short" side of R
-    hide.R= pairs.AB
-    if(length(pairs.BA) < length(pairs.AB))
-      hide.R = pairs.BA
-    ##  Hide long-R pairs and O pairs.
-    ret$hid = c(hide.R, pairs.O)
-  }
-  
-  ret$report = setdiff(1:get.size(rke), ret$hide)
-  return(ret)
+  # get the hospitals for every pair.
+  matched.hospitals = rke.matched.hospitals(rke.all, matched.ids)
+  vals <- as.matrix(table(matched.hospitals))
+  CHECK_EQ(as.numeric(rownames(vals)), hids, msg="Correct tabulation")
+  return(vals)
 }
 
-read.strategy.str = function(strategy.str) {
-  strategies = strsplit(strategy.str,split="")[[1]]
-  CHECK_MEMBER(strategies, c("t","c", "r", "b"), msg="Correct strategy spec")
-  return(strategies)
-}
-
-## Initializes every mechanism + plays strategy
-## Returns:  list(  hid => play.strategy )
-init.mechanism = function(rke.list, strategy.str) {
-
-  m = length(rke.list)  
-  strategies = read.strategy.str(strategy.str)
-  strategy.list = list()
-  
-  for(hid in 1:m) {
-    rke.h = rke.list[[hid]]
-    strategy.list[[hid]] = play.strategy(rke.h, type=strategies[hid])
-  }
-  return( strategy.list )
-}
-
-## Implementation of rCM
-## Returns:   c(...)   = matched ids
-rCM <- function(rke.list, rke.all) {
-
+rCM <- function(rke.pool, include.3way=F) {
+  # Implementation of rCM. Returns an array of matched pair ids.
+  CHECK_rke.pool(rke.pool)
+  rke.list <- rke.pool$rke.list
+  rke.all <- rke.pool$rke.all
   ## 1. Simply calculate a maximum-matching (this will shuffle the edges by default)
-  m.all =  max.matching(rke.all)
-  
-  matched.all.ids = m.all$matching$matched.ids
-  # 2. Compute the utility.
+  m.all =  max.matching(rke.all, include.3way=include.3way)
+  matched.all.ids = m.all$matched.ids
+  # 2. Return all matched ids
   return(matched.all.ids)
 }
 
