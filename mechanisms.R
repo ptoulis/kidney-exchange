@@ -51,7 +51,10 @@ kpd.create <- function(rke.pool, strategy.str) {
 play.strategy <- function(rke, strategy.str, include.3way=F) {
   # For the RKE, play the strategy and say which pairs will be hidden
   # and which ones will be reported to the mechanism.
-  #
+  # 
+  # Args:
+  #   rke: An RKE object
+  #   strategy.str : A strategy profile as string, "tttcc" etc..
   # Returns:
   #   A strategy object (see terminology)
   ret = list()
@@ -152,24 +155,28 @@ rCM <- function(rke.pool, include.3way=F) {
 }
 
 
-## Compute IR constraints.
-compute.ir.constraints = function(rke.list, types=c()) {
+compute.ir.constraints = function(rke.list, pair.types=c()) {
+  # Given the list of RKE objects, compute the IR constraints for each hospital
+  # Returns empty data-frame if not types, or empty rke.list
+  #
+  # Args:
+  #   pair.types is an array of "pair types" which we compute constraints for.
+  #
+  # Returns:
+  #   A data-frame that has (pc, hospital, internal.matches, pair.type) as fields, where
+  #   pc = the pair code
+  #   hospital = the hospital #id
+  #   internal = #internal matches for this hospital and pc.
+  #   pc  pair.type   hospital  internal.matches
+  #   1     S           2           0
+  #   2     U           2           1
+  #             ...
   m = length(rke.list)
-  if(length(types)==0 || m==0 )
-    return(list() )
-  ##  Initialize variables
-  ##  Demand for R-pairs
-  z.AB = rep(0, m)
-  z.BA = rep(0, m)
+  CHECK_rke.list(rke.list)  # will check whether the hospital ids are correct.
+  out = list(pc=c(), pair.type=c(), hospital=c(), internal.matches=c())
+  if(length(types)==0 || m==0)
+    return(out)
   
-  ## IR constraints per hospital
-  IR.constraints = list(S=list(), R=list())
-  
-  ## Pair code (useful when setting constraints)
-  pc.AB = pair.code(list(donor="A", patient="B"))
-  pc.BA = pair.code(list(donor="B", patient="A"))
-  pc.R = c(pc.AB, pc.BA)
-  ## Iterate over all hospitals.
   for(hid in 1:m) {
     ## Constraints.
     irs = rep(0, length(Pair.Codes))
