@@ -31,6 +31,8 @@ rke.remove.pairs <- function(rke, pair.ids) {
   ##  Given an RKE  (1) subtract (2) return remainder.
   # Used to represent deviation strategies ("hide")
   CHECK_MEMBER(pair.ids, rke.pair.ids(rke))
+  if (length(pair.ids) == 0)
+    return (rke)
   rke$pairs = subset(rke$pairs, !is.element(pair.id, pair.ids))
   rke = rke.update.new.pairs(rke=rke, keep.edges=rke$edges)
   rke$A = map.edges.adjacency(rke$edges, rke$pairs$pair.id)
@@ -65,10 +67,16 @@ rke.keep.pairs = function(rke, pair.ids) {
 
 rke.edge.ids = function(rke) subset(rke$edges, can.donate==1, select=c(edge.id))
 rke.pair.ids = function(rke) rke$pairs$pair.id
-rke.hospital.ids = function(rke) rke$pairs$hospital
+
+# Returns the different hospital ids (unique)
+rke.hospital.ids = function(rke) unique(rke$pairs$hospital)
+
 rke.hospital.pairs <- function(rke, hospital.id) {
+  # Returns the pair ids that belong to that hospital
+  CHECK_MEMBER(hospital.id, rke.hospital.ids(rke))
   return (rke$pairs$pair.id[which(rke$pairs$hospital == hospital.id)])
 }
+
 rke.cycles <- function(rke, include.3way=F) {
   # Computes 2-way (and) 3-way cycles for a specific rke object
   #
@@ -222,4 +230,11 @@ plot.rke = function(rke, vertex.size=20) {
 
 rke.matched.hospitals <- function(rke, matched.ids) {
   return(subset(rke$pairs, pair.id %in% matched.ids)$hospital)
+}
+
+# to-functions
+pairid.to.pc <- function(rke, pair.ids) {
+  CHECK_UNIQUE(pair.ids, msg="Pair ids need to be unique.")
+  x = subset(rke$pairs, pair.id %in% pair.ids)
+  return (x$pc)
 }
