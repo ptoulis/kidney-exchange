@@ -1,14 +1,11 @@
 # TODO(ptoulis): Documentation
 library(gurobi)
 
-empty.match.result <- function() {
-  return(list(matched.ids=c(), 
-              not.matched.ids=c(), 
-              timeout=F, 
-              utility=0))
-}
-
 map.gurobiResult <- function(gurobi.result, rke, cycles) {
+  # Gets the Gurobi output and returns the subset of rke "pairs" object
+  # of those that have been matched.
+  #
+  # Returns: A "pairs" object.
   if(gurobi.result$status=="TIME_LIMIT" | gurobi.result$status=="INF_OR_UNBD") {
     warning("Time limit or infinity.")
     empty.result = get.empty.result()
@@ -33,12 +30,8 @@ map.gurobiResult <- function(gurobi.result, rke, cycles) {
                                 3 * nrow(subset(matched.cycles, type == 3)))
  
   # Return final result.
-  result = empty.match.result()
-  result$matched.ids = matched.ids
-  result$not.matched.ids = not.matched.ids
-  result$utility = length(matched.ids)
-  result$timeout = F
-  return(result)
+  result = subset(rke$pairs, pair.id %in% matched.ids)
+  return (result)
 }
 
 ##   Maximum  2min / maximum matching.
