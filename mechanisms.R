@@ -167,109 +167,84 @@ compute.ir.constraints = function(rke.list, pair.types=c()) {
   #   pc = the pair code
   #   hospital = the hospital #id
   #   internal = #internal matches for this hospital and pc.
-  #   pc  pair.type   hospital  internal.matches
-  #   1     S           2           0
-  #   2     U           2           1
-  #             ...
+  #   pc  pair.type desc  hospital  internal.matches
+  #   1     S       O-O        2           0
+  #   2     U       A-O       2           1         ...
   m = length(rke.list)
   CHECK_rke.list(rke.list)  # will check whether the hospital ids are correct.
-  out = list(pc=c(), pair.type=c(), hospital=c(), internal.matches=c())
-  if(length(types)==0 || m==0)
+  out = data.frame(pc=c(), pair.type=c(), hospital=c())
+  if(length(pair.types)==0 || m==0)
     return(out)
   
-  for(hid in 1:m) {
-    ## Constraints.
-    irs = rep(0, length(Pair.Codes))
-    irr = rep(0, length(Pair.Codes))
-    
-    rke.h = rke.list[[hid]]
-    S.subgraph = get.subgraph(rke.h, type="S")
-    R.subgraph = get.subgraph(rke.h, type="R")
-    
-    ## xCM mechanism starts
+  for(hid in 1:length(rke.list)) {
+    # xCM mechanism starts
     #  1. Compute max matching internally in S
-    if("S" %in% types) {
-      mS = max.matching(S.subgraph)
-      if(length(mS$matching$matched.ids)>0) {
-        matches.tab = table(S.subgraph$pc[mS$matching$matched.ids])
-        pcs.matched = as.numeric(names(matches.tab))
-        no.matches = as.numeric(matches.tab)
-        irs[pcs.matched] = no.matches
-      } 
-      # done S-subgraph constraints
+    rke.h = rke.list[[hid]]
+    CHECK_SETEQ(rke.hospital.ids(rke.h), c(hid), msg="Correct hospital id")
+    for (type in c("S", "R")) {
+      if(type %in% pair.types) {
+        sub.pairs = rke.filter.pairs(rke.h, attr="pair.type", value=type)
+        subrke = rke.keep.pairs(rke.h, pair.ids=sub.pairs)
+        match = max.matching(subrke)
+        tab.pc = as.matrix(table(match$pc))
+        # data.frame of pc frequencies
+        tab.pc = data.frame(pc=as.numeric(rownames(tab.pc)), freq=tab.pc[ , 1])
+        CHECK_UNIQUE(tab.pc$pc)
+        num.results = nrow(tab.pc)
+        if (num.results > 0)
+          out = rbind(out, list(pc=tab.pc$pc,
+                                pair.type=rep(type, num.results),
+                                desc=pc.to.desc(tab.pc$pc),
+                                hospital=rep(hid, num.results),
+                                internal.matches=tab.pc$freq))
+      }
     }
-    if("R" %in% types) {
-      # 2. Matchings in R 
-      mR = max.matching(R.subgraph)
-      # Matched A-B, B-A pairs
-      N.AB = length(intersect(filter.pairs.by.donor.patient(R.subgraph, dtype="A",ptype="B"),
-                              mR$matching$matched.ids))
-      N.BA = length(intersect(filter.pairs.by.donor.patient(R.subgraph, dtype="B",ptype="A"),
-                              mR$matching$matched.ids))
-      ## Because we are working on the R-subgraph, these numbers should be the same.
-      if(N.AB != N.BA) 
-        stop("AB and BA matches should be equal! ")
-      if(N.AB + N.BA != length(mR$matching$matched.ids)) 
-        stop("Something wrong with the subgraph. Not only A-B, B-A pairs considered.!")
-      ## # unmatched A-B, B-A pairs
-      z.AB[hid] = length(intersect(filter.pairs.by.donor.patient(R.subgraph, dtype="A",ptype="B"),
-                                   mR$matching$not.matched.ids))
-      z.BA[hid] = length(intersect(filter.pairs.by.donor.patient(R.subgraph, dtype="B",ptype="A"),
-                                   mR$matching$not.matched.ids))
-      
-      ## add R constraints.
-      irr[pc.R] = c(N.AB, N.BA)
-    }
-    
-    ## do some cleaning
-    rm(list=c("R.subgraph", "S.subgraph", "rke.h"))
-    
-    IR.constraints$S[[hid]] = irs
-    IR.constraints$R[[hid]] = irr
   }## for every hospital
-  IR.constraints$z.ab = z.AB
-  IR.constraints$z.ba = z.BA
-  return(IR.constraints)
+  return(out)
 }
-## Implementation of  xCM mechanism (Parkes & Toulis, 2013)
-##  
-##
-##
-## z = mx1  demand from agents
-#  x = supply
-# TO-DO(ptoulis): Unit tests for this one?
-g.share = function(z, x) {
-  
-  set.J = which(z>0)
-  y = rep(0, length(z))
-  
-  x.r = x 
-  while(x.r>0 && length(set.J)>0) {
-    if(x.r >= length(set.J)) {
-      y[set.J] = y[set.J]+1
-      x.r = x.r - length(set.J)
-      set.J = setdiff(set.J, which(y>=z))
+
+g.share = function(demand, supply) {
+  # Fair sharing of supply.
+  # The algorithm allocates supply fairly to each hospital.
+  # Computes and allocation i.e. how many #items each hospital gets.
+  # sum(allocation) = supply has to be.
+  #
+  # Args:
+  #   z = m x 1 demand from agents
+  #   x = supply (integer)
+  #
+  # Returns: 
+  #   m x 1 vector of allocation
+  # TO-DO(ptoulis): Unit tests for this one?
+  #
+  # J = { those ids that have positive demand }
+  set.J = which(demand > 0)
+  # allocation vector
+  alloc = rep(0, length(demand))
+  while(supply > 0 && length(set.J) > 0) {
+    if(supply >= length(set.J)) {
+      alloc[set.J] = alloc[set.J]+1
+      supply = supply - length(set.J)
+      set.J = setdiff(set.J, which(alloc >= demand))
     } else {
-      j.subset = sample(set.J, size=x.r, replace=F)
-      y[j.subset] = y[j.subset]+1
-      x.r=0
+      j.subset = sample(set.J, size=supply, replace=F)
+      alloc[j.subset] = alloc[j.subset]+1
+      supply = 0
     }
   }
-  return(y)
+  return(alloc)
 }
 
 ## TO-DO(ptoulis): Don't really care much about correctness
 ## as long as it has good properties, we can treat it as a black box.
-xCM <- function(rke.list, rke.all) {
-  
+xCM <- function(rke.pool) {
+  # unload
+  rke.list = rke.pool$rke.list
+  rke.all = rke.pool$rke.all
   m = length(rke.list)
   matched.all.ids = c()
-  
   ##  1. Compute IR constraints
-  IR.constraints = compute.ir.constraints(rke.list, types=c("S", "R"))
-  
-  #loginfo("Done with IR constraints")
-  
+  ir.constraints = compute.ir.constraints(rke.list, types=c("S", "R"))
   z.AB = IR.constraints$z.ab
   z.BA = IR.constraints$z.ba
   ###  Done with per-hospital
