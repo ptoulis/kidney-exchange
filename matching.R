@@ -4,7 +4,7 @@ library(gurobi)
 empty.match.result <- function(rke) {
   x = subset(rke$pairs, pair.id < 0)
   CHECK_TRUE(nrow(x) == 0, "should be empty")
-  return (x)
+  return (list(match=x, status="undef"))
 }
 
 map.gurobiResult <- function(gurobi.result, rke, cycles) {
@@ -18,7 +18,6 @@ map.gurobiResult <- function(gurobi.result, rke, cycles) {
     empty.result$status = gurobi.result$status
     return(empty.result)
   }
-  
   # The convention is:  x[2-cycles, 3-cycles]
   matched.cycle.ids = which(gurobi.result$x == 1)
   # print (matched.cycle.ids)
@@ -37,13 +36,16 @@ map.gurobiResult <- function(gurobi.result, rke, cycles) {
  
   # Return final result.
   result = subset(rke$pairs, pair.id %in% matched.ids)
-  return (result)
+  x = empty.match.result(rke)
+  x$match = result
+  x$status="OK"
+  return (x)
 }
 
 ##   Maximum  2min / maximum matching.
 ##  Can return NA if time out.
 max.matching <- function(rke, include.3way=F,
-                         IR.constraints=list(),
+                         ir.constraints=data.frame(),
                          timeLimit=120) {
   CHECK_rke(rke)
   num.pairs = rke.size(rke)
@@ -60,10 +62,21 @@ max.matching <- function(rke, include.3way=F,
   model.w <- Cycles$type
   model.rhs <- rep(1, num.pairs)
   model.sense <- rep("<=", num.pairs)
-  # Build A matrix of model (not confused with adj matrix of rke)
-  # A2 =  pairs x 2cycles   A2ij = 1 if pair i in j 2-way cycle
-  # Similarly, A3ij = 1 if pair i is in j 3-way exchange.
+  # Build A matrix of model
+  # (pairs x cycles) membership matrix. A * x = #cycles/pair (has to be <= 1)
   model.A <- rke.cycles.membership(rke, Cycles)
+  get.sub.A <- function(pair.ids) {
+    # Get the sub-matrix for only those specific ids.
+    if (length(pair.ids) == 0)
+      return(matrix(0, nrow=0, ncol=ncol(model.A)))
+    ids = as.numeric(rownames(model.A))
+    CHECK_MEMBER(pair.ids, ids)
+    CHECK_UNIQUE(pair.ids)
+    index = match(pair.ids, ids)
+    B = model.A[index, ]
+    rownames(B) <- pair.ids
+    return (B)
+  }
   CHECK_EQ(nrow(model.A), num.pairs)
   CHECK_EQ(ncol(model.A), nrow(Cycles))
   CHECK_MEMBER(unique(model.A), c(0,1))
@@ -76,6 +89,32 @@ max.matching <- function(rke, include.3way=F,
   model$sense      <- model.sense
   model$vtype      <- rep('B', length(model.w))
   
+  # Set IR constraints here
+  if (nrow(ir.constraints) > 0)
+    for(i in 1:nrow(ir.constraints)) {
+      constraint = ir.constraints[i, ]
+      # Unload the constraint
+      con.pc = constraint$pc
+      con.hid = constraint$hospital
+      num.matches = constraint$internal.matches
+      CHECK_TRUE(!is.null(con.pc) & !is.null(con.hid) & num.matches > 0)
+      # For every hospital and pair code
+      # 1. Get the pairs subset for hospital=hid, pc=pair code
+      sub.pairs = subset(rke$pairs, hospital==con.hid & con.pc==pc)
+      pc.hid.pairs <- as.vector(sub.pairs$pair.id)
+      CHECK_TRUE(length(pc.hid.pairs) >= num.matches, msg="avail pairs >= matches")
+      # 2. Get the pairs x cycles sub-matrix.
+      subA = get.sub.A(pc.hid.pairs)
+      # 3. Get the (cycles x 1) vector of how many #pairs (hid, pc)
+      #   each cycle has (obtained through summing over columns)
+      cycle.contrib = as.vector(colSums(subA))
+      # Add the constraint
+      model$A <- rbind(model$A, cycle.contrib)
+      model$sense <- c(model$sense, ">=")
+      model$rhs <- c(model$rhs, num.matches)
+    }
+  rownames(model$A) <- 1:nrow(model$A)
+  model$A = as.matrix(model$A)
   ##  Seems to be much faster than the old params.
   params.new <- list(OutputFlag=0,
                      NodefileStart=0.4,
