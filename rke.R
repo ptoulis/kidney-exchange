@@ -65,8 +65,8 @@ rke.keep.pairs = function(rke, pair.ids) {
   return(rke.remove.pairs(rke, rm.pairs))
 }
 
-rke.edge.ids = function(rke) subset(rke$edges, can.donate==1, select=c(edge.id))
-rke.pair.ids = function(rke) rke$pairs$pair.id
+rke.edge.ids = function(rke) as.vector(subset(rke$edges, can.donate==1)$edge.id)
+rke.pair.ids = function(rke) as.vector(rke$pairs$pair.id)
 
 # Returns the different hospital ids (unique)
 rke.hospital.ids = function(rke) unique(rke$pairs$hospital)
@@ -113,7 +113,7 @@ rke.cycles.membership <- function(rke, rke.cycles) {
   all.pairs = rke.pair.ids(rke)
   # return a pairs x cycles matrix
   out = matrix(0, nrow=length(all.pairs), ncol=nrow(rke.cycles))
-  if (length(all.pairs) == 0)
+  if (length(all.pairs) == 0 | nrow(rke.cycles) == 0)
     return(out)
   subcycles = subset(rke.cycles, select=c(pair.id1, pair.id2, pair.id3))
   for (i in 1:length(all.pairs))
@@ -198,7 +198,7 @@ rke.3way.cycles <- function(rke) {
 
 rke.edge.by.pair <- function(rke, id.frame) {
   # Returns the list of edge id for the ids specified.
-  #  Throws exception if not the correcto format (e.g. nuequal lengths)
+  #  Throws exception if not the correct format (e.g. unequal lengths)
   # 
   # Args:
   #   id.frame = data.frame with two columns (from->to)
@@ -228,13 +228,15 @@ plot.rke = function(rke, vertex.size=20) {
   plot.igraph(g,layout=layout.auto, vertex.size=vertex.size)
 }
 
-rke.matched.hospitals <- function(rke, matched.ids) {
-  return(subset(rke$pairs, pair.id %in% matched.ids)$hospital)
-}
-
 # to-functions
 pairid.to.pc <- function(rke, pair.ids) {
   CHECK_UNIQUE(pair.ids, msg="Pair ids need to be unique.")
   x = subset(rke$pairs, pair.id %in% pair.ids)
   return (x$pc)
+}
+
+pairid.to.hospital <- function(rke, pair.ids) {
+  CHECK_UNIQUE(pair.ids, msg="Pair ids need to be unique.")
+  x = subset(rke$pairs, pair.id %in% pair.ids)
+  return (x$hospital)
 }
