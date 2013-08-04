@@ -18,11 +18,14 @@ basicConfig()
 #     (i) donor, patient types, (ii) blood.compatibility, (iii) pair as string
 #     (iv) marginal blood-type probabilities. For example, see "kPairs"
 #     that contains all such values for all 16 possible pair codes.
+#      A "pairs" data-frame has
+#     pc  donor  patient  prob  blood.compatible  desc  pair.type pair.color  hospital pra  pair.id
+#     3    3       1    0.075         0          B-O       U         gray       1      0.2     7
 #  (3) "edges" is a DATAFRAME that contains id1, id2 vector that represent
 #       pair dyads, and compatibility relationships from pair1->pair2.
-#       pair.id1, pair.id2, blood.compatible, pra.compatible, can.donate
-#         2          5          1                 1               1
-#         5          8          1                 1               0
+#       pair.id1, pair.id2, blood.compatible, pra.compatible, self.loop   can.donate  edge.color  edge.id
+#         2          5          1                 1               0          1           black     78232
+#         5          8          1                 0               0          0           black     77723
 #       This means that pair 2 can donate to 5 but 5 cannot donate to 8 because
 #       patient of 8 is PRA-sensitive to donor of 5.
 # (4) An RKE ("random kidney exchange") defines a multi-hospital exchange pool.
@@ -31,6 +34,7 @@ basicConfig()
 # (5) An RKE pool represent the pool created by several hospital RKE's.
 #     It is defined as a list with "rke.list" having the list of the RKE's of
 #     hospitals, and "rke.all" having the aggregate of the RKEs.
+#        {rke.list=>list(rke),  rke.all=>rke}
 # (6) A KPD object (Kidney-Paired donations) represents a collection of two
 #     RKE pools: the "real" one that corresponds to what hospitals *have*
 #     and the "reported" one that is the pool created from the pairs
@@ -81,6 +85,12 @@ kPairs$pair.type <- kPairTypes[1+ with(kPairs, 2 *blood.compatible + symmetric.c
 kPairs$symmetric.compatible <- NULL
 kPairs<- cbind(pc=1:16, kPairs)
 kPairs$pair.color <- laply(kPairs$pair.type, function(i) kPairTypeColors[[i]])
+
+pc.to.desc <- function(pcs) {
+  CHECK_UNIQUE(pcs, msg="Pair codes need to be unique.")
+  x = subset(kPairs, pc %in% pcs)
+  return (as.vector(x$desc))
+}
 
 rpra <- function(n, is.uniform=T) {
   ## Sample a PRA value. Uniform returns the same constant value (~0.2)
@@ -156,7 +166,8 @@ CHECK_rke <- function(rke) {
   CHECK_MEMBER(c("pairs", "edges", "A"), names(rke), "Match RKE fields.")
   CHECK_EQ(nrow(rke$pairs), nrow(rke$A))
   CHECK_MEMBER(as.vector(rke$A), c(0,1), msg="Aij in {0,1}")  # A is binary adjacency matrix.
-  CHECK_SETEQ(diag(rke$A), c(0))  # no self-loops
+  if (nrow(rke$A) > 0)
+    CHECK_SETEQ(diag(rke$A), c(0))  # no self-loops
   CHECK_INTERVAL(rke$pairs$prob, min=0, max=1, "Correct probabilities")
   CHECK_EQ(length(unique(rke$pairs$pair.id)), nrow(rke$A), "Pairs should have unique ids")
   CHECK_EQ(rownames(rke$A), rke$pairs$pair.id, msg="rownames A == pair.id?")
@@ -169,6 +180,8 @@ CHECK_rke <- function(rke) {
 CHECK_rke.list <- function(rke.list) {
   CHECK_TRUE(length(rke.list) > 0, msg="Rke.list should not be empty.")
   laply(rke.list, CHECK_rke)
+  hids = laply(rke.list, function(r) max(rke.hospital.ids(r)))
+  CHECK_SETEQ(hids, 1:length(rke.list), msg="hospital ids = {1,2,3...m}")
 }
 
 CHECK_pairs <- function(pairs) {
@@ -292,7 +305,8 @@ map.edges.adjacency <- function(edges, all.pair.ids) {
           in.ids = sapply(inlinks$pair.id1, get.pairIdIndex)
           A[in.ids, to.id] <<- 1
         })
-  CHECK_SETEQ(diag(A), c(0), msg="No self-loops")
+  if (nrow(A) > 0)
+    CHECK_SETEQ(diag(A), c(0), msg="No self-loops")
   CHECK_EQ(sum(A), sum(edges$can.donate), "A has correct #edges.")
   rownames(A) = all.pair.ids
   colnames(A) = all.pair.ids
