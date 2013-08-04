@@ -1,6 +1,12 @@
 # TODO(ptoulis): Documentation
 library(gurobi)
 
+empty.match.result <- function(rke) {
+  x = subset(rke$pairs, pair.id < 0)
+  CHECK_TRUE(nrow(x) == 0, "should be empty")
+  return (x)
+}
+
 map.gurobiResult <- function(gurobi.result, rke, cycles) {
   # Gets the Gurobi output and returns the subset of rke "pairs" object
   # of those that have been matched.
@@ -8,7 +14,7 @@ map.gurobiResult <- function(gurobi.result, rke, cycles) {
   # Returns: A "pairs" object.
   if(gurobi.result$status=="TIME_LIMIT" | gurobi.result$status=="INF_OR_UNBD") {
     warning("Time limit or infinity.")
-    empty.result = get.empty.result()
+    empty.result = empty.match.result(rke)
     empty.result$status = gurobi.result$status
     return(empty.result)
   }
@@ -44,7 +50,7 @@ max.matching <- function(rke, include.3way=F,
   num.edges = length(rke.edge.ids(rke))
   if (num.edges == 0) {
     warning("Empty RKE object")
-    return (empty.match.result())
+    return (empty.match.result(rke))
   }
   # Define Gurobi model 
   # Gurobi defines the problem as: 
