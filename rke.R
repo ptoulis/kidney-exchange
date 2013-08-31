@@ -106,7 +106,7 @@ rke.cycles <- function(rke, include.3way=F) {
 }
 
 rke.cycles.membership <- function(rke, rke.cycles) {
-  # Returns a pairs x cycles matrix that contains membership of pairs in cycles.
+  # Returns a (pairs x cycles) matrix that contains membership of pairs in cycles.
   # i.e. Aij = 1 if pair i belongs in cycle j
   # Row names *have* to be the same as the pair ids
   # If no cycles, return an empty matrix.

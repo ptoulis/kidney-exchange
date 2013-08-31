@@ -173,7 +173,7 @@ compute.ir.constraints = function(rke.list, pair.types=c()) {
   m = length(rke.list)
   CHECK_rke.list(rke.list)  # will check whether the hospital ids are correct.
   out = data.frame(pc=c(), pair.type=c(), hospital=c())
-  if(length(pair.types)==0 || m==0)
+  if(length(pair.types)==0 || m == 0)
     return(out)
   
   for(hid in 1:length(rke.list)) {
@@ -186,6 +186,8 @@ compute.ir.constraints = function(rke.list, pair.types=c()) {
         sub.pairs = rke.filter.pairs(rke.h, attr="pair.type", value=type)
         subrke = rke.keep.pairs(rke.h, pair.ids=sub.pairs)
         match = max.matching(subrke)
+        CHECK_TRUE(match$results == "OK", msg="Matching should be performed")
+        match = match$match  # ah well.
         tab.pc = as.matrix(table(match$pc))
         # data.frame of pc frequencies
         tab.pc = data.frame(pc=as.numeric(rownames(tab.pc)), freq=tab.pc[ , 1])
