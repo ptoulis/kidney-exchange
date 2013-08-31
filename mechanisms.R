@@ -149,6 +149,7 @@ rCM <- function(rke.pool, include.3way=F) {
   rke.all <- rke.pool$rke.all
   ## 1. Simply calculate a maximum-matching (this will shuffle the edges by default)
   m.all =  max.matching(rke.all, include.3way=include.3way)
+  print(m.all)
   matched.all.ids = m.all$matched.ids
   # 2. Return all matched ids
   return(matched.all.ids)

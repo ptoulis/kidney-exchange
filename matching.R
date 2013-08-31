@@ -11,7 +11,7 @@ map.gurobiResult <- function(gurobi.result, rke, cycles) {
   # Gets the Gurobi output and returns the subset of rke "pairs" object
   # of those that have been matched.
   #
-  # Returns: A "pairs" object.
+  # Returns: A "pairs" object of the pairs that were matched.
   if(gurobi.result$status=="TIME_LIMIT" | gurobi.result$status=="INF_OR_UNBD") {
     warning("Time limit or infinity.")
     empty.result = empty.match.result(rke)
@@ -46,8 +46,13 @@ map.gurobiResult <- function(gurobi.result, rke, cycles) {
 ##  Can return NA if time out.
 max.matching <- function(rke, include.3way=F,
                          ir.constraints=data.frame(),
-                         timeLimit=120) {
+                         timeLimit=120,
+                         verbose=F) {
   CHECK_rke(rke)
+  logthis <- function(x) {
+    if (verbose)
+      loginfo(x)
+  }
   num.pairs = rke.size(rke)
   num.edges = length(rke.edge.ids(rke))
   if (num.edges == 0) {
@@ -124,6 +129,7 @@ max.matching <- function(rke, include.3way=F,
                      TimeLimit=timeLimit)
   
   gurobi.result <- gurobi(model, params.new)
+  logthis(gurobi.result)
   match.out = map.gurobiResult(gurobi.result, rke, Cycles)
   edge.index = which(rke$edges$edge.id %in% match.out$matched.edges)
   rke$edges$edge.color[edge.index] <- rep("red", length(match.out$matched.edges))
