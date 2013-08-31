@@ -6,13 +6,13 @@ library(logging)
 library(stringr)
 basicConfig()
 # Terminology:
-# (1) A "blood-type" is in {"O", "A", "B", "AB"} and represents a blood-type
+# *  A "blood-type" is in {"O", "A", "B", "AB"} and represents a blood-type
 #     A "blood-code" is an integer representation, in {1, 2, 3, 6} resp.
 #     A "pair-type" is in {"O", "U", "S", "R"} and represent the over-demanded, 
 #     under-demanded, self-demanded and reciprocal pairs respectively.
 #     A "pair-code" is simply an integer from 1-16 which represents 
 #     the 4x4 = 16 total blood-type dyads.
-# (2) A "pairs" object is a DF that represents a collection of donor-patients
+#  * A "pairs" object is a DF that represents a collection of donor-patients
 #     These are completely defined by (PairCodes, pra, hospital)
 #     "pair codes" is a dataframe that describes the pairs themselves using 
 #     (i) donor, patient types, (ii) blood.compatibility, (iii) pair as string
@@ -21,26 +21,33 @@ basicConfig()
 #      A "pairs" data-frame has
 #     pc  donor  patient  prob  blood.compatible  desc  pair.type pair.color  hospital pra  pair.id
 #     3    3       1    0.075         0          B-O       U         gray       1      0.2     7
-#  (3) "edges" is a DATAFRAME that contains id1, id2 vector that represent
+#  * "edges" is a DATAFRAME that contains id1, id2 vector that represent
 #       pair dyads, and compatibility relationships from pair1->pair2.
 #       pair.id1, pair.id2, blood.compatible, pra.compatible, self.loop   can.donate  edge.color  edge.id
 #         2          5          1                 1               0          1           black     78232
 #         5          8          1                 0               0          0           black     77723
 #       This means that pair 2 can donate to 5 but 5 cannot donate to 8 because
 #       patient of 8 is PRA-sensitive to donor of 5.
-# (4) An RKE ("random kidney exchange") defines a multi-hospital exchange pool.
+# *   A "matching" represents a transplant graph:
+#     match = an <edges> data frame of the pairs involved
+#     status = e.g. "OK" denoting the status of the matching (e.g. "INF")
+#     utility = #pairs matched (as an integer)
+# *  A strategy is a LIST(report, hide) that are vector of pair id's.
+#    (report U hide) = {all pair ids} and (report ^ hide) = {}
+# *  An RKE ("random kidney exchange") defines a multi-hospital exchange pool.
 #     It is a LIST of a <pairs> and <edges> objects. It also contains an adjacency
 #     matrix Aij, where Aij = 1 if pair i can donate to pair j.
-# (5) An RKE pool represent the pool created by several hospital RKE's.
+# *  An RKE pool represent the pool created by several hospital RKE's.
 #     It is defined as a list with "rke.list" having the list of the RKE's of
 #     hospitals, and "rke.all" having the aggregate of the RKEs.
-#        {rke.list=>list(rke),  rke.all=>rke}
-# (6) A KPD object (Kidney-Paired donations) represents a collection of two
+#      {  rke.list=>list(rke),  rke.all=>rke  }
+# * A KPD object (Kidney-Paired donations) represents a collection of two
 #     RKE pools: the "real" one that corresponds to what hospitals *have*
 #     and the "reported" one that is the pool created from the pairs
-#     that hospitals report.
-# (7) A strategy is a LIST(report, hide) that are vector of pair id's.
-#    (report U hide) = all pair ids and (report ^ hide) = 0
+#     that hospitals report. In symbols, strategy + RKE = KPD
+# * A mechanism M is a function (rke.pool -> matching) 
+#     The format of matching is the output of the max.matching function:
+#     (see above)
 kAccuracy = 10^5
 kBloodTypes  <- c("O", "A", "B", "AB")
 kBloodCodes  <- c(1, 2, 3, 6)
@@ -353,4 +360,10 @@ rrke <- function(n, pair.ids=1:n, hospital.id=1,
 
 mu.thm = function(n) {
   0.556 * n  -0.338 * sqrt(n)- 2
+}
+
+logthis <- function(x, verbose) {
+  if (is.array(x))
+    x = paste(x, collapse=", ")
+  if (verbose) loginfo(x);
 }

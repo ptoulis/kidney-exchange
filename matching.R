@@ -1,17 +1,42 @@
 # TODO(ptoulis): Documentation
 library(gurobi)
 
-empty.match.result <- function(rke) {
-  x = subset(rke$pairs, pair.id < 0)
-  CHECK_TRUE(nrow(x) == 0, "should be empty")
-  return (list(match=x, status="undef"))
+CHECK_matching <- function(matching) {
+  CHECK_MEMBER(c("match", "utility", "status"), names(matching), msg="Matching members")
+  CHECK_pairs(matching$match)
+  CHECK_GE(matching$utility, 0, "Utility is >=0")
+  CHECK_TRUE(is.character(matching$status), msg="Status should be a string")
 }
 
-map.gurobiResult <- function(gurobi.result, rke, cycles) {
+get.matching.ids <- function(matching) {
+  CHECK_matching(matching)
+  return(matching$match$pair.id)
+}
+
+get.matching.utility = function(matching) {
+  CHECK_matching(matching)
+  return(matching$utility)
+}
+
+get.matching.status = function(matching) {
+  CHECK_matching(matching)
+  return(matching$status)
+}
+
+empty.match.result <- function(rke) {
+  # Empty "matching" object.
+  x = subset(rke$pairs, pair.id < 0)
+  CHECK_TRUE(nrow(x) == 0, "should be empty")
+  ret = list(match=x, status="undef", utility=0)
+  CHECK_matching(ret)
+  return(ret)
+}
+
+gurobi.matched.pairs <- function(gurobi.result, rke, cycles) {
   # Gets the Gurobi output and returns the subset of rke "pairs" object
   # of those that have been matched.
   #
-  # Returns: A "pairs" object of the pairs that were matched.
+  # Returns: A <matching> object.
   if(gurobi.result$status=="TIME_LIMIT" | gurobi.result$status=="INF_OR_UNBD") {
     warning("Time limit or infinity.")
     empty.result = empty.match.result(rke)
@@ -39,6 +64,8 @@ map.gurobiResult <- function(gurobi.result, rke, cycles) {
   x = empty.match.result(rke)
   x$match = result
   x$status="OK"
+  x$utility = length(matched.ids)
+  CHECK_matching(x)
   return (x)
 }
 
@@ -49,22 +76,18 @@ max.matching <- function(rke, include.3way=F,
                          timeLimit=120,
                          verbose=F) {
   CHECK_rke(rke)
-  logthis <- function(x) {
-    if (verbose)
-      loginfo(x)
-  }
   num.pairs = rke.size(rke)
   num.edges = length(rke.edge.ids(rke))
-  if (num.edges == 0) {
-    warning("Empty RKE object")
-    return (empty.match.result(rke))
-  }
   # Define Gurobi model 
   # Gurobi defines the problem as: 
   # A * x   <sense>   rhs   ,  sense in {"<=", ">="}
   #
   Cycles = rke.cycles(rke, include.3way=include.3way)
   model.w <- Cycles$type
+  if (length(model.w) == 0 |   (num.edges == 0)) {
+    logthis("Empty RKE", verbose)
+    return (empty.match.result(rke))
+  }
   model.rhs <- rep(1, num.pairs)
   model.sense <- rep("<=", num.pairs)
   # Build A matrix of model
@@ -85,7 +108,7 @@ max.matching <- function(rke, include.3way=F,
   CHECK_EQ(nrow(model.A), num.pairs)
   CHECK_EQ(ncol(model.A), nrow(Cycles))
   CHECK_MEMBER(unique(model.A), c(0,1))
-    
+  
   model <- list()
   model$A          <- model.A
   model$obj        <- model.w
@@ -129,8 +152,8 @@ max.matching <- function(rke, include.3way=F,
                      TimeLimit=timeLimit)
   
   gurobi.result <- gurobi(model, params.new)
-  logthis(gurobi.result)
-  match.out = map.gurobiResult(gurobi.result, rke, Cycles)
+  logthis(gurobi.result, verbose)
+  match.out = gurobi.matched.pairs(gurobi.result, rke, Cycles)
   edge.index = which(rke$edges$edge.id %in% match.out$matched.edges)
   rke$edges$edge.color[edge.index] <- rep("red", length(match.out$matched.edges))
   plot.rke(rke)
