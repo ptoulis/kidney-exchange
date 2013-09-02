@@ -435,39 +435,48 @@ ud.lottery = function(rke,
   return(ret.pairs)
 }
 
-Bonus.QS = function(rke.all)  {
-  
-  #  Before we start. Compute Qh and Sh sets internally
-  ## Q[hid][X-Y] = how many #X-Y  in hospital hid 
-  ## S[hid][X-Y] = { ids } of type X-Y which are included in a max regular matching.
+Bonus.QS = function(rke.pool, include.3way=F)  {
+  # Compute Qh and Sh sets internally
+  # 
+  # Returns a LIST that has:
+  #   Q[hid][X-Y] = how many #X-Y  in hospital hid 
+  #   S[hid][X-Y] = { ids } of type X-Y which are included in a max regular matching.
   Qh = list()
   Sh = list()
-  all.hospitals = sort( unique(rke.all$hospital) )
-  ud.pcs = pair.codes.per.type("U")
+  CHECK_rke.pool(rke.pool)
+  # unload
+  rke.list = rke.pool$rke.list
+  rke.all = rke.pool$rke.all
+  all.hospital.ids = rke.hospital.ids(rke.all)
+  CHECK_EQ(all.hospital.ids, 1:max(unique(all.hospital.ids)))
+  # pair codes of Underdemanded pairs (see terminology)
+  ud.pcs = subset(kPairs, pair.type=="U")$pc
   
-  for(h in all.hospitals) {
-    Qh[[h]] = rep(0, length(Pair.Codes))
-    Sh[[h]] = list()
-    h.pairs= get.hospital.pairs(rke.all, h)
-    h.pcs = rke.all$pc[h.pairs]
+  for(hid in all.hospital.ids) {
+    Qh[[hid]] = rep(0, length(kPairCodes))
+    Sh[[hid]] = list()
+    hospital.pair.ids = rke.hospital.pair.ids(rke.all, hospital.id=hid)
+    hospital.pcs = subset(rke.all$pairs, hospital==hid)$pc
     # 2 . Compute a regular matching on the specific hospital (internal)
-    not.h.edges = get.external.edges(rke.all, pair.ids=h.pairs)
-    
-    m = max.matching(rke.all, regular.matching=T, 
-                     remove.edges= not.h.edges )
+    internal.matching = max.matching(rke.list[[hid]], include.3way=include.3way,
+                                     regular.matching=T)
     ## Iterate over all UD codes
-    for(i in ud.pcs) {
-      hpairs.of.type = h.pairs[ which(h.pcs==i) ]
-      Qh[[h]][i] = length(hpairs.of.type)
-      Sh[[h]][[i]] = intersect( m$matching$matched.ids,  hpairs.of.type)
+    for(pc in ud.pcs) {
+      hpairs.of.type = hospital.pair.ids[which(hospital.pcs==pc)]
+      Qh[[hid]][pc] = length(hpairs.of.type)
+      Sh[[hid]][[pc]] = intersect(get.matching.ids(internal.matching),
+                                  hpairs.of.type)
     }
   }
   ##  TO-DO(ptoulis): How do you know if you computed Qh, Sh correctly???
-  ret = list(Q=Qh, S=Sh)
+  return(list(Q=Qh, S=Sh))  
 }
 
 ## Bonus mechanism. Ashlagi & Roth (2013)
-Bonus = function(rke.list, rke.all) {
+Bonus = function(rke.pool, include.3way=F) {
+  CHECK_rke.pool(rke.pool)
+  rke.list = rke.pool$rke.list
+  rke.all = rke.pool$rke.all
   #logwarn("Bonus is not unit-tested.")
   matched.all.ids = c()
   ## 0. Initialize mechanism
