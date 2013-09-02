@@ -97,11 +97,19 @@ kPairs$hospital <- 1:nrow(kPairs)
 kPairs$pair.id <- 1:nrow(kPairs)
 
 pc.to.desc <- function(pcs) {
+  warning("PC to desc not unit-tested")
   as.character(sapply(pcs, function(argpc) subset(kPairs, pc==argpc)$desc))
 }
 
 pc.to.pair.type <- function(pcs) {
+  warning("Pc to pair type not unit tested")
   sapply(pcs, function(argpc) subset(kPairs, pc==argpc)$pair.type)
+}
+
+pc.reciprocal <- function(argpc) {
+  warning("Pc reciprocal not unit tested")
+  x = subset(kPairs, pc == argpc)
+  return(subset(kPairs, donor==x$patient & patient==x$donor)$pc)
 }
 
 rpra <- function(n, is.uniform=T) {
@@ -200,9 +208,6 @@ CHECK_rke.list <- function(rke.list) {
 
 CHECK_pairs <- function(pairs) {
   CHECK_MEMBER(c("pair.id", "donor", "patient", "pc", "hospital"), names(pairs))
-  hids = unique(pairs$hospital)
-  if (length(hids) > 1)
-    CHECK_SETEQ(hids, 1:length(hids), msg="Hospital ids 1, 2,...m")
   CHECK_MEMBER(pairs$pair.type, kPairTypes, "Correct pair types.")
   CHECK_TRUE(all(!duplicated(pairs$pair.id)), "No duplicate pair ids.")
   CHECK_TRUE(all(pairs$pair.id > 0), msg="All pair ids should be > 0")
@@ -372,4 +377,12 @@ logthis <- function(x, verbose) {
   if (is.array(x))
     x = paste(x, collapse=", ")
   if (verbose) loginfo(x);
+}
+
+uniform.sample <- function(x) {
+  if (length(x) == 0)
+    stop("Non-empty vector needed for uniform sample.")
+  if (length(x) == 1)
+    return(x)
+  sample(x, size=1)
 }
