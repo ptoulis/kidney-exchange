@@ -1,6 +1,5 @@
 # Panos Toulis, David C.Parkes
 # 2012, Random Graph models for Kidney Exchanges
-rm(list=ls())
 source("terminology.R")
 library(plyr)
 
@@ -64,10 +63,12 @@ rke.keep.pairs = function(rke, pair.ids) {
   rm.pairs = setdiff(all.pairs, pair.ids)
   return(rke.remove.pairs(rke, rm.pairs))
 }
-
+rke.subgraph <- function(rke, pair.type) {
+  CHECK_MEMBER(pair.type, kPairTypes, msg="Correct pair type?")
+  rke.keep.pairs(rke, pair.ids=rke.filter.pairs(rke, attr="pair.type", value=pair.type))
+}
 rke.edge.ids = function(rke) as.vector(subset(rke$edges, can.donate==1)$edge.id)
 rke.pair.ids = function(rke) as.vector(rke$pairs$pair.id)
-
 # Returns the different hospital ids (unique)
 rke.hospital.ids = function(rke) {
   x = unique(rke$pairs$hospital)
@@ -85,7 +86,7 @@ rke.pairs.hospitals <- function(rke, pair.ids) {
   subrke = subset(rke$pairs, pair.id %in% pair.ids)
   return(subrke$hospital)
 }
-rke.hospital.pairs <- function(rke, hospital.id) {
+rke.hospital.pair.ids <- function(rke, hospital.id) {
   # Returns the pair ids that belong to that hospital
   CHECK_MEMBER(hospital.id, rke.hospital.ids(rke))
   return (rke$pairs$pair.id[which(rke$pairs$hospital == hospital.id)])
@@ -136,9 +137,19 @@ rke.cycles.membership <- function(rke, rke.cycles) {
   return(out)
 }
 
-rke.filter.pairs <- function(rke, attr, value) {
-  CHECK_MEMBER(attr, names(rke$pairs))
-  return (rke$pairs$pair.id[which(rke$pairs[[attr]] == value)])
+rke.filter.pairs <- function(rke, attrs, values) {
+  # Filters the <pairs> object by matching the column "attr" to "value"
+  CHECK_MEMBER(attrs, names(rke$pairs))
+  CHECK_TRUE(length(attrs) > 0, msg="Need some attributes")
+  CHECK_EQ(length(attrs), length(values), msg="Same length of attr, value")
+  if(rke.size(rke) == 0) {
+    warning("Empty RKE")
+    return(c())
+  }
+  matched.index <- 1:rke.size(rke)
+  for (i in 1:length(attrs))
+    matched.index <- intersect(matched.index, which(rke$pairs[[attrs[i]]] == values[i]))
+  return(rke$pairs$pair.id[matched.index])
 }
 
 rke.2way.cycles <- function(rke) {
