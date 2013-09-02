@@ -112,7 +112,7 @@ max.matching <- function(rke, include.3way=F,
     CHECK_MEMBER(pair.ids, ids)
     CHECK_UNIQUE(pair.ids)
     index = match(pair.ids, ids)
-    B = model.A[index, ]
+    B = matrix(model.A[index,], nrow=length(pair.ids), ncol=ncol(model.A))
     rownames(B) <- pair.ids
     return (B)
   }
