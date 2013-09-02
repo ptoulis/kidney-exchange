@@ -93,8 +93,8 @@ kPairs$pair.type <- kPairTypes[1+ with(kPairs, 2 *blood.compatible + symmetric.c
 kPairs$symmetric.compatible <- NULL
 kPairs<- cbind(pc=kPairCodes, kPairs)
 kPairs$pair.color <- laply(kPairs$pair.type, function(i) kPairTypeColors[[i]])
-kPairs$hospital <- 1:nrow(kPairs)
-kPairs$pair.id <- 1:nrow(kPairs)
+# kPairs$hospital <- 1:nrow(kPairs)
+# kPairs$pair.id <- 1:nrow(kPairs)
 
 pc.to.desc <- function(pcs) {
   warning("PC to desc not unit-tested")
@@ -207,6 +207,7 @@ CHECK_rke.list <- function(rke.list) {
 }
 
 CHECK_pairs <- function(pairs) {
+  warning("CHECK_pairs fails on kPairs")
   CHECK_MEMBER(c("pair.id", "donor", "patient", "pc", "hospital"), names(pairs))
   CHECK_MEMBER(pairs$pair.type, kPairTypes, "Correct pair types.")
   CHECK_TRUE(all(!duplicated(pairs$pair.id)), "No duplicate pair ids.")
