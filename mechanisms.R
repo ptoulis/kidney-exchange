@@ -109,6 +109,7 @@ play.strategies = function(rke.list, strategy.str,
 }
 
 get.hospitals.utility <- function(rke.all, matched.ids) {
+  warning("No unit tests for hospitals utility")
   # Calculates utility per hospital given the supplied matched pair ids.
   # Returns a m x 1 vector of utilities
   matched.hospitals = rke.pairs.hospitals(rke.all, matched.ids)
@@ -118,6 +119,7 @@ get.hospitals.utility <- function(rke.all, matched.ids) {
 
 ##  Runs a mechanism
 Run.Mechanism = function(kpd, mech, include.3way=F, verbose=F) {
+  warning("No unit tests for RunMechanism")
   logthis(sprintf("Mechanism %s. Checking KPD", mech), verbose)
   CHECK_kpd(kpd)
   
@@ -170,6 +172,7 @@ Run.Mechanism = function(kpd, mech, include.3way=F, verbose=F) {
 }
 
 rCM <- function(rke.pool, include.3way=F) {
+  warning("No unit tests for rCM")
   # Implementation of rCM. Returns an array of matched pair ids.
   CHECK_rke.pool(rke.pool)
   rke.list <- rke.pool$rke.list
@@ -244,9 +247,9 @@ g.share = function(demand, supply) {
   #
   # Returns: 
   #   m x 1 vector of allocation
-  # TO-DO(ptoulis): Unit tests for this one?
   #
   # J = { those ids that have positive demand }
+  warning("Not unit-tests for g share")
   set.J = which(demand > 0)
   # allocation vector
   alloc = rep(0, length(demand))
@@ -307,6 +310,7 @@ compute.Rsubgraph.constraints <- function(ir.constraints, rke.pool) {
 ## as long as it has good properties, we can treat it as a black box.
 xCM <- function(rke.pool, include.3way=F, verbose=F) {
   CHECK_rke.pool(rke.pool)
+  warning("Not unit tests for xCM")
   # unload
   rke.list = rke.pool$rke.list
   rke.all = rke.pool$rke.all
@@ -366,73 +370,72 @@ xCM <- function(rke.pool, include.3way=F, verbose=F) {
 }
 
 
-## The underdemanded lottery as defined in Ashlagi & Roth (2013)
-##  Return set of pair ids
-## rke = entire RKE object
-## pair.ud = UD pair (donor, patient)
-# Hn =   [1.4.5....]   vector of hospital ids
-# theta = supply
-# Qh, Sh  = lists 
-## @RETURN: (id1, id2, ...)    list of pair ids which are the union of Sh(X-Y)
-ud.lottery = function(rke, 
-                      pair.ud, 
-                      Hn, 
-                      theta,
-                      QS) {
-  #warning("UD-lottery is not unit-tested.")
-  #warning("UD lottery does not have a unit test.")
-  Qh = QS$Q
-  Sh = QS$S
-  
-  # The underdemanded PC code
-  ud.code = pair.code(pair.ud)
-  
-  # X-Y pairs in rke
-  rke.XY.pairs = filter.pairs.by.donor.patient(rke, pair.ud$donor, pair.ud$patient)
-  ##  Pre-compute the X-Y pairs for every hospital h
+ud.lottery = function(rke, ud.pc, 
+                      Hn, theta, QS) {
+  # Under-demanded lottery as in Ashlagi-Roth (2013)
+  #
+  # Args
+  #  ud.pc = a Pair code of U pair
+  #  Hn = array of hospital ids
+  #  theta = supply
+  #  QS = the QS data structure (see Bonus.QS). This holds information 
+  #     of U pairs that hospitals have or can match
+  #
+  # Returns
+  #   An array of U pair ids (that belong to hospitals in Hn)
+  #
+  # warning("UD-lottery is not unit-tested.")
+
+  # X-Y pairs in rke for the Hn hospitals.
+  rke.XY.pair.ids = subset(rke$pairs, pc==ud.pc & hospital %in% Hn)$pair.id
+  # Bh.XY = LIST (per hospital).
+  # Bh.XY[[hid]] = { set of XY pairs for hospital hid }
   Bh.XY = list()
-  ## For every hospital, holds the set of X-Y pairs.
+  # Sh.XY = LIST (per hospital).
+  # Sh.XY[[hid]] = { set of XY pairs that are matched internally }
   Sh.XY = list()
   ## Contains # balls /hospital     [1,1,1,3,3,3,3,3,5,5,5, ...]   NOTE: this is index by a hospital in Hn
   set.J = c()
-  ## Initialize the Sh.XY  to the internal max matches.
+  ## Initialize the Sh.XY, Bh.XY
   for(hid in Hn) {
-    Sh.XY[[hid]] = Sh[[hid]][[ud.code]]
-    set.J = c(set.J, rep(hid, Qh[[hid]][ud.code]))
-    
-    Bh.XY[[hid]] = intersect(rke.XY.pairs, get.hospital.pairs(rke, hid) )
-    ## Sanity check
-    TEST.SUBSET(Sh.XY[[hid]], Bh.XY[[hid]])
+    Sh.XY[[hid]] = QS$S[[hid]][[ud.pc]]  # set of matched XY pairs.
+    set.J = c(set.J, rep(hid, QS$Q[[hid]][ud.pc]))  # add balls for hospital
+    Bh.XY[[hid]] = rke.filter.pairs(rke, attrs=c("pc", "hospital"),
+                                    values=c(ud.pc, hid))
+    ## Sanity check (matched ids subset of all ids)
+    CHECK_MEMBER(Sh.XY[[hid]], Bh.XY[[hid]])
+    CHECK_EQ(length(Bh.XY[[hid]]), QS$Q[[hid]][ud.pc])
   }
-  
-  get.sum = function() sum(sapply(Hn, function(hid) length(Sh.XY[[hid]])))
-  
+  # Sum of all candidate matched XY pairs across hospitals
+  get.sum = function() sum(laply(Sh.XY, length))
   plateau.count = 0
-  
-  while(get.sum() < theta && 
-          plateau.count<10 && 
-          length(set.J)>0) {
-    h.sample = uniform.sample(set.J)
-    set.J = set.J[-which(set.J==h.sample)[1]]
-    
-    TEST.SUBSET(Sh.XY[[h.sample]], Bh.XY[[h.sample]] )
-    
-    avail = setdiff(Bh.XY[[h.sample]], Sh.XY[[h.sample]])
-    if(length(avail)>0) {
-      xy.pair = uniform.sample(avail)
-      Sh.XY[[h.sample]] = c(Sh.XY[[h.sample]], xy.pair)
-      plateau.count=0
-    } else {
-      plateau.count = plateau.count +1 
+  # Main loop of lottery
+  # Do not remove balls from J (that is the definition)
+  # J = 1,1,1,2,2,2,3,3,4,...  (contains hospital ids)
+  if (length(set.J) > 0)
+    while(get.sum() < theta && plateau.count < 10) {
+      h.sample = sample(set.J, size=1)
+      # set.J = set.J[-which(set.J==h.sample)[1]]
+      CHECK_MEMBER(Sh.XY[[h.sample]], Bh.XY[[h.sample]],
+                   msg="Matched ids subset of all")
+      
+      avail = setdiff(Bh.XY[[h.sample]], Sh.XY[[h.sample]])
+      if(length(avail) > 0) {
+        xy.pair = uniform.sample(avail)
+        Sh.XY[[h.sample]] = c(Sh.XY[[h.sample]], xy.pair)
+        plateau.count=0
+      } else {
+        plateau.count = plateau.count +1 
+      }
     }
-  }
   
-  ret.pairs = c()
-  # return the union.
-  for(h in Hn) {
-    ret.pairs = c(ret.pairs, Sh.XY[[h]])
+  ret.pair.ids = c()
+  # Return the union.
+  for(hid in Hn) {
+    ret.pair.ids = c(ret.pair.ids, Sh.XY[[hid]])
   }
-  return(ret.pairs)
+  CHECK_MEMBER(ret.pair.ids, rke.XY.pair.ids, msg="Candidate matched subset of all")
+  return(ret.pair.ids)
 }
 
 Bonus.QS = function(rke.pool, include.3way=F)  {
@@ -475,100 +478,88 @@ Bonus.QS = function(rke.pool, include.3way=F)  {
 ## Bonus mechanism. Ashlagi & Roth (2013)
 Bonus = function(rke.pool, include.3way=F) {
   CHECK_rke.pool(rke.pool)
+  # unload
   rke.list = rke.pool$rke.list
   rke.all = rke.pool$rke.all
-  #logwarn("Bonus is not unit-tested.")
-  matched.all.ids = c()
+  warning("Bonus not unit-tested")
+  matched.all.ids = c()  # output of mechanism
+  
   ## 0. Initialize mechanism
-  m = length(rke.list)
-  
-  ## Pair code (useful when setting constraints)
-  pc.AB = pair.code(list(donor="A", patient="B"))
-  pc.BA = pair.code(list(donor="B", patient="A"))
-  pc.R = c(pc.AB, pc.BA)
-  
-  IR.constraints = compute.ir.constraints(rke.list, types=c("R"))
-  
-  ## 1. Match S pairs
-  all.but.s = get.external.edges( rke.all, filter.pairs.by.type(rke.all, "S") )
-  match.s = max.matching(rke.all, remove.edges = all.but.s)
+  m = length(rke.list)  # no. of hospitals.
+
+  ## 1. Match S pairs internally
+  s.subrke = rke.subgraph(rke.all, pair.type="S")
+  s.matching = max.matching(s.subrke, include.3way=include.3way)
+  s.matched.ids = get.matching.ids(s.matching)
   
   ## 2. Match R pairs
-  all.but.r = get.external.edges( rke.all, filter.pairs.by.type(rke.all, "R") )
-  match.r = max.matching(rke.all, IR.constraints=IR.constraints$R, 
-                         remove.edges = all.but.r)
+  # Compute constraints.
+  R.constraints = compute.ir.constraints(rke.pool, pair.types=c("R"))
+  r.subrke = rke.subgraph(rke.all, pair.type="R")
+  r.matching = max.matching(r.subrke, include.3way=include.3way, 
+                            ir.constraints=R.constraints)
+  r.matched.ids = get.matching.ids(r.matching)
   
-  #ORr = length(which ( get.pair.types(rke.all, match.r$matching$matched.ids) == "O" ) )
-  #ORs = length(which ( get.pair.types(rke.all, match.r$matching$matched.ids) == "O" ) )
-  
-  TEST.SUBSET( get.pair.types(rke.all, match.r$matching$matched.ids), c("R"), str=" only R")
-  ## Check if matched.already containts *only* R-S pairs.
-  TEST.SUBSET(get.pair.types(rke.all, match.s$matching$matched.ids), c("S"), str="only S pairs")
-  
-  matched.ids.R = match.r$matching$matched.ids
-  matched.ids.S = match.s$matching$matched.ids
-  
-  TEST.SETS.DISJOINT(matched.ids.R, matched.ids.S)
-  
-  matched.all.ids = c(matched.ids.R, matched.ids.S)
+  matched.all.ids = c(r.matched.ids, s.matched.ids)
+  CHECK_UNIQUE(matched.all.ids)
+  CHECK_MEMBER(subset(rke.all$pairs, pair.id %in% matched.all.ids)$pair.type, 
+               c("S", "R"), msg="Only S and R pair types matched")
   #  3. Match OD/UD pairs.
+  #   3a. Split hospital in two sets
   k = as.integer(m/2)
   H.sets = list()
   H.sets[[1]] = sample(1:m, size=k, replace=F)
   H.sets[[2]] = setdiff(1:m, H.sets[[1]])
 
-  ## Underdemanded PC codes
-  ud.pc = pair.codes.per.type("U")
-  # Compute Q-S, Q[hid][X-Y] = how many #X-Y in hospital hid
-  # S[hid][X-Y] = {}  ids of X-Y in hospital hid 
-  QS.obj = Bonus.QS(rke.all)
+  # All Underdemanded PC codes
+  ud.pcs = subset(kPairs, pair.type=="U")$pc
+  # Compute Q-S:
+  #   Q[hid][X-Y] = how many #X-Y in hospital hid
+  #   S[hid][X-Y] = { ids of matched X-Y for hid }
+  QS.obj = Bonus.QS(rke.pool=rke.pool, include.3way=include.3way)
   
   ## For all under-demanded pairs  X-Y
-  for(i in ud.pc) {
-    
-    pair.ud = pair.code.to.pair(i)
-    # Find the reciprocal OD pair  Y-X
-    pair.od = list(donor=pair.ud$patient, patient=pair.ud$donor)
-    ## Note: follow the notation in Ashlagi&Roth about Bonus
-    ## Find all pairs Y-X
-    all.YX = filter.pairs.by.donor.patient(rke.all, pair.od$donor, pair.od$patient)
-    all.XY = filter.pairs.by.donor.patient(rke.all, pair.ud$donor, pair.ud$patient)
-    
-    hospitals.YX = rke.all$hospital[all.YX]
-    ## Iterate through hospital groups
+  for(i in ud.pcs) {
+    # i is a PC (pair code)
+    # Note: follow the notation in Ashlagi&Roth about Bonus
+    # Y-X (O pairs) and X-Y (U pairs) are reciprocal.
+    all.XY = rke.filter.pairs(rke.all, attrs=c("pc"), values=c(i))
+    all.YX = rke.filter.pairs(rke.all, attrs=c("pc"), values=pc.reciprocal(i))
+    # Iterate through hospital groups
     for(j in 1:2) {
+      # Get YX pairs that belong to the H2
+      # and XY pairs that belong to H1 (indexed by "j")
+      # tau.Bhj.XY = { ids that belong to H1 and are of type XY }
+      tau.BHj.XY = subset(rke.all$pairs,
+                          hospital %in% H.sets[[j]] & pair.id %in% all.XY)$pair.id
+      # tau.BHother.XY = { ids that belong to H2 and are of type YX }
+      tau.BHother.YX = subset(rke.all$pairs,
+                              hospital %in% H.sets[[3-j]] & pair.id %in% all.YX)$pair.id
       
-      ## Pairs that belong to the other group
-      BHother.pairs =  which(rke.all$hospital %in% H.sets[[3-j]])
-      BHj.pairs     =  which(rke.all$hospital %in% H.sets[[j]])
-
-      ## Pairs Y-X in this set of hospitals
-      tau.BHother.YX =  intersect(all.YX,  BHother.pairs)
-      tau.BHj.XY =  intersect(all.XY,  BHj.pairs)
-      
-      ## no. of such pairs
-      theta.j.YX = length( tau.BHother.YX )
+       # no. of such pairs (supply of YX pairs to be used in lottery)
+      theta.j.YX = length(tau.BHother.YX)
       
       ## Run the under-demanded lottery  (contains pair ids)
-      S.XY = ud.lottery(rke.all, pair.ud, H.sets[[j]], theta.j.YX, QS.obj)
+      S.XY = ud.lottery(rke=rke.all,
+                        ud.pc=i,
+                        Hn=H.sets[[j]],
+                        theta=theta.j.YX,
+                        QS=QS.obj)
       
-      # Test if disjoint (former=UD latter=OD so should not intersect)
-      TEST.SETS.DISJOINT(S.XY, tau.BHother.YX, str="S.XY with BH.XY")
-      TEST.SUBSET(S.XY, tau.BHj.XY, str="S.XY subset")
+      CHECK_DISJOINT(S.XY, tau.BHother.YX, msg="Not even the same type")
+      CHECK_MEMBER(S.XY, tau.BHj.XY, msg="Matched subset of all")
       ## the only ids to be considered in the matching
-      xyyx.ids = union(S.XY, tau.BHother.YX)
-      exclude.edges = get.external.edges(rke.all, pair.ids= xyyx.ids)
-      
-      ##  Here you match   X-Y pairs from Hj   with   Y-X pairs from Hother
-      Mj = max.matching(rke.all, regular.matching=F, 
-                           remove.edges= exclude.edges)
+      XYYX.ids = union(S.XY, tau.BHother.YX)
+      # Here you match   X-Y pairs from Hj   with   Y-X pairs from Hother
+      subrke = rke.keep.pairs(rke.all, pair.ids=XYYX.ids)
+      Mj = max.matching(subrke, include.3way=include.3way, regular.matching=F)
       ## Test if newly matched have already been matched.
-      TEST.SETS.DISJOINT(Mj$matching$matched.ids, matched.all.ids, str="Matched now vs. already")
+      CHECK_DISJOINT(get.matching.ids(Mj),
+                     matched.all.ids,
+                     msg="Should not match already matched pairs.")
       
-      matched.all.ids = c(matched.all.ids, Mj$matching$matched.ids)
-
+      matched.all.ids = c(matched.all.ids, get.matching.ids(Mj))
     }
   }
-  return(matched.all.ids)
+  return(get.matching.from.ids(matched.all.ids, rke.all))
 }
-
