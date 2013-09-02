@@ -156,11 +156,13 @@ rke.2way.cycles <- function(rke) {
   # Returns a K x 2 matrix of 2-way cycles in the rke object.
   # (K = #2-way cycles)
   CHECK_rke(rke)
+  out = matrix(0, nrow=0, ncol=2)
+  if (rke.size(rke) == 0)
+    return(out)
   A = rke$A  #  the adjacency matrix
   pair.ids = rownames(A)
   CHECK_EQ(pair.ids, rke.pair.ids(rke), msg="Pair ids from A and $pair.id should match")
   cycles.two = apply(which((A * t(A)) == 1, arr.ind=T), 2, function(i) as.numeric(pair.ids[i]))
-  out = matrix(0, nrow=0, ncol=2)
   if (length(cycles.two) > 0) {
     x = apply(cycles.two, 1, function(r) r[2] > r[1])  # remove duplicates
     out = matrix(cycles.two[which(x), ], ncol=2)
@@ -174,6 +176,10 @@ rke.3way.cycles <- function(rke) {
   # Args: A adjacency matrix
   #
   # Returns: k x 3 matrix of cycles. Each row is (i,j,k) indicates i->j->k->i cycle
+  CHECK_rke(rke)
+  cycles.3way = matrix(0, nrow=0, ncol=3)
+  if (rke.size(rke) == 0)
+    return(cycles.3way)
   A = rke$A
   cycles.3way = matrix(0, nrow=0, ncol=3)
   num.nodes = nrow(A)
