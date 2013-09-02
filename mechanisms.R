@@ -5,8 +5,9 @@
 ##  Currently supported:   rCM,  xCM
 ## A mechanism receives a combined donor-patient graph and outputs a matching. 
 ## (note: code returns a vector of utilities (matches/hospital)
-source("rke.R")
-source("matching.R")
+
+# source("rke.R")
+# source("matching.R")
 
 kpd.create <- function(rke.pool, strategy.str, verbose=F) {
   # Creates a KPD from the specific pool.
@@ -179,7 +180,7 @@ rCM <- function(rke.pool, include.3way=F) {
 }
 
 
-compute.ir.constraints = function(rke.list, pair.types=c()) {
+compute.ir.constraints = function(rke.pool, pair.types=c(), include.3way=F) {
   # Given the list of RKE objects, compute the IR constraints for each hospital
   # Returns empty data-frame if not types, or empty rke.list
   #
@@ -193,40 +194,41 @@ compute.ir.constraints = function(rke.list, pair.types=c()) {
   #   internal = #internal matches for this hospital and pc.
   #   pc  pair.type desc  hospital  internal.matches
   #   1     S       O-O        2           0
-  #   2     U       A-O       2           1         ...
-  stop("NEED TO use new definitions.")
+  #   2     U       A-O        2           1         ...
+  CHECK_rke.pool(rke.pool)  # will check whether the hospital ids are correct.
+  if (length(pair.types) == 0)
+    warning("No pair types defined. Returning empty constraints.")
+  rke.list = rke.pool$rke.list
   m = length(rke.list)
-  CHECK_rke.list(rke.list)  # will check whether the hospital ids are correct.
-  out = data.frame(pc=c(), pair.type=c(), hospital=c())
-  if(length(pair.types)==0 || m == 0)
+  out = data.frame(pc=c(), pair.type=c(), hospital=c(), internal.matches=c())
+  if(length(pair.types)==0 || m==0) {
+    warning("Empty RKE list.")
     return(out)
-  
+  }
   for(hid in 1:length(rke.list)) {
-    # xCM mechanism starts
-    #  1. Compute max matching internally in S
+    # 1. Compute max matching internally in S
     rke.h = rke.list[[hid]]
-    CHECK_SETEQ(rke.hospital.ids(rke.h), c(hid), msg="Correct hospital id")
-    for (type in c("S", "R")) {
-      if(type %in% pair.types) {
-        sub.pairs = rke.filter.pairs(rke.h, attr="pair.type", value=type)
-        subrke = rke.keep.pairs(rke.h, pair.ids=sub.pairs)
-        match = max.matching(subrke)
-        CHECK_TRUE(match$results == "OK", msg="Matching should be performed")
-        match = match$match  # ah well.
-        tab.pc = as.matrix(table(match$pc))
-        # data.frame of pc frequencies
-        tab.pc = data.frame(pc=as.numeric(rownames(tab.pc)), freq=tab.pc[ , 1])
-        CHECK_UNIQUE(tab.pc$pc)
-        num.results = nrow(tab.pc)
-        if (num.results > 0)
-          out = rbind(out, list(pc=tab.pc$pc,
-                                pair.type=rep(type, num.results),
-                                desc=pc.to.desc(tab.pc$pc),
-                                hospital=rep(hid, num.results),
-                                internal.matches=tab.pc$freq))
-      }
+    for (type in intersect(pair.types, c("S", "R"))) {
+      # Take the pairs the belong to this group
+      sub.pair.ids = rke.filter.pairs(rke.h, attr="pair.type", value=type)
+      subrke = rke.keep.pairs(rke.h, pair.ids=sub.pair.ids)
+      matching = max.matching(subrke, include.3way=include.3way)
+      CHECK_TRUE(get.matching.status(matching) == "OK", msg="Matching OK?")
+      match = matching$match
+      tab.pc = as.matrix(table(match$pc))  # tabulate the PC codes.
+      # data.frame of pc frequencies
+      tab.pc = data.frame(pc=as.numeric(rownames(tab.pc)), freq=tab.pc[ , 1])
+      CHECK_UNIQUE(tab.pc$pc)
+      num.results = nrow(tab.pc)
+      if (num.results > 0)
+        out = rbind(out, list(pc=tab.pc$pc,
+                              hospital=rep(hid, num.results),
+                              internal.matches=tab.pc$freq))
     }
   }## for every hospital
+  rownames(out) <- NULL
+  out$desc = sapply(out$pc, pc.to.desc)
+  out$pair.type = pc.to.pair.type(out$pc)
   return(out)
 }
 
@@ -262,102 +264,105 @@ g.share = function(demand, supply) {
   return(alloc)
 }
 
+compute.Rsubgraph.constraints <- function(ir.constraints, rke.pool) {
+  # Constraints for the R subgraph
+  # Returns 
+  #   pc  hospital  internal.matches  pair.type  y
+  #
+  # pc = pair code, hospital = hospital id
+  # internal.matches = #matched in R subgraph
+  # Should be pair.type == R
+  # y = Allocation after running the lottery for the unmatched R pairs.
+  m = length(rke.pool$rke.list)
+  cons <- subset(ir.constraints, pair.type=="R")
+  cons = join(cons, expand.grid(hospital=c(1:m), pc=c(7,10)), type="right")
+  cons$internal.matches[is.na(cons$internal.matches)] <- 0
+  cons$pair.type <- "R"
+  cons$desc <- pc.to.desc(pcs=cons$pc)
+  count.h.pairs <- function(hid, pc) {
+    length(rke.filter.pairs(rke.pool$rke.all, attrs=c("hospital", "pc"), values=c(hid, pc)))
+  }
+  CHECK_EQ(nrow(cons), 2 * m, msg="Correct no. of AB/BA #constraints")
+  cons$unmatched <- sapply(1:nrow(cons), function(i) with(cons[i, ], count.h.pairs(hospital, pc)))
+  cons$unmatched <- cons$unmatched - cons$internal.matches
+  CHECK_GE(cons$unmatched, 0, msg="Non-negative #matches")
+  consAB <- subset(cons, desc=="A-B")
+  consBA <- subset(cons, desc=="B-A")
+  
+  xAB <- sum(consAB$unmatched)
+  xBA <- sum(consBA$unmatched)
+  yAB <- rep(0, m)
+  yBA <- rep(0, m)
+  if (xAB >= xBA)
+    yAB <- g.share(demand=consAB$unmatched, supply=xBA)
+  else
+    yBA <- g.share(demand=consBA$unmatched, supply=xAB)
+  consAB$y <- yAB
+  consBA$y <- yBA
+  cons <- rbind(consAB, consBA)
+  return(cons)
+}
+
 ## TO-DO(ptoulis): Don't really care much about correctness
 ## as long as it has good properties, we can treat it as a black box.
-xCM <- function(rke.pool) {
+xCM <- function(rke.pool, include.3way=F, verbose=F) {
+  CHECK_rke.pool(rke.pool)
   # unload
   rke.list = rke.pool$rke.list
   rke.all = rke.pool$rke.all
-  m = length(rke.list)
+  m = length(rke.list)  # no. of hospitals
   matched.all.ids = c()
   ##  1. Compute IR constraints
-  ir.constraints = compute.ir.constraints(rke.list, types=c("S", "R"))
-  z.AB = IR.constraints$z.ab
-  z.BA = IR.constraints$z.ba
-  ###  Done with per-hospital
-  ###  Final stages of xCM
-  x.AB = sum(z.AB)
-  x.BA = sum(z.BA)
-  y.AB = rep(0, m)
-  if(x.AB>=x.BA)
-    y.AB = g.share(z.AB, x.BA)
+  ir.constraints = compute.ir.constraints(rke.pool, pair.types=c("S", "R"))
   
-  y.BA = rep(0,m)
-  if(x.AB<x.BA)
-    y.BA = g.share(z.BA, x.AB)
-  
-  ##  Ready to run xCM now
-  ###  2.  Match S internally
-  all.but.s = filter.out.edges.by.type(rke.all, "S","S")
-  match.s = max.matching(rke.all, IR.constraints=IR.constraints$S,
-                         remove.edges = all.but.s)
-  
+  # 2.  Match S internally
+  s.subrke = rke.subgraph(rke.all, pair.type="S")
+  s.constraints = subset(ir.constraints, pair.type=="S")
+  s.matching = max.matching(s.subrke,
+                            ir.constraints=s.constraints,
+                            include.3way=include.3way)
   ## 3.   Match R internally
-  ## TO-DO(ptoulis): Slow for some reason
-  all.but.r = filter.out.edges.by.type(rke.all, "R","R")
-
-  match.r = list()
+  r.subrke = rke.subgraph(rke.all, pair.type="R")
+  r.constraints = compute.Rsubgraph.constraints(ir.constraints, rke.pool=rke.pool)
+  # R-constraints have additionally the "y" lottery allocation (see notes)
+  CHECK_EQ(nrow(r.constraints), 2 * m, msg="AB and BA pairs for each hospital")
+  r.matching = list()
   q = 0    
-  ## Pair code (useful when setting constraints)
-  pc.AB = pair.code(list(donor="A", patient="B"))
-  pc.BA = pair.code(list(donor="B", patient="A"))
-  pc.R = c(pc.AB, pc.BA)
-  ## TO-DO(ptoulis): Bug empty graphs cycle forever
-  keep.running = T
-  while(keep.running) {
-    ir.constraints = list()
-    for(h in 1:m)
-      ir.constraints[[h]] = rep(0, length(Pair.Codes))
-    
-    for(h in 1:m) {
-      ir.constraints[[h]][pc.AB] = IR.constraints$R[[h]][pc.AB]+max(0, y.AB[h]-q)
-      ir.constraints[[h]][pc.BA] = IR.constraints$R[[h]][pc.BA]+max(0, y.BA[h]-q)
-    }
-    
-    ## Do the matching.
-    match.r = max.matching(rke.all, IR.constraints = ir.constraints,
-                           remove.edges = all.but.r)
-    keep.running = "INFEASIBLE" %in% names(match.r);
+  loop.ended = F
+  while(!loop.ended) {
+    loop.r.constraints = r.constraints
+    loop.r.constraints$unmatched <- r.constraints$unmatched + max(0, r.constraints$y - q)
+    r.matching = max.matching(r.subrke, ir.constraints = loop.r.constraints,
+                              include.3way=include.3way)
+    loop.ended = get.matching.status(r.matching) == "OK"
     q = q + 1
   }
-  
   ## remove some stuff that are not needed anymore
-  rm(IR.constraints)
-  
+  rm(ir.constraints)
+  logthis(sprintf("Total S matches = %d", length(get.matching.ids(s.matching))), verbose)
+  logthis(sprintf("Total R matches = %d", length(get.matching.ids(r.matching))), verbose)
   #  4. Almost regular matching to the remainder
   ## Notice that match.r, match.s are all on rke.all so that the 
   ## ids refer to the same original ids in rke.all
-  TEST.SETS.DISJOINT(match.r$matching$matched.ids, 
-                     match.s$matching$matched.ids, "R and S matched ids")
-  
-  redges = match.r$matching$matched.edges
-  sedges = match.s$matching$matched.edges
-  
-  TEST.SETS.DISJOINT(redges, sedges, "S and R edges")
-  ###  Update the matching output
-  matched.all.ids = union(match.r$matching$matched.ids, 
-                          match.s$matching$matched.ids)
-  matched.edges.already = union( redges, sedges )
-  
-
+  CHECK_DISJOINT(get.matching.ids(s.matching),
+                     get.matching.ids(r.matching),
+                     msg="R and S matched ids should be different")
+  matched.all.ids = union(get.matching.ids(r.matching),
+                          get.matching.ids(s.matching))
   ## Match OD's individually.
   for(hid in 1:m) {
-    Gh = get.hospital.pairs(rke.all, hid)
-    Gh.remainder = setdiff(Gh, intersect(Gh, matched.all.ids))
-    remove.edges = get.external.edges(rke.all, Gh.remainder)
-    match.Gh = max.matching(rke.all, regular.matching=T, 
-                            remove.edges= get.external.edges(rke.all, Gh.remainder))
- 
+    matched.hospital.ids <- intersect(matched.all.ids, rke.hospital.pair.ids(rke.all, hid))
+    rke.h <- rke.remove.pairs(rke=rke.list[[hid]], pair.ids=matched.hospital.ids)
+    internal.matching = max.matching(rke.h, 
+                                     include.3way=include.3way,
+                                     regular.matching=T)
     ## Make sure OD ids are not R or S pairs
-    TEST.SETS.DISJOINT(match.Gh$matching$matched.ids, 
-                       matched.all.ids, str="OD and matched_already pairs")
-    TEST.SETS.DISJOINT(match.Gh$matching$matched.edges, matched.edges.already,
-                       str="Matched edges already")
-    
-    matched.Gh.ids = match.Gh$matching$matched.ids
-    matched.all.ids = c(matched.all.ids,  matched.Gh.ids)
+    CHECK_DISJOINT(get.matching.ids(internal.matching),
+                   matched.all.ids, 
+                   msg="Don't match already matched pairs.")
+    matched.all.ids = c(matched.all.ids,  get.matching.ids(internal.matching))
   }
-  return(matched.all.ids)
+  return(get.matching.from.ids(matched.all.ids, rke.all))
 }
 
 
