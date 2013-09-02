@@ -8,6 +8,15 @@ CHECK_matching <- function(matching) {
   CHECK_TRUE(is.character(matching$status), msg="Status should be a string")
 }
 
+get.matching.from.ids <- function(ids, rke) {
+  x = empty.match.result(rke)
+  x$match <- subset(rke$pairs, pair.id %in% ids)
+  x$status = "OK"
+  x$utility = length(ids)
+  CHECK_matching(x)
+  return(x)
+}
+
 get.matching.ids <- function(matching) {
   CHECK_matching(matching)
   return(matching$match$pair.id)
@@ -27,7 +36,7 @@ empty.match.result <- function(rke) {
   # Empty "matching" object.
   x = subset(rke$pairs, pair.id < 0)
   CHECK_TRUE(nrow(x) == 0, "should be empty")
-  ret = list(match=x, status="undef", utility=0)
+  ret = list(match=x, status="OK", utility=0)
   CHECK_matching(ret)
   return(ret)
 }
@@ -74,7 +83,9 @@ gurobi.matched.pairs <- function(gurobi.result, rke, cycles) {
 max.matching <- function(rke, include.3way=F,
                          ir.constraints=data.frame(),
                          timeLimit=120,
-                         verbose=F) {
+                         verbose=F,
+                         regular.matching=F) {
+  warning("Regular Matching not implemented.")
   CHECK_rke(rke)
   num.pairs = rke.size(rke)
   num.edges = length(rke.edge.ids(rke))
@@ -118,7 +129,9 @@ max.matching <- function(rke, include.3way=F,
   model$vtype      <- rep('B', length(model.w))
   
   # Set IR constraints here
-  if (nrow(ir.constraints) > 0)
+  # keep only > 0 constraints
+  if (nrow(ir.constraints) > 0) {
+    ir.constraints <- subset(ir.constraints, internal.matches > 0)
     for(i in 1:nrow(ir.constraints)) {
       constraint = ir.constraints[i, ]
       # Unload the constraint
@@ -141,6 +154,7 @@ max.matching <- function(rke, include.3way=F,
       model$sense <- c(model$sense, ">=")
       model$rhs <- c(model$rhs, num.matches)
     }
+  }
   rownames(model$A) <- 1:nrow(model$A)
   model$A = as.matrix(model$A)
   ##  Seems to be much faster than the old params.
@@ -156,7 +170,7 @@ max.matching <- function(rke, include.3way=F,
   match.out = gurobi.matched.pairs(gurobi.result, rke, Cycles)
   edge.index = which(rke$edges$edge.id %in% match.out$matched.edges)
   rke$edges$edge.color[edge.index] <- rep("red", length(match.out$matched.edges))
-  plot.rke(rke)
+  #plot.rke(rke)
   if(all(is.element(gurobi.result$x, c(0,1)))) {
     return(match.out)
   } else {
