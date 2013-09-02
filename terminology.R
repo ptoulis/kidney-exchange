@@ -93,6 +93,8 @@ kPairs$pair.type <- kPairTypes[1+ with(kPairs, 2 *blood.compatible + symmetric.c
 kPairs$symmetric.compatible <- NULL
 kPairs<- cbind(pc=kPairCodes, kPairs)
 kPairs$pair.color <- laply(kPairs$pair.type, function(i) kPairTypeColors[[i]])
+kPairs$hospital <- 1:nrow(kPairs)
+kPairs$pair.id <- 1:nrow(kPairs)
 
 pc.to.desc <- function(pcs) {
   as.character(sapply(pcs, function(argpc) subset(kPairs, pc==argpc)$desc))
@@ -197,7 +199,6 @@ CHECK_rke.list <- function(rke.list) {
 }
 
 CHECK_pairs <- function(pairs) {
-  warning("kPairs does not pass this test. Fix it.")
   CHECK_MEMBER(c("pair.id", "donor", "patient", "pc", "hospital"), names(pairs))
   hids = unique(pairs$hospital)
   if (length(hids) > 1)
