@@ -51,6 +51,7 @@ basicConfig()
 kAccuracy = 10^5
 kBloodTypes  <- c("O", "A", "B", "AB")
 kBloodCodes  <- c(1, 2, 3, 6)
+kPairCodes <- 1:16
 kBloodTypeDistribution <- c(50, 30, 15, 5) / 100
 get.blood.code.prob <- function(blood.code) {
   CHECK_MEMBER(blood.code, kBloodCodes, "Checking correct blood code")
@@ -90,13 +91,15 @@ kPairs <- cbind(kPairs, desc=
                   apply(kPairs, 1, function(x) paste(as.blood.type(x[1:2]), collapse="-")))
 kPairs$pair.type <- kPairTypes[1+ with(kPairs, 2 *blood.compatible + symmetric.compatible)]
 kPairs$symmetric.compatible <- NULL
-kPairs<- cbind(pc=1:16, kPairs)
+kPairs<- cbind(pc=kPairCodes, kPairs)
 kPairs$pair.color <- laply(kPairs$pair.type, function(i) kPairTypeColors[[i]])
 
 pc.to.desc <- function(pcs) {
-  CHECK_UNIQUE(pcs, msg="Pair codes need to be unique.")
-  x = subset(kPairs, pc %in% pcs)
-  return (as.vector(x$desc))
+  as.character(sapply(pcs, function(argpc) subset(kPairs, pc==argpc)$desc))
+}
+
+pc.to.pair.type <- function(pcs) {
+  sapply(pcs, function(argpc) subset(kPairs, pc==argpc)$pair.type)
 }
 
 rpra <- function(n, is.uniform=T) {
@@ -188,7 +191,9 @@ CHECK_rke.list <- function(rke.list) {
   CHECK_TRUE(length(rke.list) > 0, msg="Rke.list should not be empty.")
   laply(rke.list, CHECK_rke)
   hids = laply(rke.list, function(r) max(rke.hospital.ids(r)))
-  CHECK_SETEQ(hids, 1:length(rke.list), msg="hospital ids = {1,2,3...m}")
+  for(hid in 1:length(rke.list))
+    CHECK_SETEQ(rke.hospital.ids(rke.list[[hid]]), c(hid),
+                msg="Hospital ID == index in LIST")
 }
 
 CHECK_pairs <- function(pairs) {
