@@ -24,7 +24,7 @@ basicConfig()
 #  * "edges" is a DATAFRAME that contains id1, id2 vector that represent
 #       pair dyads, and compatibility relationships from pair1->pair2.
 #       pair.id1, pair.id2, blood.compatible, pra.compatible, self.loop   can.donate  edge.color  edge.id
-#         2          5          1                 1               0          1           black     78232
+#         2          5          1          tr       1               0          1           black     78232
 #         5          8          1                 0               0          0           black     77723
 #       This means that pair 2 can donate to 5 but 5 cannot donate to 8 because
 #       patient of 8 is PRA-sensitive to donor of 5.
