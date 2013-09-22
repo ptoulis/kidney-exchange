@@ -53,20 +53,32 @@ kBloodTypes  <- c("O", "A", "B", "AB")
 kBloodCodes  <- c(1, 2, 3, 6)
 kPairCodes <- 1:16
 kBloodTypeDistribution <- c(50, 30, 15, 5) / 100
+
 get.blood.code.prob <- function(blood.code) {
+  # Gets the marginal frequency of a specific blood code
+  # e.g. get.blood.code.prob(1) = 0.5 i.e, "O" has 50% freq in the population
   CHECK_MEMBER(blood.code, kBloodCodes, "Checking correct blood code")
   return(sapply(blood.code, function(i) kBloodTypeDistribution[which(kBloodCodes == i)]))
 }
-#   From type (e.g. "O") to numeric code
+
 as.blood.code <- function(blood.type) {
+  # Get the blood code of a given blood-type
+  # e.g. as.blood.code("O") = 1
   CHECK_MEMBER(blood.type, kBloodTypes)
-  sapply(blood.type, function(bt) as.vector(kBloodCodes[which(kBloodTypes==bt)]))
+  as.vector(sapply(blood.type, function(bt) as.vector(kBloodCodes[which(kBloodTypes==bt)])))
 }
+
 as.blood.type <- function(blood.code) {
+  # Blood code -> blood type
+  # e.g. as.blood.type(2) = "A"
   CHECK_MEMBER(blood.code, kBloodCodes)
-  sapply(blood.code,
-         function(bc) as.vector(kBloodTypes[which(kBloodCodes==bc)]))
+  as.vector(sapply(blood.code,
+         function(bc) as.vector(kBloodTypes[which(kBloodCodes==bc)])))
 }
+
+# Definition of kPairs
+# This is the data frame with all possible combinations of patient-donor.
+# Also includes information about compatibility, pair probability etc.
 kUniformPRA <- 0.2
 kNonUniformPRA <- c(0.05, 0.45, 0.9)
 kNonUniformPRADistribution <- c(0.7, 0.2, 0.1)
@@ -74,9 +86,9 @@ kPairTypes <- c("R" ,"U", "O", "S")
 kPairTypeColors <- list(R="yellow", U="gray", O="green", S="cyan")
 # PAIRS object
 # kPairs = 16 x 7 matrix:  Basic structure
-# pc  donor  patient prob blood-type compatible     str  pair.type
-# 1    1      1      0.25      1                   O-O     S
-# 2    2      1      0.15      0                   A-O     U
+# pc  donor  patient prob blood-type compatible     str  pair.type  pair.color
+# 1    1      1      0.25      1        1           O-O     S
+# 2    2      1      0.15      0        0           A-O     U
 #                 ...
 kPairs <- expand.grid(donor=kBloodCodes, patient=kBloodCodes)
 kPairs <- cbind(kPairs,
@@ -93,21 +105,17 @@ kPairs$pair.type <- kPairTypes[1+ with(kPairs, 2 *blood.compatible + symmetric.c
 kPairs$symmetric.compatible <- NULL
 kPairs<- cbind(pc=kPairCodes, kPairs)
 kPairs$pair.color <- laply(kPairs$pair.type, function(i) kPairTypeColors[[i]])
-# kPairs$hospital <- 1:nrow(kPairs)
-# kPairs$pair.id <- 1:nrow(kPairs)
 
+# Functions on kPairs.
 pc.to.desc <- function(pcs) {
-  warning("PC to desc not unit-tested")
   as.character(sapply(pcs, function(argpc) subset(kPairs, pc==argpc)$desc))
 }
 
 pc.to.pair.type <- function(pcs) {
-  warning("Pc to pair type not unit tested")
   sapply(pcs, function(argpc) subset(kPairs, pc==argpc)$pair.type)
 }
 
 pc.reciprocal <- function(argpc) {
-  warning("Pc reciprocal not unit tested")
   x = subset(kPairs, pc == argpc)
   return(subset(kPairs, donor==x$patient & patient==x$donor)$pc)
 }
@@ -128,10 +136,14 @@ rpairs <- function(n, pair.ids,
   # 
   # Args:
   #   n = #pairs to sample
+  #   pair.ids = vector of pair ids (should be unique)
   #   uniform.pra = T if PRA=constant or F if PRA is to be drawn from distribution.
   #   blood.type.distr = the blood-type distribution to use.
   # Returns:
-  #   A <pairs> object. Recall this is "PairCodes" + PRAs  + hospital info 
+  #   A <pairs> object. Recall this will be:
+  #   "PairCodes" + hospital + pra + pair.id
+  CHECK_EQ(n, length(pair.ids), msg="#pair.ids = #samples")
+  CHECK_UNIQUE(pair.ids, msg="Pair ids should be unique.")
   sample.pairs <- empty.pairs()
   sample.pras = c()
   while(nrow(sample.pairs) < n) {
