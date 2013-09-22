@@ -2,12 +2,11 @@
 # Author: Panos Toulis(ptoulis@fas.harvard.edu)
 #
 # Contains code implementing different KPD mechanisms. 
-##  Currently supported:   rCM,  xCM
-## A mechanism receives a combined donor-patient graph and outputs a matching. 
-## (note: code returns a vector of utilities (matches/hospital)
+# Currently supported:   rCM,  xCM
+# A mechanism receives a combined donor-patient graph and outputs a matching. 
 
-# source("rke.R")
-# source("matching.R")
+source("rke.R")
+source("matching.R")
 
 kpd.create <- function(rke.pool, strategy.str, verbose=F) {
   # Creates a KPD from the specific pool.
