@@ -142,6 +142,7 @@ rpairs <- function(n, pair.ids,
   # Returns:
   #   A <pairs> object. Recall this will be:
   #   "PairCodes" + hospital + pra + pair.id
+  if (n <= 0) stop("Require #npairs > 0")
   CHECK_EQ(n, length(pair.ids), msg="#pair.ids = #samples")
   CHECK_UNIQUE(pair.ids, msg="Pair ids should be unique.")
   sample.pairs <- empty.pairs()
@@ -263,17 +264,25 @@ get.rke.list.hospital.ids <- function(rke.list) {
   return (hids)
 }
 
-generate.pairs.edges <- function(pairs, keep.edges, verbose=F) {
+generate.pairs.edges <- function(pairs, keep.edges=c(), verbose=F) {
   # Given pairs, it will compute cross-compatilibities, based on blood-types
   # and cross-match PRA compatibilities.
   # Algorithm goes as follows:
   #   find all combinations of pairs (pair1, pair2)
   #   check whether donor1 -> patient2 (blood compatibility)
-  #   check whether patient2 <- donor1 (PRA compatibility)
-  # This function will sample edges according to blood-type and PRA compatbilities
+  #   check whether donor1 -> patient2 (PRA compatibility)
+  # This function will sample edges according to blood-type and PRA
   # but will also respect the "keep.edges" (<edges> object)
   # i.e. if i->j in keep edges then i->j also in the new edges.
+  #
+  # Args: pairs = a "pairs" object (see above)
+  #       eges = an "edges" object to be kept fixed
+  #
+  # Returns:
+  #   An "edges" object (see terminology)
   num.pairs = nrow(pairs)
+  if(num.pairs == 0)
+    stop("Need #pairs > 0")
   # id1 = 1, 2, 4,..n, 1,2,3,...n, ...
   # id2 = 1,1,1,1,..,2,2,2,2....
   edges.row = data.frame(id1=rep(c(1:num.pairs), num.pairs),
@@ -317,15 +326,17 @@ generate.pairs.edges <- function(pairs, keep.edges, verbose=F) {
                     msg="Find all respected edges")
     if (length(edges.match.rows) > 0)
       edges[edges.match.rows, ] <- keep.edges[respect.match.rows, ]
+    if (verbose) loginfo("Respected earlier edges")
   }
   # remove non-edges
-  if (verbose) loginfo("Respected earlier edges")
   return(edges)
 }
 
 map.edges.adjacency <- function(edges, all.pair.ids) {
   # Creates the adj matrix of this edges object.
+  # This is a n x n matrix, where n = #all.pair.ids
   CHECK_edges(edges)
+  CHECK_UNIQUE(all.pair.ids)
   n = length(all.pair.ids)
   A <<- matrix(0, nrow=n, ncol=n)
   subset.edges = subset(edges, can.donate == 1)
@@ -349,7 +360,7 @@ rke.update.new.pairs <- function(rke, keep.edges) {
   # the "keep.edges" fixed. Should be called when "pairs" in the RKE object
   # are changed (e.g. when removing pairs, see remove.pairs in rke.R)
   edges = generate.pairs.edges(rke$pairs, keep.edges=keep.edges)
-  rke$edges = edges#subset(edges, can.donate == 1)
+  rke$edges = edges  #subset(edges, can.donate == 1)
   # number edges. These will be edge ids.
   rke$A = map.edges.adjacency(rke$edges, rke$pairs$pair.id)
   return (rke)
@@ -369,9 +380,9 @@ rrke <- function(n, pair.ids=1:n, hospital.id=1,
   if (!is.numeric(pair.ids))
     stop("Pair ids need to be numeric for efficiency.")
   CHECK_EQ(length(pair.ids), n, msg="Should have #pair.ids=n")
+  CHECK_UNIQUE(pair.ids, msg="Pair ids should be unique")
   rke = empty.rke()
   if(n==0) return(rke)
-  CHECK_EQ(length(pair.ids), n, msg="#pair ids = n")
   # 1. Sample the pairss
   pairs = rpairs(n, hospital.id=hospital.id, uniform.pra=uniform.pra,
                      blood.type.distr=blood.type.distr, pair.ids=pair.ids)
