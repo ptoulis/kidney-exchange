@@ -196,50 +196,98 @@ empty.edges <- function(size) {
 }
 
 CHECK_rke <- function(rke) {
-  CHECK_MEMBER(c("pairs", "edges", "A"), names(rke), "Match RKE fields.")
+  CHECK_SETEQ(c("pairs", "edges", "A"), names(rke), "Match RKE fields.")
   CHECK_EQ(nrow(rke$pairs), nrow(rke$A))
   CHECK_MEMBER(as.vector(rke$A), c(0,1), msg="Aij in {0,1}")  # A is binary adjacency matrix.
   if (nrow(rke$A) > 0)
     CHECK_SETEQ(diag(rke$A), c(0))  # no self-loops
-  CHECK_INTERVAL(rke$pairs$prob, min=0, max=1, "Correct probabilities")
-  CHECK_EQ(length(unique(rke$pairs$pair.id)), nrow(rke$A), "Pairs should have unique ids")
   CHECK_EQ(rownames(rke$A), rke$pairs$pair.id, msg="rownames A == pair.id?")
   CHECK_EQ(sum(rke$A), sum(rke$edges$can.donate),
            "Equal #edges in A and EDGES structs.")
   CHECK_pairs(rke$pairs)
-  CHECK_edges(rke$edges)
+  CHECK_edges(rke$edges, rke$pairs)
+}
+
+CHECK_rke_subset <- function(rke.smaller, rke.bigger) {
+  # Tests whether the smaller RKE is a subset of the bigger one
+  #
+  loginfo("Checking rke SUBSET")
+  CHECK_rke(rke.smaller)
+  CHECK_rke(rke.bigger)
+  # Pairs <= pairs(bigger) -- subset
+  CHECK_MEMBER(rke.pair.ids(rke.smaller), rke.pair.ids(rke.bigger))
+  CHECK_TRUE(all(table(rke.smaller$pair.type) <= table(rke.smaller$pair.type)))
+  # Check the edges
+  
+  get.Aij <- function(rke, id1, id2) {
+    i = which(rownames(rke$A)==id1)
+    j = which(rownames(rke$A)==id2)
+    return(rke$A[i,j])
+  }
+  new.pairs = rke.pair.ids(rke.smaller)
+  ntrials = min(2500, nrow(rke.bigger$edges))
+  edge.ids <- sample(1:nrow(rke.bigger$edges), size=ntrials, replace=F)
+  loginfo(sprintf("Checking edges compatibility (%d tests)", ntrials))
+  pb = txtProgressBar(style=3, min=0, max=1)
+  tmp <- c()
+  for (i in 1:ntrials) {
+    edge.row.id = edge.ids[i]
+    tmp <- c(tmp, edge.row.id)
+    # pick a random edge from the original graph
+    p1 <- rke.bigger$edges[edge.row.id,]$pair.id1
+    p2 <- rke.bigger$edges[edge.row.id,]$pair.id2
+    new.edge = subset(rke.smaller$edges, pair.id1==p1 & pair.id2==p2)
+    if (p1 %in% new.pairs & p2 %in% new.pairs) {
+      # p1 and p2 pairs are in the new graph
+      old.edge = rke.bigger$edges[edge.row.id,]$can.donate
+      new.edge = new.edge$can.donate
+      # Check that the edges are the same in both old/new RKE
+      CHECK_EQ(new.edge, old.edge)
+      # Check that the A matrix has the same info
+      CHECK_EQ(get.Aij(rke.smaller, p1, p2), new.edge)
+    } else {
+      CHECK_EQ(nrow(new.edge), 0)
+    }
+    setTxtProgressBar(pb, value= i/length(edge.ids))
+  }
+  CHECK_UNIQUE(tmp)  # simple check that the sampled edges are different
 }
 
 CHECK_rke.list <- function(rke.list) {
   CHECK_TRUE(length(rke.list) > 0, msg="Rke.list should not be empty.")
+  # 1. Check every RKE
   laply(rke.list, CHECK_rke)
-  hids = laply(rke.list, function(r) max(rke.hospital.ids(r)))
+  # 2. Check the hospital ids. Should be 1,2,3,...m
   for(hid in 1:length(rke.list))
     CHECK_SETEQ(rke.hospital.ids(rke.list[[hid]]), c(hid),
                 msg="Hospital ID == index in LIST")
 }
 
 CHECK_pairs <- function(pairs) {
-  warning("CHECK_pairs fails on kPairs")
-  CHECK_MEMBER(c("pair.id", "donor", "patient", "pc", "hospital"), names(pairs))
+  CHECK_MEMBER(c("pair.id", "donor", "patient", "pc", "pra", "hospital"), names(pairs))
+  size = nrow(pairs)
+  CHECK_UNIQUE(pairs$pair.id)
+  CHECK_MEMBER(pairs$pc, kPairCodes, msg="pc in 1:16")
+  CHECK_MEMBER(pairs$donor, kBloodCodes)
+  CHECK_MEMBER(pairs$patient, kBloodCodes)
+  CHECK_INTERVAL(pairs$prob, min=0, max=1, "prob in [0,1]")
   CHECK_MEMBER(pairs$pair.type, kPairTypes, "Correct pair types.")
-  CHECK_TRUE(all(!duplicated(pairs$pair.id)), "No duplicate pair ids.")
   CHECK_TRUE(all(pairs$pair.id > 0), msg="All pair ids should be > 0")
+  CHECK_INTERVAL(pairs$pra, min=0, max=1)
+  CHECK_MEMBER(pairs$hospital, seq(min(pairs$hospital), max(pairs$hospital)))
 }
 
-CHECK_edges <- function(edges) {
+CHECK_edges <- function(edges, pairs) {
+  # pairs = those used to create the edges.
   CHECK_MEMBER(c("pair.id1", "pair.id2", "can.donate"), y=names(edges))
-  CHECK_TRUE(all(!duplicated(edges$edge.id)), "No duplicate edge ids.")
-  num.pairs = length(unique(edges$pair.id1))
-  # CHECK_TRUE(all(edges$can.donate == 1), msg="Only edges with donate=1 should be kept")
-  warning("CHECK_edges not complete.")
+  CHECK_UNIQUE(edges$edge.id)
+  CHECK_MEMBER(c(edges$pair.id1, edges$pair.id2), pairs$pair.id)
 }
 
 CHECK_rke.pool <- function(rke.pool) {
   CHECK_SETEQ(names(rke.pool), c("rke.list", "rke.all"))
   CHECK_rke(rke.pool$rke.all)
-  CHECK_rke(rke.pool$rke.list[[1]])
-  warning("More tests in CHECK_rke.pool")
+  CHECK_rke.list(rke.pool$rke.list)
 }
 
 CHECK_kpd <- function(kpd) {
@@ -248,13 +296,13 @@ CHECK_kpd <- function(kpd) {
   CHECK_rke.pool(kpd$real.pool)
 }
 
-CHECK_strategy <- function(strategy, all.pairs) {
+CHECK_strategy <- function(strategy, all.pair.ids) {
   if (length(names(strategy)) == 1) {
-    CHECK_SETEQ(all.pairs, strategy[[names(strategy)[1]]], msg="cover all pairs")
+    CHECK_SETEQ(all.pair.ids, strategy[[names(strategy)[1]]], msg="cover all pairs")
   } else {
     CHECK_SETEQ(names(strategy), c("hide", "report"))
     CHECK_DISJOINT(strategy$hide, strategy$report, msg="Report^Hide=0")
-    CHECK_SETEQ(union(strategy$hid, strategy$report), all.pairs, msg="Union=all")
+    CHECK_SETEQ(union(strategy$hid, strategy$report), all.pair.ids, msg="Union=all")
   }
 }
 
@@ -282,7 +330,7 @@ generate.pairs.edges <- function(pairs, keep.edges=c(), verbose=F) {
   #   An "edges" object (see terminology)
   num.pairs = nrow(pairs)
   if(num.pairs == 0)
-    stop("Need #pairs > 0")
+    return(empty.edges(0))
   # id1 = 1, 2, 4,..n, 1,2,3,...n, ...
   # id2 = 1,1,1,1,..,2,2,2,2....
   edges.row = data.frame(id1=rep(c(1:num.pairs), num.pairs),
@@ -335,7 +383,6 @@ generate.pairs.edges <- function(pairs, keep.edges=c(), verbose=F) {
 map.edges.adjacency <- function(edges, all.pair.ids) {
   # Creates the adj matrix of this edges object.
   # This is a n x n matrix, where n = #all.pair.ids
-  CHECK_edges(edges)
   CHECK_UNIQUE(all.pair.ids)
   n = length(all.pair.ids)
   A <<- matrix(0, nrow=n, ncol=n)
