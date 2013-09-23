@@ -282,3 +282,20 @@ test.matching <- function() {
   m = max.matching(rke, include.3way=T)
   CHECK_EQ(m$utility, 6)
 }
+
+####    Testing for mechanisms.R
+test.rCM <- function() {
+  source("mechanisms.R")
+  rke.pool <- rrke.pool(m=3, n=30, uniform.pra=T)
+  kpd <- kpd.create(rke.pool, "ttt")
+  U = Run.Mechanism(kpd, "rCM")
+  m = max.matching(rke.pool$rke.all)
+  U2 = get.hospitals.utility(rke.all=rke.pool$rke.all, matched.ids=m$match$pair.id)
+  # All truthful matching
+  CHECK_EQ(U, U2)
+}
+
+
+
+
+
