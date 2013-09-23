@@ -193,6 +193,7 @@ empty.edges <- function(size) {
     self.loop=empty.data,
     can.donate=empty.data,
     edge.color=empty.data)
+  return(obj)
 }
 
 CHECK_rke <- function(rke) {
@@ -212,6 +213,8 @@ CHECK_rke_subset <- function(rke.smaller, rke.bigger) {
   # Tests whether the smaller RKE is a subset of the bigger one
   #
   loginfo("Checking rke SUBSET")
+  warning("SUBSET RKE test generates 2500 checks at most. This might not be optimal")
+  nMaxTests <- 500
   CHECK_rke(rke.smaller)
   CHECK_rke(rke.bigger)
   # Pairs <= pairs(bigger) -- subset
@@ -225,7 +228,7 @@ CHECK_rke_subset <- function(rke.smaller, rke.bigger) {
     return(rke$A[i,j])
   }
   new.pairs = rke.pair.ids(rke.smaller)
-  ntrials = min(2500, nrow(rke.bigger$edges))
+  ntrials = min(nMaxTests, nrow(rke.bigger$edges))
   edge.ids <- sample(1:nrow(rke.bigger$edges), size=ntrials, replace=F)
   loginfo(sprintf("Checking edges compatibility (%d tests)", ntrials))
   pb = txtProgressBar(style=3, min=0, max=1)
@@ -329,6 +332,7 @@ generate.pairs.edges <- function(pairs, keep.edges=c(), verbose=F) {
   # Returns:
   #   An "edges" object (see terminology)
   num.pairs = nrow(pairs)
+  CHECK_pairs(pairs)
   if(num.pairs == 0)
     return(empty.edges(0))
   # id1 = 1, 2, 4,..n, 1,2,3,...n, ...
