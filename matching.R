@@ -162,15 +162,20 @@ max.matching <- function(rke, include.3way=F,
       model$rhs <- c(model$rhs, num.matches)
     }
   }
+  
   rownames(model$A) <- 1:nrow(model$A)
   model$A = as.matrix(model$A)
   ##  Seems to be much faster than the old params.
-  params.new <- list(OutputFlag=0,
-                     NodefileStart=0.4,
+  params.new <- list(OutputFlag=0,                    
                      Cuts=3,
                      Presolve=1,
                      MIPFocus=2,
                      TimeLimit=timeLimit)
+  ##  Make sure results > 0
+  dimx <- length(model.w)
+  model$A <- rbind(model$A, diag(dimx))
+  model$rhs <- c(model$rhs, rep(0, dimx))
+  model$sense <- c(model$sense, rep(">=", dimx))
   
   gurobi.result <- gurobi(model, params.new)
   logthis(gurobi.result, verbose)
