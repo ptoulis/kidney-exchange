@@ -1,7 +1,12 @@
 # TODO(ptoulis): Documentation
 library(gurobi)
 
+# A matching represents a (donor, patient) matching
+#   match = a "pairs" object
+#   utility = #transplants performed
+#   status = "OK" if everything is fine
 CHECK_matching <- function(matching) {
+  # Checks whether a matching has the valid format.
   CHECK_MEMBER(c("match", "utility", "status"), names(matching), msg="Matching members")
   CHECK_pairs(matching$match)
   CHECK_GE(matching$utility, 0, "Utility is >=0")
@@ -9,6 +14,8 @@ CHECK_matching <- function(matching) {
 }
 
 get.matching.from.ids <- function(ids, rke) {
+  # ?????
+  stop("?????")
   x = empty.match.result(rke)
   x$match <- subset(rke$pairs, pair.id %in% ids)
   x$status = "OK"
@@ -37,7 +44,6 @@ empty.match.result <- function(rke) {
   x = subset(rke$pairs, pair.id < 0)
   CHECK_TRUE(nrow(x) == 0, "should be empty")
   ret = list(match=x, status="OK", utility=0)
-  CHECK_matching(ret)
   return(ret)
 }
 
@@ -45,6 +51,8 @@ gurobi.matched.pairs <- function(gurobi.result, rke, cycles) {
   # Gets the Gurobi output and returns the subset of rke "pairs" object
   # of those that have been matched.
   #
+  # Args:
+  #   gurobi.result = LIST(status, x=vector of solutions[2cycles, 3cycles])
   # Returns: A <matching> object.
   if(gurobi.result$status=="TIME_LIMIT" | gurobi.result$status=="INF_OR_UNBD") {
     warning("Time limit or infinity.")
@@ -54,12 +62,11 @@ gurobi.matched.pairs <- function(gurobi.result, rke, cycles) {
   }
   # The convention is:  x[2-cycles, 3-cycles]
   matched.cycle.ids = which(gurobi.result$x == 1)
-  # print (matched.cycle.ids)
   matched.cycles = cycles[matched.cycle.ids, ]
   matched.ids <- c(matched.cycles$pair.id1,
                    matched.cycles$pair.id2, 
                    matched.cycles$pair.id3)
-  matched.ids <- setdiff(matched.ids, c(0))  # remove 0's (id3=for 2-way xchange)
+  matched.ids <- setdiff(matched.ids, c(0))  # remove 0's (id3=0 for 2-way xchange)
   not.matched.ids = setdiff(rke.pair.ids(rke), matched.ids)
   CHECK_TRUE(all(!duplicated(matched.ids)), msg="No duplicates in matched ids")
   CHECK_DISJOINT(matched.ids, not.matched.ids, msg="Either matched or not")
@@ -95,7 +102,7 @@ max.matching <- function(rke, include.3way=F,
   #
   Cycles = rke.cycles(rke, include.3way=include.3way)
   model.w <- Cycles$type
-  if (length(model.w) == 0 |   (num.edges == 0)) {
+  if (length(model.w) == 0 | (num.edges == 0)) {
     logthis("Empty RKE", verbose)
     return (empty.match.result(rke))
   }
