@@ -25,14 +25,18 @@ rrke.pool <- function(m=3, n=60, uniform.pra, verbose=F) {
 }
 
 ## Total number of pairs in the graph
-rke.size <- function(rke) nrow(rke$pairs)
-rke.remove.pairs <- function(rke, pair.ids) {
+rke.size <- function(rke) {
+  CHECK_EQ(nrow(rke$pairs), length(unique(rke$pairs$pair.id)))
+  nrow(rke$pairs)
+}
+
+rke.remove.pairs <- function(rke, rm.pair.ids) {
   ##  Given an RKE  (1) subtract (2) return remainder.
   # Used to represent deviation strategies ("hide")
-  CHECK_MEMBER(pair.ids, rke.pair.ids(rke))
-  if (length(pair.ids) == 0)
+  CHECK_MEMBER(rm.pair.ids, rke.pair.ids(rke))
+  if (length(rm.pair.ids) == 0)
     return (rke)
-  rke$pairs = subset(rke$pairs, !is.element(pair.id, pair.ids))
+  rke$pairs = subset(rke$pairs, !is.element(pair.id, rm.pair.ids))
   rke = rke.update.new.pairs(rke=rke, keep.edges=rke$edges)
   rke$A = map.edges.adjacency(rke$edges, rke$pairs$pair.id)
   return (rke)
@@ -63,11 +67,17 @@ rke.keep.pairs = function(rke, pair.ids) {
   rm.pairs = setdiff(all.pairs, pair.ids)
   return(rke.remove.pairs(rke, rm.pairs))
 }
+
 rke.subgraph <- function(rke, pair.type) {
   CHECK_MEMBER(pair.type, kPairTypes, msg="Correct pair type?")
   rke.keep.pairs(rke, pair.ids=rke.filter.pairs(rke, attr="pair.type", value=pair.type))
 }
-rke.edge.ids = function(rke) as.vector(subset(rke$edges, can.donate==1)$edge.id)
+
+rke.edge.ids = function(rke) {
+  if (rke.size(rke) == 0)
+    return(c())
+  as.vector(subset(rke$edges, can.donate==1)$edge.id)
+}
 rke.pair.ids = function(rke) as.vector(rke$pairs$pair.id)
 # Returns the different hospital ids (unique)
 rke.hospital.ids = function(rke) {
@@ -77,6 +87,7 @@ rke.hospital.ids = function(rke) {
     CHECK_SETEQ(x, 1:length(x), "Hospitals should be 1,2,3...m")
   return(x)
 }
+
 rke.hospital.size <- function(rke) {
   length(rke.hospital.ids(rke))
 }
@@ -86,6 +97,7 @@ rke.pairs.hospitals <- function(rke, pair.ids) {
   subrke = subset(rke$pairs, pair.id %in% pair.ids)
   return(subrke$hospital)
 }
+
 rke.hospital.pair.ids <- function(rke, hospital.id) {
   # Returns the pair ids that belong to that hospital
   CHECK_MEMBER(hospital.id, rke.hospital.ids(rke))
@@ -96,9 +108,9 @@ rke.cycles <- function(rke, include.3way=F) {
   # Computes 2-way (and) 3-way cycles for a specific rke object
   #
   # Returns:
-  # A data-frame with (type, id1, id2, id3) indicating that
-  # this is a "type"-way exchange id1->id2->id3
-  # If type=2 then id3=NA and if type=3 then it is assumed id3->id1 
+  #   A data-frame with (type, id1, id2, id3) indicating that
+  #   this is a "type"-way exchange id1->id2->id3
+  #   If type=2 then id3=NA and if type=3 then it is assumed id3->id1 
   A2 = rke.2way.cycles(rke)
   A3 <- matrix(0, nrow=0, ncol=3)
   if (include.3way) 
@@ -139,6 +151,12 @@ rke.cycles.membership <- function(rke, rke.cycles) {
 
 rke.filter.pairs <- function(rke, attrs, values) {
   # Filters the <pairs> object by matching the column "attr" to "value"
+  #
+  # Args:
+  #   attrs : Array of RKE property (field)
+  #   values : Array of the attrs values (should have the same length)
+  # Returns:
+  #   Array of pair ids.
   CHECK_MEMBER(attrs, names(rke$pairs))
   CHECK_TRUE(length(attrs) > 0, msg="Need some attributes")
   CHECK_EQ(length(attrs), length(values), msg="Same length of attr, value")
@@ -248,7 +266,6 @@ rke.edge.by.pair <- function(rke, id.frame) {
 
 plot.rke = function(rke, vertex.size=20) {
   library(igraph)
-  CHECK_rke(rke)
   g = graph.adjacency(rke$A, mode="directed")
   V(g)$color = rke$pairs$pair.color
   # igraph orders edges by source node.
@@ -261,12 +278,14 @@ plot.rke = function(rke, vertex.size=20) {
 
 # to-functions
 pairid.to.pc <- function(rke, pair.ids) {
+  if (rke.size(rke) == 0) return(c())
   CHECK_UNIQUE(pair.ids, msg="Pair ids need to be unique.")
   x = subset(rke$pairs, pair.id %in% pair.ids)
   return (x$pc)
 }
 
 pairid.to.hospital <- function(rke, pair.ids) {
+  if (rke.size(rke) == 0) return(c())
   CHECK_UNIQUE(pair.ids, msg="Pair ids need to be unique.")
   x = subset(rke$pairs, pair.id %in% pair.ids)
   return (x$hospital)
