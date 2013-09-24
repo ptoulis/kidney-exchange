@@ -177,12 +177,19 @@ rpairs <- function(n, pair.ids,
 # RKE definitions
 empty.rke <- function() {
   obj = list(pairs=empty.pairs(),
-             edges=data.frame(),
+             edges=(empty.edges(0)),
              A=matrix(0, nrow=0, ncol=0))
   class(obj) <- "rke"
   return(obj)
 }
-empty.pairs <- function() subset(kPairs, desc=="non.exists")
+empty.pairs <- function() {
+  x = subset(kPairs, desc=="non.exists")
+  x$hospital <- rep(0,0)
+  x$pair.id <- rep(0, 0)
+  x$pra <- rep(0, 0)
+  return(x)
+}
+
 empty.edges <- function(size) {
   empty.data = rep(0, size)
   obj = data.frame(
@@ -192,7 +199,8 @@ empty.edges <- function(size) {
     pra.compatible=empty.data,
     self.loop=empty.data,
     can.donate=empty.data,
-    edge.color=empty.data)
+    edge.color=empty.data,
+    edge.id=empty.data)
   return(obj)
 }
 
@@ -268,16 +276,17 @@ CHECK_rke.list <- function(rke.list) {
 
 CHECK_pairs <- function(pairs) {
   CHECK_MEMBER(c("pair.id", "donor", "patient", "pc", "pra", "hospital"), names(pairs))
-  size = nrow(pairs)
-  CHECK_UNIQUE(pairs$pair.id)
-  CHECK_MEMBER(pairs$pc, kPairCodes, msg="pc in 1:16")
-  CHECK_MEMBER(pairs$donor, kBloodCodes)
-  CHECK_MEMBER(pairs$patient, kBloodCodes)
-  CHECK_INTERVAL(pairs$prob, min=0, max=1, "prob in [0,1]")
-  CHECK_MEMBER(pairs$pair.type, kPairTypes, "Correct pair types.")
-  CHECK_TRUE(all(pairs$pair.id > 0), msg="All pair ids should be > 0")
-  CHECK_INTERVAL(pairs$pra, min=0, max=1)
-  CHECK_MEMBER(pairs$hospital, seq(min(pairs$hospital), max(pairs$hospital)))
+  if(nrow(pairs) > 0) {
+    CHECK_UNIQUE(pairs$pair.id)
+    CHECK_MEMBER(pairs$pc, kPairCodes, msg="pc in 1:16")
+    CHECK_MEMBER(pairs$donor, kBloodCodes)
+    CHECK_MEMBER(pairs$patient, kBloodCodes)
+    CHECK_INTERVAL(pairs$prob, min=0, max=1, "prob in [0,1]")
+    CHECK_MEMBER(pairs$pair.type, kPairTypes, "Correct pair types.")
+    CHECK_TRUE(all(pairs$pair.id > 0), msg="All pair ids should be > 0")
+    CHECK_INTERVAL(pairs$pra, min=0, max=1)
+    CHECK_MEMBER(pairs$hospital, seq(min(pairs$hospital), max(pairs$hospital)))
+  }
 }
 
 CHECK_edges <- function(edges, pairs) {
