@@ -279,7 +279,8 @@ compute.Rsubgraph.constraints <- function(ir.constraints, rke.pool) {
   if(nrow(ir.constraints) == 0)
     return(cons)
   cons <- subset(ir.constraints, pair.type=="R")
-  cons = join(cons, expand.grid(hospital=c(1:m), pc=c(7,10)), type="right")
+  tmp.frame <- expand.grid(hospital=c(1:m), pc=c(7,10))
+  cons = join(cons, tmp.frame, type="right", by=c("hospital","pc"))
   cons$internal.matches[is.na(cons$internal.matches)] <- 0
   cons$pair.type <- "R"
   cons$desc <- pc.to.desc(pcs=cons$pc)
