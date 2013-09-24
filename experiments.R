@@ -1,7 +1,7 @@
 ##  Tables of the paper. 
 ## Code to save into latex table.
 library(xtable)
-
+source("mechanisms.R")
 ## hand-made bootstrap (USDA organic)
 bootstrap = function(x) sd(replicate(1000, { y = sample(x, replace=T); mean(y)}))
 
@@ -47,12 +47,12 @@ tables.all = function() {
   # Table 1. Square-root law.
   loginfo("Generating Table 1: mu(n) theorem and assumptions")
   D = table.matchings(sizes = c(50, 100, 200, 300), m=2, trials=1000);
-  table.to.tex(D, filename="experiments/tex/table1-assumptions.tex");
+  table.to.tex(D, filename="out/tex/table1-assumptions.tex");
   
   # Table 2. tab
   loginfo("Generating Table 2: Violations.")
   D = table.violations(sizes = c(50, 100, 200, 300), trials=1000);
-  table.to.tex(D, filename="experiments/tex/table2-violations.tex");
+  table.to.tex(D, filename="out/tex/table2-violations.tex");
   
   # Tables 3,4,5
   loginfo("Generating Scenarios table for rCM")
@@ -86,56 +86,55 @@ tables.all = function() {
 table.matchings = function(sizes=c(50), 
                            m= 3, 
                            trials=10) {
-    colnames = c("size ($n$)", "selfish", "together", "together (theoretical)", "surplus/$\\sqrt{n}$")
-    ncols = length(colnames) ## size-experimental matches - theoretical matches  - (same for non-PRA)
-    pb = txtProgressBar(style=3)
-    ## result matrix
-    M = matrix(NA, nrow=length(sizes), ncol=ncols)
-    ## standard error matrix
-    SE =  matrix(NA, nrow=length(sizes), ncol=ncols)
-    colnames(M) = colnames
+  colnames = c("size ($n$)", "selfish", "together", "together (theoretical)", "surplus/$\\sqrt{n}$")
+  ncols = length(colnames) ## size-experimental matches - theoretical matches  - (same for non-PRA)
+  pb = txtProgressBar(style=3)
+  ## result matrix
+  M = matrix(NA, nrow=length(sizes), ncol=ncols)
+  ## standard error matrix
+  SE =  matrix(NA, nrow=length(sizes), ncol=ncols)
+  colnames(M) = colnames
+  ##  Total number of runs
+  nruns = length(sizes) * trials
+  for(i in 1:length(sizes)) {
+    n = sizes[i]  # hospital size
+    ##  x =  2 x trials
+    x = sapply(1:trials, function(j) {
+      val = (i-1) * trials + j
+      setTxtProgressBar(pb, val/nruns)
+      
+      # 0. Sample rke's 
+      rke.pool = rrke.pool(m=m, n=n, uniform.pra=T)
+      rke.list = rke.pool$rke.list
+      CHECK_EQ(length(rke.list), m)
+      # 1.   Selfish (each one matches in isolation) 
+      selfish.matches = c()
+      for(hid in 1:length(rke.list)) {
+        selfish.matches[hid] = get.matching.utility(max.matching(rke.list[[hid]]))
+      }
+      selfish.matches = sum(selfish.matches)
+      
+      # 2. Pool and match together
+      rke.all = rke.pool$rke.all
+      m.all = max.matching(rke.all)
+      together.matches = get.matching.utility(m.all)
+      
+      # 3. Theoretical matches
+      together.theoretical = mu.thm(n=n, m=m)
+      
+      # 4. Surplus
+      surplus = (together.matches - selfish.matches)/sqrt(n)
+      
+      return(c(selfish.matches, together.matches, together.theoretical, surplus))
+    });
     
-    ##  Total number of runs
-    nruns = length(sizes) * trials
-    
-    for(i in 1:length(sizes)) {
-        n = sizes[i]
-        ##  x =  2 x trials
-        x = sapply(1:trials, function(j) {
-            val = (i-1) * trials + j
-            setTxtProgressBar(pb, val/nruns)
-            
-            # 0. Sample rke's 
-            rke.list = rrke.many(m=m, n=n, uniform.pra=T)
-            
-            # 1.   Selfish (each one matches in isolation) 
-            selfish.matches = c()
-            for(hid in 1:length(rke.list)) {
-              selfish.matches[hid] = max.matching(rke.list[[hid]])$matching$utility; 
-            }
-            selfish.matches = sum(selfish.matches)
-            
-            # 2. Pool and match together
-            rke.all = pool.rke(rke.list)
-            m.all = max.matching(rke.all)
-            together.matches = m.all$matching$utility
-            
-            # 3. Theoretical matches
-            together.theoretical = 0.556 * n *m -0.338 * sqrt(n * m)- 2
-            
-            # 4. Surplus
-            surplus = (together.matches - selfish.matches)/sqrt(n)
-            
-            return(c(selfish.matches, together.matches, together.theoretical, surplus))
-        });
-        
-        M[i,] = c(n,  t(apply(x, 1, mean)) )
-        SE[i,] = c(0, t(apply(x, 1, bootstrap) ))
-    }   
-    # text = 
-    D = add.se(M, SE)
-    print("")
-    return(D)
+    M[i,] = c(n,  t(apply(x, 1, mean)) )
+    SE[i,] = c(0, t(apply(x, 1, bootstrap) ))
+  }   
+  # text = 
+  D = add.se(M, SE)
+  print("")
+  return(D)
 }
 
 
@@ -241,15 +240,35 @@ e2.once <- function(size) {
 # Returns:  2 x trials   matrix of utiliies.
 relative.gain = function(kpd1, kpd2, mech, hid)
 {
+  # Runs both KPD markets for the same mechanism
+  # Then returns the utility for the particular hospital (hid)
+  #
+  # Returns:
+  #   A 1x2 vector of two utilities
   U1 = Run.Mechanism(kpd1, mech=mech)
   U2 = Run.Mechanism(kpd2, mech=mech)
   c(U1[hid], U2[hid])
 }
 
-##  Run a scenarion for a specific mechanism.
-## To be called from table.mechs()
 relative.gain.scenario = function(scenario, mech, m, n, trials,
-                                  pb, pb.start) {
+                                  pb=txtProgressBar(max=trials, style=3),
+                                  pb.start=0, verbose=F) {
+  # Runs the scenario for the particular mechanism
+  #
+  # Args:
+  #   scenario = one of {A, B, C, D} as a character
+  #   mech = mechanism (rCM, xCM, Bonus)
+  #   m = #hospitals
+  #   n = size of hospitals
+  #   trials= #samples to take.
+  #   pb = progress bar
+  #   pb.start = where to start the progress bar from
+  #
+  # Returns:
+  #   A 2 x trials matrix that has utilities.
+  #   Row 1 has the utility of the strategic H1
+  #   Row 2 has the utility for the baseline "ttt..." scenario
+  #
   # What H-1 is doing per mechanism, per scenario
   h1.str.list = list("rCM" = list(A="c", B="c", C="c", D="c"),
                      "xCM" = list(A="c", B="r", C="c", D="r"),
@@ -264,42 +283,44 @@ relative.gain.scenario = function(scenario, mech, m, n, trials,
   ## define the parameters based on mechanism + scenario
   h1.strategy = h1.str.list[[mech]][[scenario]]
   others = rep(others.list[[mech]][[scenario]],  m-1)
-  uniform.pra = uniform.pra.list[[scenario]]  
-  # output matrix  2 x trials
-  # strategy profile = S
-  # row 1 = utility of mech under S
-  # row 2 = utility of H1 when Si = "t", and S_{-i} (same for others)
+  is.uniform.pra = uniform.pra.list[[scenario]]  
+  # output matrix
   A = matrix(NA, nrow=2, ncol=trials)
-  
+  ## e.g. Scenario A ->  str1 = "ctt" str2 = "ttt"
+  str1 = paste(c(h1.strategy, others), collapse="")
+  ## str2 =  baseline strategy profile.
+  str2 = paste(c("t", others), collapse="")
+  logthis(sprintf("Mechanism %s TEST: profile %s vs. baseline %s, uniform.pra=%s",
+                  mech, str1, str2, is.uniform.pra),
+          verbose=verbose)
+  rownames(A) <- c(sprintf("%s(test)", str1), sprintf("%s(baseline)", str2))
   for(i in 1:trials) {
-    rke.list = rrke.many(m=m, n=n, uniform.pra=uniform.pra)
-    rke.all = pool.rke(rke.list)
-    ## e.g. Scenario A ->  str1 = "ctt"        str2 = "ttt"
-    str1 = paste(c(h1.strategy, others), collapse="")
-    ## str2 =  baseline strategy profile.
-    str2 = paste(c("t", others), collapse="")
+    rke.pool = rrke.pool(m=m, n=n, uniform.pra=is.uniform.pra)
     # Create the Kidney-Paired Donation market
-    kpd1 = kpd.create(rke.list, rke.all=rke.all, str1)
-    kpd2 = kpd.create(rke.list, rke.all=rke.all, str2)
+    kpd1 = kpd.create(rke.pool, str1)
+    kpd2 = kpd.create(rke.pool, str2)
     
     utils = relative.gain(kpd1, kpd2, mech=mech, hid=1)
-    A[1,i] = utils[1]
-    A[2,i] = utils[2]
+    A[1,i] = utils[1] # has the utility for KPD1
+    A[2,i] = utils[2]  # has the utility for KPD2
     setTxtProgressBar(pb, value=pb.start + i)
   }
-  
+  logthis("Simulation over", verbose)
   return(A)
 }
 
-##  Create tables 3,4,5
-## Sample usage
-## ------------------------------
-## table.mechs("rCM", m=3, sizes=c(20, 40), trials=100)
-## # saves a file as "experiments/mech-rCM-m3-trials100.Rdata"
-## 
 table.mechs = function(mech, m=3, sizes=c(20), trials=10) {
-  # data structure of results
-  # results[[scenario.id]][[size]] = Matrix (relative.gain.scenario)
+  # Creates Tables 3,4,5
+  # Sample usage:
+  #  table.mechs("rCM", m=3, sizes=c(20, 40), trials=100)
+  #   -> saves a file as "out/mech-rCM-m3-trials100.Rdata"
+  # Args:
+  #   mech = mechanism (character) i.e. "rCM", "xCM" etc
+  #   m = #hospitals
+  #   sizes = vector of hospital sizes
+  #   trials = #samples for each size
+  # Returns:
+  #   results[[scenario.id]][[size]] = Matrix (relative.gain.scenario output)
   results = list()  
   ## each mechanism has 4 scenarios
   scenarios = c("A", "B", "C", "D")
@@ -307,12 +328,10 @@ table.mechs = function(mech, m=3, sizes=c(20), trials=10) {
   # total number of trials
   N = length(scenarios) * length(sizes) * trials
   pb = txtProgressBar(style=3,min=0, max=N)
-  cnt = 0
   # output filename
-  filename = sprintf("experiments/mech-%s-m%d-trials%d.Rdata", mech, m, trials)
-  
+  filename = sprintf("out/mech-%s-m%d-trials%d.Rdata", mech, m, trials)
   for(sce.i in 1:length(scenarios))   {
-    scen = scenarios[sce.i]
+    scen = scenarios[sce.i]  # load the scenario
     results[[scen]] = list()
     for(size.j in 1:length(sizes)) {
       n = sizes[size.j]
@@ -321,25 +340,22 @@ table.mechs = function(mech, m=3, sizes=c(20), trials=10) {
                                                                   mech=mech,
                                                                   m=m, n=n, trials=trials,
                                                                   pb, pb.start=pb.start)
-      cnt = cnt + 1
-      #setTxtProgressBar(pb, value=cnt)
       save(results, file=filename)
     }
-   
   }
   return(results)
 }
 
 table.mechs.to.graph = function() {
   
-  files = list.files(path="experiments/", pattern="mech", full.names=T)
+  files = list.files(path="out/", pattern="mech", full.names=T)
   for(filename in files) {
     x = filename
     m = regexec(text=x, pattern="mech-(.*?)-")
     mech = regmatches(x, m)[[1]][2]
     load(filename)
     # assume:  results.
-    png.file = sprintf("experiments/png/tables345-mech-%s.png", mech)
+    png.file = sprintf("out/png/tables345-mech-%s.png", mech)
     print(sprintf("Saving in filename %s ", png.file))
     png(file= png.file)
     par(mfrow=c(2,2) )
@@ -360,7 +376,7 @@ table.mechs.to.graph = function() {
 # -------------------------------------
 # table.efficiency(m=4, sizes=c(20, 40, 60, 80), uniform.pra=T, trials=100, 
 #                 filedesc="efficiency")
-# ## saves ONE file in "experiments/efficiency-pra-TRUE-m4-trials100"
+# ## saves ONE file in "out/efficiency-pra-TRUE-m4-trials100"
 # table.efficiency.to.graph() 
 table.efficiency = function(m=4, sizes=c(20), uniform.pra, trials=10, filedesc="") {
   #  Save results here
@@ -414,7 +430,7 @@ table.efficiency = function(m=4, sizes=c(20), uniform.pra, trials=10, filedesc="
         setTxtProgressBar(pb, value=count)
       } # iterate over all mechanisms.
       
-      save(results, file=sprintf("experiments/%s-pra-%s-m%d-trials%d.Rdata", 
+      save(results, file=sprintf("out/%s-pra-%s-m%d-trials%d.Rdata", 
                                  filedesc, uniform.pra, m, trials))
     }  # trials
   } # iterate over all sizes.
@@ -426,14 +442,14 @@ table.efficiency = function(m=4, sizes=c(20), uniform.pra, trials=10, filedesc="
 # creates a 2x2 boxplot, where block = mechanism, x-axis = hospital size, 
 # y-size = efficiency ratio
 table.efficiency.to.graph = function() {
-  files = list.files(path="experiments/", pattern="efficiency-", full.names=T)
+  files = list.files(path="out/", pattern="efficiency-", full.names=T)
   for(filename in files) {
     x = filename
     m = regexec(text=x, pattern="pra-(.*?)\\.")
     uniform.pra = regmatches(x, m)[[1]][2]
     load(filename)
     # assume:  results.
-    png.file = sprintf("experiments/png/efficiency-uniform-PRA-%s.png", uniform.pra)
+    png.file = sprintf("out/png/efficiency-uniform-PRA-%s.png", uniform.pra)
     print(sprintf("Saving in filename %s ", png.file))
     png(file= png.file)
     par(mfrow=c(2,2) )
@@ -455,7 +471,7 @@ table.efficiency.to.graph = function() {
 # ------------------------
 # table.efficiency.many.hospitals(many.m = c(4, 6, 8, 10, 14, 16), 
 #                                 n=25, trials=100, filedesc="varyhospitals")
-# ## saves in files "experiments/varyhospitals-pra-FALSE-mN-trials100.Rdata"
+# ## saves in files "out/varyhospitals-pra-FALSE-mN-trials100.Rdata"
 table.efficiency.many.hospitals = function(many.m = c(4), n = 25, uniform.pra=F, trials=10) {
   for(m in many.m) 
     table.efficiency(m=m, 
@@ -468,7 +484,7 @@ table.efficiency.many.hospitals = function(many.m = c(4), n = 25, uniform.pra=F,
 ## Searches for files matching "varyhospitals-" and then 
 ## creates ONE png file 2x2 boxplot, where x-axis = #hospitals.
 table.efficiency.many.to.graph = function() {
-  files = list.files(path="experiments/", pattern="varyhospitals.*?-m", full.names=T)
+  files = list.files(path="out/", pattern="varyhospitals.*?-m", full.names=T)
   # boxplot to print (should be a list over hospital sizes)
   # i.e.  = [[mech.id]][[m.size]]
   boxplot.obj = list()
@@ -495,7 +511,7 @@ table.efficiency.many.to.graph = function() {
     }
   }
   loginfo(names(boxplot.obj));
-  png.file = sprintf("experiments/png/efficiency-varyhospitals.png")
+  png.file = sprintf("out/png/efficiency-varyhospitals.png")
   loginfo(sprintf("Saving in filename %s ", png.file))
   
   png(file= png.file)

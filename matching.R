@@ -18,7 +18,7 @@ get.matching.from.ids <- function(matched.ids, rke) {
   x = empty.match.result(rke)
   x$match <- subset(rke$pairs, pair.id %in% matched.ids)
   x$status = "OK"
-  x$utility = length(ids)
+  x$utility = length(matched.ids)
   CHECK_matching(x)
   return(x)
 }

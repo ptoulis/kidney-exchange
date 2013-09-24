@@ -182,6 +182,7 @@ empty.rke <- function() {
   class(obj) <- "rke"
   return(obj)
 }
+
 empty.pairs <- function() {
   x = subset(kPairs, desc=="non.exists")
   x$hospital <- rep(0,0)
@@ -453,8 +454,8 @@ rrke <- function(n, pair.ids=1:n, hospital.id=1,
   return(rke)
 }
 
-mu.thm = function(n) {
-  0.556 * n  -0.338 * sqrt(n)- 2
+mu.thm = function(n, m=1) {
+  0.556 * n *m -0.338 * sqrt(n * m)- 2
 }
 
 logthis <- function(x, verbose) {

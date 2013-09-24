@@ -4,7 +4,6 @@
 # Contains code implementing different KPD mechanisms. 
 # Currently supported:   rCM,  xCM
 # A mechanism receives a combined donor-patient graph and outputs a matching. 
-
 source("rke.R")
 source("matching.R")
 
@@ -152,7 +151,7 @@ Run.Mechanism = function(kpd, mech, include.3way=F, verbose=F) {
   for(h in hids) {
     rke.h = rke.list[[h]]
     # 1. For hospital h, find which pairs were matched
-    hosp.matched.ids = intersect(rke.hospital.pairs(reported.rke.all, h),
+    hosp.matched.ids = intersect(rke.hospital.pair.ids(reported.rke.all, h),
                                  mech.out.ids)
     # 2. Remove from hidden part
     rke.remainder = rke.remove.pairs(rke.h, hosp.matched.ids)
@@ -165,7 +164,7 @@ Run.Mechanism = function(kpd, mech, include.3way=F, verbose=F) {
     # 4. Update utilities
     Util[h] = Util[h] + utility
   }
-  logthis("Finaly Utility:", verbose)
+  logthis("Final Utility:", verbose)
   logthis(Util, verbose)
   return(Util)
 }
@@ -276,6 +275,9 @@ compute.Rsubgraph.constraints <- function(ir.constraints, rke.pool) {
   # Should be pair.type == R
   # y = Allocation after running the lottery for the unmatched R pairs.
   m = length(rke.pool$rke.list)
+  cons <- data.frame(pc=c(), hospital=c(), internal.matches=c(), pair.type=c(), y=c())
+  if(nrow(ir.constraints) == 0)
+    return(cons)
   cons <- subset(ir.constraints, pair.type=="R")
   cons = join(cons, expand.grid(hospital=c(1:m), pc=c(7,10)), type="right")
   cons$internal.matches[is.na(cons$internal.matches)] <- 0
@@ -355,7 +357,7 @@ xCM <- function(rke.pool, include.3way=F, verbose=F) {
   ## Match OD's individually.
   for(hid in 1:m) {
     matched.hospital.ids <- intersect(matched.all.ids, rke.hospital.pair.ids(rke.all, hid))
-    rke.h <- rke.remove.pairs(rke=rke.list[[hid]], pair.ids=matched.hospital.ids)
+    rke.h <- rke.remove.pairs(rke=rke.list[[hid]], rm.pair.ids=matched.hospital.ids)
     internal.matching = max.matching(rke.h, 
                                      include.3way=include.3way,
                                      regular.matching=T)

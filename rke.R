@@ -44,7 +44,7 @@ rke.remove.pairs <- function(rke, rm.pair.ids) {
 
 rke.add <- function(rke1, rke2, verbose=F) {
   # Combines two RKE objects into one.
-  warning("Append is not unit-tested")
+  warning("rke.add() is not unit-tested")
   CHECK_rke(rke1)
   CHECK_rke(rke2)
   if (nrow(rke1$pairs) == 0)
