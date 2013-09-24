@@ -164,23 +164,29 @@ test.terminology.edges <- function() {
 
 
 ####    TESTS for rke.R  #####
-get.RKE0 <- function() {
-  # Creates a testing-rke
+get.RKE0 <- function(ntriangles) {
+  # Creates an RKE with a random #triangles
+  # If N = #triangles then we know max matching = 3 * N
+  # If only 2-way exchanges are used, then we know this is 2 * N
   # See a picture at "tests/RKE0.png"
-  warning("We can create more complicated graphs here.")
-  pairs = subset(kPairs, desc %in% c("A-B", "O-A", "A-A", "B-A", "O-B", "B-B"))
+  if (ntriangles == 0)
+    return(empty.rke())
+  pairs = kPairs[sample(1:nrow(kPairs), size=3 * ntriangles, replace=T),]
   pairs$pra <- rep(0, nrow(pairs))
   pairs$pair.id <- 1:nrow(pairs)
   pairs$hospital <- rep(1, nrow(pairs))
   rke = empty.rke()
   rke$pairs = pairs
   rke <- rke.update.new.pairs(rke, keep.edges=c())
-  edg <- data.frame(from=1:6, to=c(6, 3, 4, 2, 1, 5))
+  filter <- function(x) {
+    i = intersect(which(x < 3 * ntriangles), which(x >= 1))
+    return(x[i])
+  }
   give.to <- function(i) {
-    x = c(subset(edg, from==i)$to)
-    if(i == 3) return(c(x, 5))
-    if(i == 5) return(c(x, 3))
-    return(x)
+    rem = i %% 3
+    if(rem == 1) return(filter(c(i+1, i-3, i+3)))
+    if(rem == 2) return(c(i+1))
+    if(rem == 0) return(c(i-2))
   }
   rke$edges$can.donate <- rep(0, nrow(rke$edges))
   for(i in rke.pair.ids(rke)) {
@@ -267,20 +273,24 @@ test.rke.operations <- function() {
 }
 
 test.rke.cycles <- function() {
-  rke = get.RKE0()
+  ntriangles = rpois(1, lambda=20)
+  rke = get.RKE0(ntriangles)
+  loginfo(sprintf("Testing with %d triangles..", ntriangles))
   cycles2 = rke.cycles(rke, include.3way=F)
   cycles3 = rke.cycles(rke, include.3way=T)
-  CHECK_EQ(nrow(cycles2), 1)
-  CHECK_EQ(nrow(cycles3), 3)
+  CHECK_EQ(nrow(cycles2), ntriangles-1)
+  CHECK_EQ(nrow(subset(cycles3, type==3)), ntriangles)
 }
 
 #     Tests for MATCHING.
 test.matching <- function() {
-  rke <- get.RKE0()
+  ntriangles = rpois(1, lambda=20)
+  rke = get.RKE0(ntriangles)
+  loginfo(sprintf("Testing with %d triangles..", ntriangles))
   m = max.matching(rke, include.3way=F)
-  CHECK_EQ(m$utility, 2)
+  CHECK_EQ(m$utility, ifelse(ntriangles %% 2 ==0, ntriangles, ntriangles-1))
   m = max.matching(rke, include.3way=T)
-  CHECK_EQ(m$utility, 6)
+  CHECK_EQ(m$utility, 3 * ntriangles)
 }
 
 ####    Testing for mechanisms.R
