@@ -114,8 +114,9 @@ rke.cycles <- function(rke, include.3way=F) {
   A2 = rke.2way.cycles(rke)
   A3 <- matrix(0, nrow=0, ncol=3)
   if (include.3way) 
-    A3 <- rke.3way.cycles(rke)
-  out = list(type=c(), pair.id1=c(), pair.id2=c(), pair.id3=c())
+    A3 <- matrix(rke.3way.cycles(rke), ncol=3)
+  out = list(type=rep(0, 0),
+             pair.id1=rep(0, 0), pair.id2=rep(0, 0), pair.id3=rep(0, 0))
   num.2cycles <- nrow(A2)
   num.3cycles <- nrow(A3)
   num.all <- num.2cycles + num.3cycles
@@ -266,6 +267,10 @@ rke.edge.by.pair <- function(rke, id.frame) {
 
 plot.rke = function(rke, vertex.size=20) {
   library(igraph)
+  if(rke.size(rke) == 0) {
+    loginfo("Empty RKE can't be plotted.")
+    return(TRUE)
+  }
   g = graph.adjacency(rke$A, mode="directed")
   V(g)$color = rke$pairs$pair.color
   # igraph orders edges by source node.
