@@ -238,19 +238,18 @@ e2.once <- function(size) {
 ## Compute the relative gain for _hid.interest_ 
 # mechanism _mech_ under _setup_, for two different strategies
 # Returns:  2 x trials   matrix of utiliies.
-relative.gain = function(kpd1, kpd2, mech, hid)
-{
+relative.gain = function(kpd1, kpd2, mech, hid, include.3way) {
   # Runs both KPD markets for the same mechanism
   # Then returns the utility for the particular hospital (hid)
   #
   # Returns:
   #   A 1x2 vector of two utilities
-  U1 = Run.Mechanism(kpd1, mech=mech)
-  U2 = Run.Mechanism(kpd2, mech=mech)
+  U1 = Run.Mechanism(kpd=kpd1, mech=mech, include.3way=include.3way)
+  U2 = Run.Mechanism(kpd=kpd2, mech=mech, include.3way=include.3way)
   c(U1[hid], U2[hid])
 }
 
-relative.gain.scenario = function(scenario, mech, m, n, trials,
+relative.gain.scenario = function(scenario, mech, m, n, include.3way, trials,
                                   pb=txtProgressBar(max=trials, style=3),
                                   pb.start=0, verbose=F) {
   # Runs the scenario for the particular mechanism
@@ -290,9 +289,11 @@ relative.gain.scenario = function(scenario, mech, m, n, trials,
   str1 = paste(c(h1.strategy, others), collapse="")
   ## str2 =  baseline strategy profile.
   str2 = paste(c("t", others), collapse="")
-  logthis(sprintf("Mechanism %s TEST: profile %s vs. baseline %s, uniform.pra=%s",
-                  mech, str1, str2, is.uniform.pra),
-          verbose=verbose)
+  if(verbose) {
+    cat("\n")
+    loginfo(sprintf("Scenario %s, Mechanism %s TEST, size=%d, 3-chains=%s: profile %s vs. baseline %s, uniform.pra=%s",
+                  scenario, mech, n, include.3way, str1, str2, is.uniform.pra))
+  }
   rownames(A) <- c(sprintf("%s(test)", str1), sprintf("%s(baseline)", str2))
   for(i in 1:trials) {
     rke.pool = rrke.pool(m=m, n=n, uniform.pra=is.uniform.pra)
@@ -300,20 +301,25 @@ relative.gain.scenario = function(scenario, mech, m, n, trials,
     kpd1 = kpd.create(rke.pool, str1)
     kpd2 = kpd.create(rke.pool, str2)
     
-    utils = relative.gain(kpd1, kpd2, mech=mech, hid=1)
+    utils = relative.gain(kpd1, kpd2, mech=mech, hid=1, include.3way=include.3way)
     A[1,i] = utils[1] # has the utility for KPD1
     A[2,i] = utils[2]  # has the utility for KPD2
     setTxtProgressBar(pb, value=pb.start + i)
   }
-  logthis("Simulation over", verbose)
+  if(verbose) {
+    cat("\nSimulation over")
+  }
   return(A)
 }
 
-table.mechs = function(mech, m=3, sizes=c(20), trials=10) {
-  # Creates Tables 3,4,5
+table.mechs = function(mech, m=3, sizes=c(20), include.3way, trials=10, verbose=F) {
+  # Creates Tables 3,4,5. Runs all scenarios using relative.gain.scenario
+  # and all different sizes.
   # Sample usage:
-  #  table.mechs("rCM", m=3, sizes=c(20, 40), trials=100)
-  #   -> saves a file as "out/mech-rCM-m3-trials100.Rdata"
+  #   table.mechs("rCM", m=3, sizes=c(20, 40), trials=100)
+  #   -> TABLE 3 -> saves a file as "out/mech-rCM-m3-trials100.Rdata"
+  #   table.mechs("xCM", m=3, sizes=...., trials=..) 
+  #   -> TABLE 4  (etc)
   # Args:
   #   mech = mechanism (character) i.e. "rCM", "xCM" etc
   #   m = #hospitals
@@ -338,8 +344,11 @@ table.mechs = function(mech, m=3, sizes=c(20), trials=10) {
       pb.start = length(sizes) * trials * (sce.i-1) + trials * (size.j-1)
       results[[scen]][[sprintf("%d",n)]] = relative.gain.scenario(scenario=scen,
                                                                   mech=mech,
-                                                                  m=m, n=n, trials=trials,
-                                                                  pb, pb.start=pb.start)
+                                                                  m=m, n=n,
+                                                                  include.3way=include.3way,
+                                                                  trials=trials,
+                                                                  pb=pb, pb.start=pb.start,
+                                                                  verbose=verbose)
       save(results, file=filename)
     }
   }
@@ -347,7 +356,8 @@ table.mechs = function(mech, m=3, sizes=c(20), trials=10) {
 }
 
 table.mechs.to.graph = function() {
-  
+  # Traverses the "out/" folder for "mech-*" files
+  # loads and then saves results in a .png graph
   files = list.files(path="out/", pattern="mech", full.names=T)
   for(filename in files) {
     x = filename
@@ -356,7 +366,7 @@ table.mechs.to.graph = function() {
     load(filename)
     # assume:  results.
     png.file = sprintf("out/png/tables345-mech-%s.png", mech)
-    print(sprintf("Saving in filename %s ", png.file))
+    loginfo(sprintf("Mechanism %s, Saving to %s ", mech, png.file))
     png(file= png.file)
     par(mfrow=c(2,2) )
     for(i in names(results) ) {
@@ -371,59 +381,55 @@ table.mechs.to.graph = function() {
   }
 }
 
-# Creates Table 6 and 7
-# Sample usage
-# -------------------------------------
-# table.efficiency(m=4, sizes=c(20, 40, 60, 80), uniform.pra=T, trials=100, 
-#                 filedesc="efficiency")
-# ## saves ONE file in "out/efficiency-pra-TRUE-m4-trials100"
-# table.efficiency.to.graph() 
-table.efficiency = function(m=4, sizes=c(20), uniform.pra, trials=10, filedesc="") {
-  #  Save results here
+table.efficiency = function(m=4, sizes=c(20), uniform.pra, include.3way,
+                            trials=10, filedesc="efficiency") {
+  # Creates Table 6 and 7
+  # Sample usage
+  # -------------------------------------
+  # > table.efficiency(m=4, sizes=c(20, 40, 60, 80), uniform.pra=T, trials=100, 
+  #                 filedesc="efficiency")
+  # saves ONE file in "out/efficiency-pra-TRUE-m4-trials100"
+  # > table.efficiency.to.graph() 
   results = list()
-  loginfo("")
-  loginfo(sprintf("Running table efficiency m=%d uniform=%s", m, uniform.pra));
   # Compare rCM at canonical deviation
   # xCM at truthful
   # Bonus at r-strategy
+  # all.str("t") = "ttt..." length = #hospitals (m)
   all.str = function(ch)  paste(rep(ch, m), collapse="")
   
-  config = list("xCM" = list(mech="xCM", str = all.str("t")),
-                "rCM_c" = list(mech="rCM", str= all.str("c")),
-                "rCM_t" = list(mech="rCM", str= all.str("t")),
-                #"Bonus_c" = list(mech="Bonus", str= all.str("c")),
-                "Bonus_r" = list(mech="Bonus", str= all.str("r")))
-  
-  # total # iterations
+  # config = configuration of the experiment
+  config = list("xCM_t" = list(mech="xCM", str=all.str("t")),
+                "rCM_c" = list(mech="rCM", str=all.str("c")),
+                "Bonus_c" = list(mech="Bonus", str= all.str("c"))) # this seems to hurt Bonus
+                # "Bonus_r" = list(mech="Bonus", str=all.str("r")))
+  # N = total #iterations
   N = length(sizes) * trials * length(names(config))
-  # progress bar
+  # progress bar (i really like them)
   pb = txtProgressBar(style=3, min=0, max=N)
   count = 0
-  # Initialize the results data structure.
-  for(mech.name in names(config) ) 
-    results[[mech.name]] = list()
-  
   for(i in 1:length(sizes)) {
-    ## n = size of hospital
+    # i = index of size
+    # n = size of hospital
     n = sizes[i]
     n.str = sprintf("%d", n)
     # Initialize the mechanisms
-    for(mech.name in names(config) )
+    for(mech.name in names(config) ) {
+      results[[mech.name]] = list()
       results[[mech.name]][[n.str]] = c()
-  
+    }
+    cat("\n")
+    loginfo(sprintf("Efficiency m=%d, uniform=%s, size=%d, 3-chain=%s", m, uniform.pra, n, include.3way));
     for(j in 1:trials) {
+      # j = trial
       # Sample rke.list/rke.all
-      rke.list = rrke.many(m=m, n=n, uniform.pra=uniform.pra)
-      rke.all = pool.rke(rke.list)
-      
+      rke.pool = rrke.pool(m=m, n=n, uniform.pra=uniform.pra)
       # Iterate over mechanisms to figure out efficiency
       for(mech.name in names(config)) {
         # (i, j, mech.name) = (size, trial, mechanism)
         strategy = config[[mech.name]][["str"]]
         mech = config[[mech.name]][["mech"]]
-        
-        kpd = kpd.create(rke.list, rke.all=rke.all,  strategy)
-        welfare = sum( Run.Mechanism(kpd=kpd, mech=mech) )
+        kpd = kpd.create(rke.pool, strategy)
+        welfare = sum(Run.Mechanism(kpd=kpd, mech=mech, include.3way=include.3way))
         # Append welfare to the mechanism vector.
         results[[mech.name]][[n.str]] = c( results[[mech.name]][[n.str]], welfare )
         count = count + 1
@@ -450,17 +456,22 @@ table.efficiency.to.graph = function() {
     load(filename)
     # assume:  results.
     png.file = sprintf("out/png/efficiency-uniform-PRA-%s.png", uniform.pra)
-    print(sprintf("Saving in filename %s ", png.file))
+    cat(sprintf("\nData filename: %s Mechanisms = %s", filename, paste(names(results), collapse=", ")))
+    cat(sprintf("\nImage filename %s \n", png.file))
     png(file= png.file)
     par(mfrow=c(2,2) )
-    for(i in names(results) ) {
-      obj=  results[[i]]
-      for(j in names(obj)) {
-        A = obj[[j]]  ## 2 x trials 
-        A2 = results[["rCM_t"]][[j]]
-        obj[[j]] = A / A2
+    for(mech in names(results) ) {
+      obj = results[[mech]]
+      for(size in names(obj)) {
+        A = obj[[size]]  ## 2 x trials 
+        A2 = results[["rCM_c"]][[size]]
+        obj[[size]] = A / A2
+        cat(sprintf("\nRelative efficiency for mech=%s is %.3f\n", mech, mean(obj[[size]])))
+        cat("Summary:\n")
+        print(summary(obj[[size]]))
       }
-      boxplot(obj, ylim=c(0.6, 1.1), main=sprintf("mech=%s", i ), ylab="ratio (str/base)", xlab="size")
+      boxplot(obj, ylim=c(0.6, 1.1), main=sprintf("mech=%s", mech),
+              ylab="ratio (str/base)", xlab="size")
     }
     dev.off();
   }
