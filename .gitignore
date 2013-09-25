@@ -2,6 +2,8 @@
 *.Rhistory
 debug/*
 experiments/*
+out/*
+docs/*
 tests/*
 null.R
 .Rproj.user
