@@ -138,27 +138,30 @@ max.matching <- function(rke, include.3way=F,
   # keep only > 0 constraints
   if (nrow(ir.constraints) > 0) {
     ir.constraints <- subset(ir.constraints, internal.matches > 0)
-    for(i in 1:nrow(ir.constraints)) {
-      constraint = ir.constraints[i, ]
-      # Unload the constraint
-      con.pc = constraint$pc
-      con.hid = constraint$hospital
-      num.matches = constraint$internal.matches
-      CHECK_TRUE(!is.null(con.pc) & !is.null(con.hid) & num.matches > 0)
-      # For every hospital and pair code
-      # 1. Get the pairs subset for hospital=hid, pc=pair code
-      sub.pairs = subset(rke$pairs, hospital==con.hid & con.pc==pc)
-      pc.hid.pairs <- as.vector(sub.pairs$pair.id)
-      CHECK_TRUE(length(pc.hid.pairs) >= num.matches, msg="avail pairs >= matches")
-      # 2. Get the pairs x cycles sub-matrix.
-      subA = get.sub.A(pc.hid.pairs)
-      # 3. Get the (cycles x 1) vector of how many #pairs (hid, pc)
-      #   each cycle has (obtained through summing over columns)
-      cycle.contrib = as.vector(colSums(subA))
-      # Add the constraint
-      model$A <- rbind(model$A, cycle.contrib)
-      model$sense <- c(model$sense, ">=")
-      model$rhs <- c(model$rhs, num.matches)
+    if(nrow(ir.constraints) > 0) {
+      # 1:0  is a very BAD idea in R.
+      for(i in 1:nrow(ir.constraints)) {
+        constraint = ir.constraints[i, ]
+        # Unload the constraint
+        con.pc = constraint$pc
+        con.hid = constraint$hospital
+        num.matches = constraint$internal.matches
+        CHECK_TRUE(!is.null(con.pc) & !is.null(con.hid) & num.matches > 0)
+        # For every hospital and pair code
+        # 1. Get the pairs subset for hospital=hid, pc=pair code
+        sub.pairs = subset(rke$pairs, hospital==con.hid & con.pc==pc)
+        pc.hid.pairs <- as.vector(sub.pairs$pair.id)
+        CHECK_TRUE(length(pc.hid.pairs) >= num.matches, msg="avail pairs >= matches")
+        # 2. Get the pairs x cycles sub-matrix.
+        subA = get.sub.A(pc.hid.pairs)
+        # 3. Get the (cycles x 1) vector of how many #pairs (hid, pc)
+        #   each cycle has (obtained through summing over columns)
+        cycle.contrib = as.vector(colSums(subA))
+        # Add the constraint
+        model$A <- rbind(model$A, cycle.contrib)
+        model$sense <- c(model$sense, ">=")
+        model$rhs <- c(model$rhs, num.matches)
+      }
     }
   }
   
@@ -191,8 +194,8 @@ max.matching <- function(rke, include.3way=F,
      # infinite recursion although this is something that needs to be fixed.
       logwarn("Gurobi unstable output. Saving problematic RKE object AND retrying..")
       save(rke, file="debug/unstable.Rdata")
-      return (max.matching(rke=rke, enable.3way=enable.3way,
-                           IR.constraints=IR.constraints, 
+      return (max.matching(rke=rke, include.3way=include.3way,
+                           ir.constraints=ir.constraints, 
                            timeLimit=timeLimit))
   }
 }
