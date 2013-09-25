@@ -116,7 +116,7 @@ get.hospitals.utility <- function(rke.all, matched.ids) {
 }
 
 ##  Runs a mechanism
-Run.Mechanism = function(kpd, mech, include.3way=F, verbose=F) {
+Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
   warning("No unit tests for RunMechanism")
   logthis(sprintf("Mechanism %s. Checking KPD", mech), verbose)
   CHECK_kpd(kpd)
@@ -129,7 +129,7 @@ Run.Mechanism = function(kpd, mech, include.3way=F, verbose=F) {
   
   ## 3. Run the mechanism
   logthis("Unload complete. Running the mechanism", verbose)
-  matching = do.call(mech, args=list(rke.pool=kpd$reported.pool))
+  matching = do.call(mech, args=list(rke.pool=kpd$reported.pool, include.3way=include.3way))
   logthis(sprintf("Matching status %s", matching$status), verbose)
   if (get.matching.status(matching) != "OK") {
     print(sprintf("Error happened in mechanism %s. Saving", mech))
@@ -170,8 +170,8 @@ Run.Mechanism = function(kpd, mech, include.3way=F, verbose=F) {
 }
 
 rCM <- function(rke.pool, include.3way=F) {
-  warning("No unit tests for rCM")
   # Implementation of rCM. Returns an array of matched pair ids.
+  # loginfo(sprintf("Running xCM 3-chain=%s", include.3way))
   CHECK_rke.pool(rke.pool)
   rke.list <- rke.pool$rke.list
   rke.all <- rke.pool$rke.all
@@ -267,7 +267,7 @@ g.share = function(demand, supply) {
 
 compute.Rsubgraph.constraints <- function(ir.constraints, rke.pool) {
   # Constraints for the R subgraph
-  # Returns 
+  # Returns:
   #   pc  hospital  internal.matches  pair.type  y
   #
   # pc = pair code, hospital = hospital id
@@ -275,12 +275,22 @@ compute.Rsubgraph.constraints <- function(ir.constraints, rke.pool) {
   # Should be pair.type == R
   # y = Allocation after running the lottery for the unmatched R pairs.
   m = length(rke.pool$rke.list)
-  cons <- data.frame(pc=c(), hospital=c(), internal.matches=c(), pair.type=c(), y=c())
-  if(nrow(ir.constraints) == 0)
-    return(cons)
-  cons <- subset(ir.constraints, pair.type=="R")
+  empty.cons <- function() {
+    x <- expand.grid(hospital=c(1:m), pc=c(7,10))
+    x$pair.type <- "R"
+    x$desc <- pc.to.desc(pcs=x$pc)
+    x$internal.matches <- 0
+    x$y <- 0
+    return(x)
+  }
+  cons <- empty.cons()
+  if(nrow(ir.constraints) == 0) {
+    cons <- empty.cons()
+  } else {
+    cons <- subset(ir.constraints, pair.type=="R")
+  }
   tmp.frame <- expand.grid(hospital=c(1:m), pc=c(7,10))
-  cons = join(cons, tmp.frame, type="right", by=c("hospital","pc"))
+  cons = join(cons, tmp.frame, type="right", by=c("pc", "hospital"))
   cons$internal.matches[is.na(cons$internal.matches)] <- 0
   cons$pair.type <- "R"
   cons$desc <- pc.to.desc(pcs=cons$pc)
@@ -304,7 +314,8 @@ compute.Rsubgraph.constraints <- function(ir.constraints, rke.pool) {
     yBA <- g.share(demand=consBA$unmatched, supply=xAB)
   consAB$y <- yAB
   consBA$y <- yBA
-  cons <- rbind(consAB, consBA)
+  cons <- rbind(consAB, consBA) 
+  
   return(cons)
 }
 
@@ -312,14 +323,14 @@ compute.Rsubgraph.constraints <- function(ir.constraints, rke.pool) {
 ## as long as it has good properties, we can treat it as a black box.
 xCM <- function(rke.pool, include.3way=F, verbose=F) {
   CHECK_rke.pool(rke.pool)
-  warning("Not unit tests for xCM")
+  # loginfo(sprintf("Running xCM 3-chain=%s", include.3way))
   # unload
   rke.list = rke.pool$rke.list
   rke.all = rke.pool$rke.all
   m = length(rke.list)  # no. of hospitals
   matched.all.ids = c()
   ##  1. Compute IR constraints
-  ir.constraints = compute.ir.constraints(rke.pool, pair.types=c("S", "R"))
+  ir.constraints = compute.ir.constraints(rke.pool, pair.types=c("S", "R"), include.3way=include.3way)
   
   # 2.  Match S internally
   s.subrke = rke.subgraph(rke.all, pair.type="S")
