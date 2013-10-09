@@ -76,7 +76,7 @@ tables.all = function(sizes.array=c(20), ntrials=200) {
                    filedesc="efficiency");
   loginfo("Generating efficiency table with non-uniform PRA.")
   table.efficiency(m=4, sizes=sizes.array, 
-                   include.3way, uniform.pra=F, trials=ntrials,
+                   include.3way=T, uniform.pra=F, trials=ntrials,
                    filedesc="efficiency");
   table.efficiency.to.graph()
   return()
