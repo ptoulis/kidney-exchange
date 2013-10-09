@@ -42,8 +42,7 @@ table.to.tex = function(results, filename) {
     close(fileConn)
 }
 
-# Run all tests at once. 
-tables.all = function() {
+tables.all.12 <- function() {
   # Table 1. Square-root law.
   loginfo("Generating Table 1: mu(n) theorem and assumptions")
   D = table.matchings(sizes = c(50, 100, 200, 300), m=2, trials=1000);
@@ -53,25 +52,32 @@ tables.all = function() {
   loginfo("Generating Table 2: Violations.")
   D = table.violations(sizes = c(50, 100, 200, 300), trials=1000);
   table.to.tex(D, filename="out/tex/table2-violations.tex");
-  
+}
+
+# Run all tests at once. 
+tables.all = function(sizes.array=c(20), ntrials=200) {
+    
   # Tables 3,4,5
   loginfo("Generating Scenarios table for rCM")
-  table.mechs("rCM", m=3, sizes=c(20, 40, 60, 80, 100), trials=200);
+  table.mechs("rCM", m=3, sizes=sizes.array,
+              include.3way=T, trials=ntrials);
   loginfo("Generating Scenarios table for xCM")
-  table.mechs("xCM", m=3, sizes=c(20, 40, 60, 80, 100), trials=200);
+  table.mechs("xCM", m=3, sizes=sizes.array, 
+              include.3way=T, trials=ntrials);
   loginfo("Generating Scenarios table for Bonus")
-  table.mechs("Bonus", m=4, sizes=c(20, 40, 60, 80), trials=200);
+  table.mechs("Bonus", m=4, sizes=sizes.array), 
+              include.3way=T, trials=ntrials);
   table.mechs.to.graph();
   
   # Table 6, 7
   loginfo("Generating efficiency table with uniform PRA.")
-  table.efficiency(m=4, sizes=c(20, 40, 60, 80, 100), uniform.pra=T, 
-                   trials=200, filedesc="efficiency");
+  table.efficiency(m=4, sizes=sizes.array,
+                   uniform.pra=T, trials=ntrials, filedesc="efficiency");
   loginfo("Generating efficiency table with non-uniform PRA.")
-  table.efficiency(m=4, sizes=c(20, 40, 60, 80, 100), uniform.pra=F, 
-                   trials=200, filedesc="efficiency");
+  table.efficiency(m=4, sizes=sizes.array, uniform.pra=F, 
+                   trials=ntrials, filedesc="efficiency");
   table.efficiency.to.graph()
-  
+  return()
   # Table 8
   loginfo("Generating efficiency table with varying m (#of hospitals)")
   table.efficiency.many.hospitals(many.m=c(4,6,8,10,14,18,20), n=25, trials=200)
