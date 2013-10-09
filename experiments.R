@@ -65,7 +65,7 @@ tables.all = function(sizes.array=c(20), ntrials=200) {
   table.mechs("xCM", m=3, sizes=sizes.array, 
               include.3way=T, trials=ntrials);
   loginfo("Generating Scenarios table for Bonus")
-  table.mechs("Bonus", m=4, sizes=sizes.array), 
+  table.mechs("Bonus", m=4, sizes=sizes.array, 
               include.3way=T, trials=ntrials);
   table.mechs.to.graph();
   
