@@ -259,8 +259,7 @@ relative.gain = function(kpd1, kpd2, mech, hid, include.3way) {
 
 relative.gain.scenario = function(scenario, mech, m, n, include.3way, trials,
                                   pb=txtProgressBar(max=trials, style=3),
-                                  pb.start=0, verbose=F,
-                                  fileName=NA) {
+                                  pb.start=0, verbose=F) {
   # Runs the scenario for the particular mechanism
   #
   # Args:
@@ -347,7 +346,7 @@ table.mechs = function(mech, m=3, sizes=c(20), include.3way, trials=10,
   # output filename
   # If not provided, take default
   if(is.na(filename))
-    filename = sprintf("out/mech-%s-m%d-trials%d--.Rdata", mech, m, trials, fileSuffix)
+    filename = sprintf("out/mech-%s-m%d-trials%d.Rdata", mech, m, trials)
   
   for(sce.i in 1:length(scenarios))   {
     scen = scenarios[sce.i]  # load the scenario
