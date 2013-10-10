@@ -321,7 +321,8 @@ relative.gain.scenario = function(scenario, mech, m, n, include.3way, trials,
   return(A)
 }
 
-table.mechs = function(mech, m=3, sizes=c(20), include.3way, trials=10, verbose=F) {
+table.mechs = function(mech, m=3, sizes=c(20), include.3way, trials=10,
+                       filename=NA, verbose=F) {
   # Creates Tables 3,4,5. Runs all scenarios using relative.gain.scenario
   # and all different sizes.
   # Sample usage:
