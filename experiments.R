@@ -550,19 +550,21 @@ table.efficiency.many.to.graph = function() {
   dev.off();
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+count.cycles.notAllS <- function(n=20, ntrials=10) {
+  count.xCM <- c()
+  count.bonus <- c()
+  pb <- txtProgressBar(style=3)
+  for(i in 1:ntrials) {
+    rke.pool = rrke.pool(m=4, n=n, uniform.pra=T)
+    out.xcm <- xCM(rke.pool, include.3way=T)
+    out.bonus <- Bonus(rke.pool, include.3way=T)
+    count.xCM <- c(count.xCM, out.xcm$countNotS)
+    count.bonus = c(count.bonus, out.bonus$countNotS)
+    setTxtProgressBar(pb, value=i/ntrials)
+  }
+  print(count.xCM)
+  print(summary(count.xCM))
+  print("For bonus")
+  print(count.bonus)
+  print(summary(count.bonus))
+}

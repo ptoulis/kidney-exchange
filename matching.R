@@ -13,12 +13,13 @@ CHECK_matching <- function(matching) {
   CHECK_TRUE(is.character(matching$status), msg="Status should be a string")
 }
 
-get.matching.from.ids <- function(matched.ids, rke) {
+get.matching.from.ids <- function(matched.ids, rke, no.3cycles.notS) {
   # Returns the subset of the pairs given the set of matched ids.
   x = empty.match.result(rke)
   x$match <- subset(rke$pairs, pair.id %in% matched.ids)
   x$status = "OK"
   x$utility = length(matched.ids)
+  x$countNotS <- no.3cycles.notS
   CHECK_matching(x)
   return(x)
 }
@@ -38,6 +39,10 @@ get.matching.status = function(matching) {
   return(matching$status)
 }
 
+get.matching.3cycles.notAllS <- function(matching) {
+  CHECK_matching(matching)
+  return(matching$count.3cycles.notallS)
+}
 empty.match.result <- function(rke) {
   # Empty "matching" object.
   x = subset(rke$pairs, pair.id < 0)
@@ -73,13 +78,18 @@ gurobi.matched.pairs <- function(gurobi.result, rke, cycles) {
   # Checks
   CHECK_EQ(length(matched.ids), 2 * nrow(subset(matched.cycles, type == 2)) + 
                                 3 * nrow(subset(matched.cycles, type == 3)))
- 
+  # Compute #cycles that not-all of them have S-pairs
+  matched.ids.3cycles = subset(matched.cycles, type==3)
+  count.notS= apply(matched.ids.3cycles, 1,
+                    function(z) { cyc = subset(rke$pairs, pair.id %in% z); sum(cyc$pair.type=="S")!=3})
+  count.notS = sum(count.notS)
   # Return final result.
   result = subset(rke$pairs, pair.id %in% matched.ids)
   x = empty.match.result(rke)
   x$match = result
   x$status="OK"
   x$utility = length(matched.ids)
+  x$count.3cycles.notallS = count.notS
   CHECK_matching(x)
   return (x)
 }
@@ -180,6 +190,12 @@ max.matching <- function(rke, include.3way=F,
   model$sense <- c(model$sense, rep(">=", dimx))
   
   gurobi.result <- gurobi(model, params.new)
+  # Iron: Just make sure 1.0000   is 1
+  gurobi.result$x <- sapply(gurobi.result$x, function(i) {
+    if(abs(i) < 1e-6) return(0)
+    if(abs(i-1) < 1e-6) return(1)
+    return(NA)
+  })
   logthis(gurobi.result, verbose)
   match.out = gurobi.matched.pairs(gurobi.result, rke, Cycles)
   edge.index = which(rke$edges$edge.id %in% match.out$matched.edges)
@@ -194,6 +210,7 @@ max.matching <- function(rke, include.3way=F,
      # infinite recursion although this is something that needs to be fixed.
       logwarn("Gurobi unstable output. Saving problematic RKE object AND retrying..")
       save(rke, file="debug/unstable.Rdata")
+      print(gurobi.result$x)
       return (max.matching(rke=rke, include.3way=include.3way,
                            ir.constraints=ir.constraints, 
                            timeLimit=timeLimit))
