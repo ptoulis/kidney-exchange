@@ -55,14 +55,14 @@ tables.all.12 <- function() {
 }
 
 # Run all tests at once. 
-tables.all = function(sizes.array=c(20), ntrials=200) {
+tables.all.345 = function(sizes.array=c(20), ntrials=200) {
     
   # Tables 3,4,5
   loginfo("Generating Scenarios table for rCM")
-  table.mechs("rCM", m=3, sizes=sizes.array,
+  table.mechs("rCM", m=4, sizes=sizes.array,
               include.3way=T, trials=ntrials);
   loginfo("Generating Scenarios table for xCM")
-  table.mechs("xCM", m=3, sizes=sizes.array, 
+  table.mechs("xCM", m=4, sizes=sizes.array, 
               include.3way=T, trials=ntrials);
   loginfo("Generating Scenarios table for Bonus")
   table.mechs("Bonus", m=4, sizes=sizes.array, 
@@ -259,7 +259,8 @@ relative.gain = function(kpd1, kpd2, mech, hid, include.3way) {
 
 relative.gain.scenario = function(scenario, mech, m, n, include.3way, trials,
                                   pb=txtProgressBar(max=trials, style=3),
-                                  pb.start=0, verbose=F) {
+                                  pb.start=0, verbose=F,
+                                  fileName=NA) {
   # Runs the scenario for the particular mechanism
   #
   # Args:
@@ -343,7 +344,10 @@ table.mechs = function(mech, m=3, sizes=c(20), include.3way, trials=10, verbose=
   N = length(scenarios) * length(sizes) * trials
   pb = txtProgressBar(style=3,min=0, max=N)
   # output filename
-  filename = sprintf("out/mech-%s-m%d-trials%d.Rdata", mech, m, trials)
+  # If not provided, take default
+  if(is.na(filename))
+    filename = sprintf("out/mech-%s-m%d-trials%d--.Rdata", mech, m, trials, fileSuffix)
+  
   for(sce.i in 1:length(scenarios))   {
     scen = scenarios[sce.i]  # load the scenario
     results[[scen]] = list()
