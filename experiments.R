@@ -339,7 +339,7 @@ table.mechs = function(mech, m=3, sizes=c(20), include.3way, trials=10,
   results = list()  
   ## each mechanism has 4 scenarios
   scenarios = c("A", "B", "C", "D")
-  print(sprintf("Running scenarios for mech=%s m=%d #sizes=%d", mech, m, length(sizes)))
+  print(sprintf("Running scenarios for mech=%s m=%d #sizes=%s", mech, m, paste(sizes, collapse=", ")))
   # total number of trials
   N = length(scenarios) * length(sizes) * trials
   pb = txtProgressBar(style=3,min=0, max=N)
@@ -370,14 +370,19 @@ table.mechs = function(mech, m=3, sizes=c(20), include.3way, trials=10,
 table.mechs.to.graph = function() {
   # Traverses the "out/" folder for "mech-*" files
   # loads and then saves results in a .png graph
-  files = list.files(path="out/", pattern="mech", full.names=T)
+  files = list.files(path="out", pattern="mech", full.names=T)
   for(filename in files) {
     x = filename
-    m = regexec(text=x, pattern="mech-(.*?)-")
-    mech = regmatches(x, m)[[1]][2]
+    print(filename)
+    m = regexec(text=x, pattern="mech-(.*?)-.*?trials(.*?)\\.Rdata")
+    reg = regmatches(x, m)[[1]]
+    # print(reg)
+    mech = reg[[2]]
+    ntrials = reg[[3]]
+    print(sprintf("Mechanism=%s trials=%s", mech, ntrials))
     load(filename)
     # assume:  results.
-    png.file = sprintf("out/png/tables345-mech-%s.png", mech)
+    png.file = sprintf("out/png/tables345-mech-%s-trials%s.png", mech, ntrials)
     loginfo(sprintf("Mechanism %s, Saving to %s ", mech, png.file))
     png(file= png.file)
     par(mfrow=c(2,2) )
