@@ -269,11 +269,7 @@ CHECK_rke.list <- function(rke.list) {
   CHECK_TRUE(length(rke.list) > 0, msg="Rke.list should not be empty.")
   # 1. Check every RKE
   laply(rke.list, CHECK_rke)
-  # 2. Check the hospital ids. Should be 1,2,3,...m
-  for(hid in 1:length(rke.list))
-    if(rke.size(rke.list[[hid]]) > 0)
-      CHECK_SETEQ(rke.hospital.ids(rke.list[[hid]]), c(hid),
-                  msg="Hospital ID == index in LIST")
+  hids <- rke.list.hospital.ids(rke.list)  # this is checking for valid hospital ids.
 }
 
 CHECK_pairs <- function(pairs) {
