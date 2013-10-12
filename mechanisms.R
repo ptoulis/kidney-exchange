@@ -58,7 +58,7 @@ play.strategy <- function(rke, strategy.str, include.3way=F) {
   #   rke: An RKE object
   #   strategy.str : A strategy profile as string, "tttcc" etc..
   # Returns:
-  #   A strategy object (see terminology)
+  #   A strategy object (see terminology) -- has "report" and "hide" fields
   ret = list()
   if(strategy.str == "t") {
     ret$hide = c()
@@ -97,7 +97,7 @@ play.strategies = function(rke.list, strategy.str,
   CHECK_MEMBER(strategies, c("t","c", "r", "b"), msg="Correct strategy spec")
   logthis("Strategies", verbose)
   logthis(strategies, verbose)
-  hids <- get.rke.list.hospital.ids(rke.list)
+  hids <- rke.list.hospital.ids(rke.list)
   logthis("Hospital ids are: ", verbose)
   logthis(hids, verbose)
   strategy.list = llply(hids, function(h) play.strategy(rke.list[[h]],
@@ -128,7 +128,8 @@ Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
   
   ## 3. Run the mechanism
   logthis("Unload complete. Running the mechanism", verbose)
-  matching = do.call(mech, args=list(rke.pool=kpd$reported.pool, include.3way=include.3way))
+  matching = do.call(mech, args=list(rke.pool=kpd$reported.pool,
+                                     include.3way=include.3way))
   logthis(sprintf("Matching status %s", matching$status), verbose)
   # Process matching.
   if (get.matching.status(matching) != "OK") {
@@ -143,7 +144,7 @@ Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
   
   ## 4. Compute utility from mechanism
   logthis("Computing utilities", verbose)
-  all.hospitals <- 1:length(rke.list)
+  all.hospitals <- rke.list.hospital.ids(rke.list)
   Util = get.hospitals.utility(reported.rke.all, mech.out.ids, 
                                all.hospital.ids=all.hospitals)
   CHECK_EQ(length(Util), length(all.hospitals))

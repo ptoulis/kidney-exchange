@@ -80,10 +80,6 @@ rke.edge.ids = function(rke) {
 }
 rke.pair.ids = function(rke) as.vector(rke$pairs$pair.id)
 
-rke.hospital.size <- function(rke) {
-  length(rke.hospital.ids(rke))
-}
-
 rke.pairs.hospitals <- function(rke, pair.ids) {
   CHECK_UNIQUE(pair.ids)
   subrke = subset(rke$pairs, pair.id %in% pair.ids)

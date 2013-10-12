@@ -320,9 +320,9 @@ CHECK_strategy <- function(strategy, all.pair.ids) {
   }
 }
 
-get.rke.list.hospital.ids <- function(rke.list) {
-  hids = laply(rke.list, function(rke) max(rke.hospital.ids(rke)))
-  CHECK_SETEQ(unique(hids), 1:length(hids), msg="Hospital ids 1,2,3...m")
+rke.list.hospital.ids <- function(rke.list) {
+  hids = 1:length(rke.list)
+  lapply(rke.list, function(rke) CHECK_MEMBER(rke$pairs$hospital, hids))
   return (hids)
 }
 
