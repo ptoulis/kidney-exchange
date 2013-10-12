@@ -106,12 +106,11 @@ play.strategies = function(rke.list, strategy.str,
   return(strategy.list)
 }
 
-get.hospitals.utility <- function(rke.all, matched.ids) {
-  warning("No unit tests for hospitals utility")
+get.hospitals.utility <- function(rke.all, matched.ids, all.hospital.ids) {
   # Calculates utility per hospital given the supplied matched pair ids.
   # Returns a m x 1 vector of utilities
   matched.hospitals = rke.pairs.hospitals(rke.all, matched.ids)
-  freq = sapply(rke.hospital.ids(rke.all), function(hid) length(which(matched.hospitals==hid)))
+  freq = sapply(all.hospital.ids, function(hid) length(which(matched.hospitals==hid)))
   return(as.matrix(freq, ncol=1))
 }
 
@@ -131,6 +130,7 @@ Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
   logthis("Unload complete. Running the mechanism", verbose)
   matching = do.call(mech, args=list(rke.pool=kpd$reported.pool, include.3way=include.3way))
   logthis(sprintf("Matching status %s", matching$status), verbose)
+  # Process matching.
   if (get.matching.status(matching) != "OK") {
     print(sprintf("Error happened in mechanism %s. Saving", mech))
     save(kpd, file="debug/kpd-%s.Rdata", kpd)
@@ -143,10 +143,13 @@ Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
   
   ## 4. Compute utility from mechanism
   logthis("Computing utilities", verbose)
-  Util = get.hospitals.utility(reported.rke.all, mech.out.ids)
+  all.hospitals <- 1:length(rke.list)
+  Util = get.hospitals.utility(reported.rke.all, mech.out.ids, 
+                               all.hospital.ids=all.hospitals)
+  CHECK_EQ(length(Util), length(all.hospitals))
   logthis("Computed hospital Utility:", verbose)
   logthis(Util, verbose)
-  hids <- rke.hospital.ids(rke.all)
+  hids <- all.hospitals # important to have all hospitals
   ## 5.  Utility from final internal matches.   
   for(h in hids) {
     rke.h = rke.list[[h]]
@@ -173,7 +176,6 @@ rCM <- function(rke.pool, include.3way=F) {
   # Implementation of rCM. Returns an array of matched pair ids.
   # loginfo(sprintf("Running xCM 3-chain=%s", include.3way))
   CHECK_rke.pool(rke.pool)
-  rke.list <- rke.pool$rke.list
   rke.all <- rke.pool$rke.all
   ## 1. Simply calculate a maximum-matching (this will shuffle the edges by default)
   m.all =  max.matching(rke.all, include.3way=include.3way)

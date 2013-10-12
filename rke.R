@@ -79,14 +79,6 @@ rke.edge.ids = function(rke) {
   as.vector(subset(rke$edges, can.donate==1)$edge.id)
 }
 rke.pair.ids = function(rke) as.vector(rke$pairs$pair.id)
-# Returns the different hospital ids (unique)
-rke.hospital.ids = function(rke) {
-  x = unique(rke$pairs$hospital)
-  # if length > 1 this means we have multiple hospitals.
-  if (length(x) > 1)
-    CHECK_SETEQ(x, 1:length(x), "Hospitals should be 1,2,3...m")
-  return(x)
-}
 
 rke.hospital.size <- function(rke) {
   length(rke.hospital.ids(rke))
@@ -100,7 +92,6 @@ rke.pairs.hospitals <- function(rke, pair.ids) {
 
 rke.hospital.pair.ids <- function(rke, hospital.id) {
   # Returns the pair ids that belong to that hospital
-  CHECK_MEMBER(hospital.id, rke.hospital.ids(rke))
   return (rke$pairs$pair.id[which(rke$pairs$hospital == hospital.id)])
 }
 

@@ -271,8 +271,9 @@ CHECK_rke.list <- function(rke.list) {
   laply(rke.list, CHECK_rke)
   # 2. Check the hospital ids. Should be 1,2,3,...m
   for(hid in 1:length(rke.list))
-    CHECK_SETEQ(rke.hospital.ids(rke.list[[hid]]), c(hid),
-                msg="Hospital ID == index in LIST")
+    if(rke.size(rke.list[[hid]]) > 0)
+      CHECK_SETEQ(rke.hospital.ids(rke.list[[hid]]), c(hid),
+                  msg="Hospital ID == index in LIST")
 }
 
 CHECK_pairs <- function(pairs) {

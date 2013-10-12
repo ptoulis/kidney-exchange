@@ -417,8 +417,8 @@ table.efficiency = function(m=4, sizes=c(20), uniform.pra, include.3way,
   # config = configuration of the experiment
   config = list("xCM_t" = list(mech="xCM", str=all.str("t")),
                 "rCM_c" = list(mech="rCM", str=all.str("c")),
-                "Bonus_t" = list(mech="Bonus", str= all.str("t"))) # this seems to hurt Bonus
-                # "Bonus_r" = list(mech="Bonus", str=all.str("r")))
+                "Bonus_c" = list(mech="Bonus", str= all.str("c")), # this seems to hurt Bonus
+                "Bonus_r" = list(mech="Bonus", str=all.str("r")))
   # N = total #iterations
   N = length(sizes) * trials * length(names(config))
   # progress bar (i really like them)
