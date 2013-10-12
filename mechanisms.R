@@ -468,7 +468,7 @@ Bonus.QS = function(rke.pool, include.3way=F)  {
   # unload
   rke.list = rke.pool$rke.list
   rke.all = rke.pool$rke.all
-  all.hospital.ids = rke.hospital.ids(rke.all)
+  all.hospital.ids = rke.list.hospital.ids(rke.list)
   CHECK_EQ(all.hospital.ids, 1:max(unique(all.hospital.ids)))
   # pair codes of Underdemanded pairs (see terminology)
   ud.pcs = subset(kPairs, pair.type=="U")$pc
