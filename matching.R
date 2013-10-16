@@ -43,6 +43,7 @@ get.matching.3cycles.notAllS <- function(matching) {
   CHECK_matching(matching)
   return(matching$count.3cycles.notallS)
 }
+
 empty.match.result <- function(rke) {
   # Empty "matching" object.
   x = subset(rke$pairs, pair.id < 0)
@@ -98,7 +99,7 @@ gurobi.matched.pairs <- function(gurobi.result, rke, cycles) {
 ##  Can return NA if time out.
 max.matching <- function(rke, include.3way=F,
                          ir.constraints=data.frame(),
-                         timeLimit=120,
+                         timeLimit=3600,
                          verbose=F,
                          regular.matching=F) {
   warning("Regular Matching not implemented.")
