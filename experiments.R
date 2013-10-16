@@ -46,12 +46,12 @@ tables.all.12 <- function() {
   # Table 1. Square-root law.
   loginfo("Generating Table 1: mu(n) theorem and assumptions")
   D = table.matchings(sizes = c(50, 100, 200, 300), m=2, trials=1000);
-  table.to.tex(D, filename="out/tex/table1-assumptions.tex");
+  table.to.tex(D, filename="out/table1-assumptions.tex");
   
   # Table 2. tab
   loginfo("Generating Table 2: Violations.")
   D = table.violations(sizes = c(50, 100, 200, 300), trials=1000);
-  table.to.tex(D, filename="out/tex/table2-violations.tex");
+  table.to.tex(D, filename="out/table2-violations.tex");
 }
 
 # Run all tests at once. 
