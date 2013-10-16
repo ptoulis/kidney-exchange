@@ -431,7 +431,8 @@ table.efficiency = function(m=4, sizes=c(20), uniform.pra, include.3way,
     n.str = sprintf("%d", n)
     # Initialize the mechanisms
     for(mech.name in names(config) ) {
-      results[[mech.name]] = list()
+      if (!is.element(mech.name, set=names(results)))
+        results[[mech.name]] = list()
       results[[mech.name]][[n.str]] = c()
     }
     cat("\n")
