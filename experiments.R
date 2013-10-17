@@ -42,18 +42,6 @@ table.to.tex = function(results, filename) {
     close(fileConn)
 }
 
-tables.all.12 <- function() {
-  # Table 1. Square-root law.
-  loginfo("Generating Table 1: mu(n) theorem and assumptions")
-  D = table.matchings(sizes = c(50, 100, 200, 300), m=2, trials=1000);
-  table.to.tex(D, filename="out/table1-assumptions.tex");
-  
-  # Table 2. tab
-  loginfo("Generating Table 2: Violations.")
-  D = table.violations(sizes = c(50, 100, 200, 300), trials=1000);
-  table.to.tex(D, filename="out/table2-violations.tex");
-}
-
 # Run all tests at once. 
 tables.all.345 = function(sizes.array=c(20), ntrials=200) {
     
@@ -91,8 +79,10 @@ tables.all.345 = function(sizes.array=c(20), ntrials=200) {
 ##    n | selfish | together | m(n)   | surplus
 ##   Synopsis.    D = table.matchings(sizes = c(50,100,200, 300), m=2, trials=100)
 ##               table.to.tex(D, filename="out/assumptions.tex")
-table.matchings = function(sizes=c(50), 
-                           m= 3, 
+table.matchings = function(sizes=c(20), 
+                           m=2,
+                           include.3way,
+                           uniform.pra,
                            trials=10) {
   colnames = c("size ($n$)", "selfish", "together", "together (theoretical)", "surplus/$\\sqrt{n}$")
   ncols = length(colnames) ## size-experimental matches - theoretical matches  - (same for non-PRA)
@@ -112,19 +102,20 @@ table.matchings = function(sizes=c(50),
       setTxtProgressBar(pb, val/nruns)
       
       # 0. Sample rke's 
-      rke.pool = rrke.pool(m=m, n=n, uniform.pra=T)
+      rke.pool = rrke.pool(m=m, n=n, uniform.pra=uniform.pra)
       rke.list = rke.pool$rke.list
       CHECK_EQ(length(rke.list), m)
       # 1.   Selfish (each one matches in isolation) 
       selfish.matches = c()
       for(hid in 1:length(rke.list)) {
-        selfish.matches[hid] = get.matching.utility(max.matching(rke.list[[hid]]))
+        hospital.matching = max.matching(rke.list[[hid]], include.3way=include.3way)
+        selfish.matches[hid] = get.matching.utility(hospital.matching)
       }
       selfish.matches = sum(selfish.matches)
       
       # 2. Pool and match together
       rke.all = rke.pool$rke.all
-      m.all = max.matching(rke.all)
+      m.all = max.matching(rke.all, include.3way=include.3way)
       together.matches = get.matching.utility(m.all)
       
       # 3. Theoretical matches
@@ -139,9 +130,10 @@ table.matchings = function(sizes=c(50),
     M[i,] = c(n,  t(apply(x, 1, mean)) )
     SE[i,] = c(0, t(apply(x, 1, bootstrap) ))
   }   
-  # text = 
+  # Add some standard errors. 
   D = add.se(M, SE)
   print("")
+  table.to.tex(D, filename="out/table1-assumptions.tex");
   return(D)
 }
 
