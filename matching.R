@@ -52,6 +52,55 @@ empty.match.result <- function(rke) {
   return(ret)
 }
 
+get.matching.information <- function(rke, matched.cycles) {
+  # Computes matching information given a matching.
+  # Args:
+  #   matched.cycles = kx3 matrix with pair ids in the exchange
+  # Returns:
+  #   An object(LIST) that is the matching information
+  #
+  # TODO(ptoulis): Add matching information to terminology
+  m3 = subset(matched.cycles, type==3)  # matched 3-cycles
+  m2 = subset(matched.cycles, type==2)  # swaps 
+  m2$type = NULL
+  m3$type = NULL
+  matched.cycles$type = NULL
+  # convention used: infoN.X refers to information on N-way exchange for X info
+  # e.g. info3.Sonly = # of S-only 3way exchanges
+  #     info2.Ronly = # of R-only swaps (2way exchanges)
+  count.type.cycles <- function(cycle.size, pair.types) {
+    # Computes |{c}|, c is a cycle that satisfy:
+    #  |pairs(c) in TYPES| >= has.at.least
+    # i.e.there are "at.least" pairs with a type that belongs to PAIR.TYPES
+    CHECK_EQ(cycle.size, length(pair.types))
+    m = m2
+    if (cycle.size == 3) m = m3
+    sum(apply(m, 1, function(xchange.pair.ids) { 
+      xchange.pairs = subset(rke$pairs, pair.id %in% xchange.pair.ids); 
+      setequal(xchange.pairs$pair.type, pair.types)
+    }))
+  }
+
+  out = list(info2.RR=count.type.cycles(2, pair.types=rep("R", 2)),
+             info2.SS=count.type.cycles(2, pair.types=rep("S", 2)),
+             info2.OU=count.type.cycles(2, pair.types=c("O", "U")),
+             info2.OR=count.type.cycles(2, pair.types=c("O", "R")),
+             info2.OO=count.type.cycles(2, pair.types=c("O", "O")),
+             info3.OOO=count.type.cycles(3, pair.types=rep("O", 3)),
+             info3.SSS=count.type.cycles(3, pair.types=rep("S", 3)),
+             info3.OOS=count.type.cycles(3, pair.types=c("O", "O", "S")),
+             info3.OOR=count.type.cycles(3, pair.types=c("O", "O", "R")),
+             info3.OOU=count.type.cycles(3, pair.types=c("O", "O", "U")),
+             info3.OSS=count.type.cycles(3, pair.types=c("O", "S", "S")),
+             info3.ORR=count.type.cycles(3, pair.types=c("O", "R", "R")),
+             info3.OUU=count.type.cycles(3, pair.types=c("O", "U", "U")),
+             info3.OUR=count.type.cycles(3, pair.types=c("O", "U", "R")),
+             info3.OUS=count.type.cycles(3, pair.types=c("O", "U", "S")),
+             n2way=nrow(m2),
+             n3way=nrow(m3))
+  return(out)
+}
+
 gurobi.matched.pairs <- function(gurobi.result, rke, cycles) {
   # Gets the Gurobi output and returns the subset of rke "pairs" object
   # of those that have been matched.
@@ -79,18 +128,13 @@ gurobi.matched.pairs <- function(gurobi.result, rke, cycles) {
   # Checks
   CHECK_EQ(length(matched.ids), 2 * nrow(subset(matched.cycles, type == 2)) + 
                                 3 * nrow(subset(matched.cycles, type == 3)))
-  # Compute #cycles that not-all of them have S-pairs
-  matched.ids.3cycles = subset(matched.cycles, type==3)
-  count.notS= apply(matched.ids.3cycles, 1,
-                    function(z) { cyc = subset(rke$pairs, pair.id %in% z); sum(cyc$pair.type=="S")!=3})
-  count.notS = sum(count.notS)
   # Return final result.
   result = subset(rke$pairs, pair.id %in% matched.ids)
   x = empty.match.result(rke)
   x$match = result
   x$status="OK"
   x$utility = length(matched.ids)
-  x$count.3cycles.notallS = count.notS
+  x$information = get.matching.information(rke, matched.cycles)
   CHECK_matching(x)
   return (x)
 }
