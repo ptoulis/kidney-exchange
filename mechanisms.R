@@ -370,7 +370,6 @@ xCM <- function(rke.pool, include.3way=F, verbose=F) {
   matched.all.ids = union(get.matching.ids(r.matching),
                           get.matching.ids(s.matching))
   ## Match OD's individually.
-  count.3cycles.notAllS = 0
   for(hid in 1:m) {
     matched.hospital.ids <- intersect(matched.all.ids, rke.hospital.pair.ids(rke.all, hid))
     rke.h <- rke.remove.pairs(rke=rke.list[[hid]], rm.pair.ids=matched.hospital.ids)
@@ -382,9 +381,8 @@ xCM <- function(rke.pool, include.3way=F, verbose=F) {
                    matched.all.ids, 
                    msg="Don't match already matched pairs.")
     matched.all.ids = c(matched.all.ids,  get.matching.ids(internal.matching))
-    count.3cycles.notAllS = count.3cycles.notAllS + get.matching.3cycles.notAllS(internal.matching)
   }
-  return(get.matching.from.ids(matched.all.ids, rke.all, count.3cycles.notAllS))
+  return(get.matching.from.ids(matched.all.ids, rke.all))
 }
 
 
@@ -535,8 +533,6 @@ Bonus = function(rke.pool, include.3way=F) {
   #   Q[hid][X-Y] = how many #X-Y in hospital hid
   #   S[hid][X-Y] = { ids of matched X-Y for hid }
   QS.obj = Bonus.QS(rke.pool=rke.pool, include.3way=include.3way)
-  count.3cycles.notAllS = 0
-  
   ## For all under-demanded pairs  X-Y
   for(i in ud.pcs) {
     # i is a PC (pair code)
@@ -572,8 +568,7 @@ Bonus = function(rke.pool, include.3way=F) {
       # Here you match   X-Y pairs from Hj   with   Y-X pairs from Hother
       subrke = rke.keep.pairs(rke.all, pair.ids=XYYX.ids)
       Mj = max.matching(subrke, include.3way=include.3way, regular.matching=F)
-      count.3cycles.notAllS = count.3cycles.notAllS + get.matching.3cycles.notAllS(Mj)
-      ## Test if newly matched have already been matched.
+      # Test if newly matched have already been matched.
       CHECK_DISJOINT(get.matching.ids(Mj),
                      matched.all.ids,
                      msg="Should not match already matched pairs.")
@@ -581,5 +576,5 @@ Bonus = function(rke.pool, include.3way=F) {
       matched.all.ids = c(matched.all.ids, get.matching.ids(Mj))
     }
   }
-  return(get.matching.from.ids(matched.all.ids, rke.all, count.3cycles.notAllS))
+  return(get.matching.from.ids(matched.all.ids, rke.all))
 }

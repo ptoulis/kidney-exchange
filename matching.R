@@ -13,13 +13,12 @@ CHECK_matching <- function(matching) {
   CHECK_TRUE(is.character(matching$status), msg="Status should be a string")
 }
 
-get.matching.from.ids <- function(matched.ids, rke, no.3cycles.notS) {
+get.matching.from.ids <- function(matched.ids, rke) {
   # Returns the subset of the pairs given the set of matched ids.
   x = empty.match.result(rke)
   x$match <- subset(rke$pairs, pair.id %in% matched.ids)
   x$status = "OK"
   x$utility = length(matched.ids)
-  x$countNotS <- no.3cycles.notS
   CHECK_matching(x)
   return(x)
 }
