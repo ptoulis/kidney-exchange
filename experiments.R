@@ -551,6 +551,8 @@ table.efficiency.many.to.graph = function() {
 table.matching.breakdown <- function(m=4, size=20, ntrials=10) {
   xcm.info <- empty.match.result(empty.rke())$information
   bonus.info <- empty.match.result(empty.rke())$information
+  xcm.util <- c()
+  bonus.util <- c()
   pb = txtProgressBar(style=3)
   for(i in 1:ntrials) {
     rke.pool = rrke.pool(m=m, n=size, uniform.pra=T)
@@ -559,8 +561,14 @@ table.matching.breakdown <- function(m=4, size=20, ntrials=10) {
     xcm.info <- xcm.info + m1$information
     bonus.info <- bonus.info + m2$information
     setTxtProgressBar(pb, value=i/ntrials)
+    xcm.util <- c(xcm.util, get.matching.utility(m1))
+    bonus.util <- c(bonus.util, get.matching.utility(m2))
   }
+  loginfo("Matching information")
   print(xcm.info / ntrials)
   print(bonus.info / ntrials)
+  loginfo("Utilities")
+  print(summary(xcm.util))
+  print(summary(bonus.util))
 }
 
