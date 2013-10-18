@@ -23,6 +23,19 @@ get.matching.from.ids <- function(matched.ids, rke) {
   return(x)
 }
 
+add.matching <- function(m1, m2) {
+  CHECK_matching(m1)
+  CHECK_matching(m2)
+  CHECK_DISJOINT(m1$match$pair.id, m2$match$pair.id, 
+                 msg="Added matchings should have distinct pair ids")
+  m = empty.match.result(empty.rke())
+  m$match = rbind(m1$match, m2$match)
+  m$status = "OK"
+  m$utility = m1$utility + m2$utility
+  m$information = m1$information + m2$information
+  return(m)
+}
+
 get.matching.ids <- function(matching) {
   CHECK_matching(matching)
   return(matching$match$pair.id)
@@ -47,7 +60,32 @@ empty.match.result <- function(rke) {
   # Empty "matching" object.
   x = subset(rke$pairs, pair.id < 0)
   CHECK_TRUE(nrow(x) == 0, "should be empty")
-  ret = list(match=x, status="OK", utility=0)
+  ret = list(match=x, status="OK", utility=0, 
+             information=empty.matching.information())
+  return(ret)
+}
+
+empty.matching.information <- function() {
+  out = list(info2.RR=0,
+             info2.SS=0,
+             info2.OU=0,
+             info2.OR=0,
+             info2.OS=0,
+             info2.OO=0,
+             info3.OOO=0,
+             info3.SSS=0,
+             info3.OOS=0,
+             info3.OOR=0,
+             info3.OOU=0,
+             info3.OSS=0,
+             info3.ORR=0,
+             info3.OUU=0,
+             info3.OUR=0,
+             info3.OUS=0,
+             n2way=0,
+             n3way=0)
+  ret = as.numeric(out)
+  names(ret) <- names(out)
   return(ret)
 }
 
@@ -79,11 +117,12 @@ get.matching.information <- function(rke, matched.cycles) {
       setequal(xchange.pairs$pair.type, pair.types)
     }))
   }
-
+  
   out = list(info2.RR=count.type.cycles(2, pair.types=rep("R", 2)),
              info2.SS=count.type.cycles(2, pair.types=rep("S", 2)),
              info2.OU=count.type.cycles(2, pair.types=c("O", "U")),
              info2.OR=count.type.cycles(2, pair.types=c("O", "R")),
+             info2.OS=count.type.cycles(2, pair.types=c("O", "S")),
              info2.OO=count.type.cycles(2, pair.types=c("O", "O")),
              info3.OOO=count.type.cycles(3, pair.types=rep("O", 3)),
              info3.SSS=count.type.cycles(3, pair.types=rep("S", 3)),
@@ -97,7 +136,9 @@ get.matching.information <- function(rke, matched.cycles) {
              info3.OUS=count.type.cycles(3, pair.types=c("O", "U", "S")),
              n2way=nrow(m2),
              n3way=nrow(m3))
-  return(out)
+  ret = as.numeric(out)
+  names(ret) <- names(out)
+  return(ret)
 }
 
 gurobi.matched.pairs <- function(gurobi.result, rke, cycles) {

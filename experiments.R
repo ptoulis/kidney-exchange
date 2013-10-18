@@ -544,21 +544,11 @@ table.efficiency.many.to.graph = function() {
   dev.off();
 }
 
-count.cycles.notAllS <- function(n=20, ntrials=10) {
-  count.xCM <- c()
-  count.bonus <- c()
-  pb <- txtProgressBar(style=3)
-  for(i in 1:ntrials) {
-    rke.pool = rrke.pool(m=4, n=n, uniform.pra=T)
-    out.xcm <- xCM(rke.pool, include.3way=T)
-    out.bonus <- Bonus(rke.pool, include.3way=T)
-    count.xCM <- c(count.xCM, out.xcm$countNotS)
-    count.bonus = c(count.bonus, out.bonus$countNotS)
-    setTxtProgressBar(pb, value=i/ntrials)
-  }
-  print(count.xCM)
-  print(summary(count.xCM))
-  print("For bonus")
-  print(count.bonus)
-  print(summary(count.bonus))
+table.matching.breakdown <- function(m=4, sizes=c(20), ntrials=10) {
+  rke.pool = rrke.pool(m=m, n=sizes[1], uniform.pra=T)
+  m1 = xCM(rke.pool, include.3way=T)
+  m2 = Bonus(rke.pool, include.3way=T)
+  print(m1$information)
+  print(m2$information)
 }
+

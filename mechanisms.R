@@ -116,9 +116,15 @@ get.hospitals.utility <- function(rke.all, matched.ids, all.hospital.ids) {
 
 ##  Runs a mechanism
 Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
+  # Runs a mechanism for a specified KPD
+  # Returns:
+  #     A matching object.
   warning("No unit tests for RunMechanism")
   logthis(sprintf("Mechanism %s. Checking KPD", mech), verbose)
   CHECK_kpd(kpd)
+  
+  # Init total matching.
+  total.matching <- empty.match.result(empty.rke())
   
   # unload
   reported.rke.list = kpd$reported.pool$rke.list
@@ -126,18 +132,21 @@ Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
   rke.list = kpd$real.pool$rke.list
   rke.all = kpd$real.pool$rke.all
   
-  ## 3. Run the mechanism
+  ## 3. Run the mechanism. Get the matching
   logthis("Unload complete. Running the mechanism", verbose)
-  matching = do.call(mech, args=list(rke.pool=kpd$reported.pool,
+  mech.matching = do.call(mech, args=list(rke.pool=kpd$reported.pool,
                                      include.3way=include.3way))
-  logthis(sprintf("Matching status %s", matching$status), verbose)
+  
+  total.matching = add.matching(total.matching, mech.matching)
+  
   # Process matching.
-  if (get.matching.status(matching) != "OK") {
+  if (get.matching.status(mech.matching) != "OK") {
     print(sprintf("Error happened in mechanism %s. Saving", mech))
     save(kpd, file="debug/kpd-%s.Rdata", kpd)
     stop("Quitting.")
   }
-  matched.pairs = get.matching.ids(matching)
+  
+  matched.pairs = get.matching.ids(mech.matching)
   ## Sometimes we get a list instead of a vector.
   logthis("Checking matched pairs", verbose)
   mech.out.ids = matched.pairs
@@ -145,11 +154,6 @@ Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
   ## 4. Compute utility from mechanism
   logthis("Computing utilities", verbose)
   all.hospitals <- rke.list.hospital.ids(rke.list)
-  Util = get.hospitals.utility(reported.rke.all, mech.out.ids, 
-                               all.hospital.ids=all.hospitals)
-  CHECK_EQ(length(Util), length(all.hospitals))
-  logthis("Computed hospital Utility:", verbose)
-  logthis(Util, verbose)
   hids <- all.hospitals # important to have all hospitals
   ## 5.  Utility from final internal matches.   
   for(h in hids) {
@@ -163,14 +167,12 @@ Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
     logthis(sprintf("Remainder graph has %d pairs", rke.size(rke.remainder)), 
             verbose)
     matching = max.matching(rke.remainder, include.3way=include.3way)
-    utility = get.matching.utility(matching)
-    logthis(sprintf("Extra utility for hospital %d = %d", h, utility), verbose)
-    # 4. Update utilities
-    Util[h] = Util[h] + utility
+    
+    # 0.2 Add this matching to the total
+    total.matching <- add.matching(total.matching, matching)
+    
   }
-  logthis("Final Utility:", verbose)
-  logthis(Util, verbose)
-  return(Util)
+  return(total.matching)
 }
 
 rCM <- function(rke.pool, include.3way=F) {
@@ -178,9 +180,17 @@ rCM <- function(rke.pool, include.3way=F) {
   # loginfo(sprintf("Running xCM 3-chain=%s", include.3way))
   CHECK_rke.pool(rke.pool)
   rke.all <- rke.pool$rke.all
+  
+  # Total matching computed by the mechanism.
+  total.matching = empty.match.result(empty.rke())
+  
   ## 1. Simply calculate a maximum-matching (this will shuffle the edges by default)
   m.all =  max.matching(rke.all, include.3way=include.3way)
-  return(m.all)
+  
+  ## 0.1 Add matching
+  total.matching <- add.matching(total.matching, m.all)
+  
+  return(total.matching)
 }
 
 
@@ -324,14 +334,19 @@ compute.Rsubgraph.constraints <- function(ir.constraints, rke.pool) {
 
 ## TO-DO(ptoulis): Don't really care much about correctness
 ## as long as it has good properties, we can treat it as a black box.
+#
+# Returns: LIST(matching=total.matching)
 xCM <- function(rke.pool, include.3way=F, verbose=F) {
   CHECK_rke.pool(rke.pool)
   # loginfo(sprintf("Running xCM 3-chain=%s", include.3way))
   # unload
   rke.list = rke.pool$rke.list
   rke.all = rke.pool$rke.all
+  
+  # Total matching computed by the mechanism.
+  total.matching = empty.match.result(empty.rke())
+  
   m = length(rke.list)  # no. of hospitals
-  matched.all.ids = c()
   ##  1. Compute IR constraints
   ir.constraints = compute.ir.constraints(rke.pool, pair.types=c("S", "R"), include.3way=include.3way)
   
@@ -341,6 +356,9 @@ xCM <- function(rke.pool, include.3way=F, verbose=F) {
   s.matching = max.matching(s.subrke,
                             ir.constraints=s.constraints,
                             include.3way=include.3way)
+  # 0.1 Add matching information from S
+  total.matching <- add.matching(total.matching, s.matching)
+  
   ## 3.   Match R internally
   r.subrke = rke.subgraph(rke.all, pair.type="R")
   r.constraints = compute.Rsubgraph.constraints(ir.constraints, rke.pool=rke.pool)
@@ -357,32 +375,28 @@ xCM <- function(rke.pool, include.3way=F, verbose=F) {
     loop.ended = get.matching.status(r.matching) == "OK"
     q = q + 1
   }
+  # 0.2 Add matching information from R
+  total.matching <- add.matching(total.matching, r.matching)
   ## remove some stuff that are not needed anymore
   rm(ir.constraints)
   logthis(sprintf("Total S matches = %d", length(get.matching.ids(s.matching))), verbose)
   logthis(sprintf("Total R matches = %d", length(get.matching.ids(r.matching))), verbose)
+
   #  4. Almost regular matching to the remainder
-  ## Notice that match.r, match.s are all on rke.all so that the 
-  ## ids refer to the same original ids in rke.all
-  CHECK_DISJOINT(get.matching.ids(s.matching),
-                     get.matching.ids(r.matching),
-                     msg="R and S matched ids should be different")
-  matched.all.ids = union(get.matching.ids(r.matching),
-                          get.matching.ids(s.matching))
   ## Match OD's individually.
   for(hid in 1:m) {
-    matched.hospital.ids <- intersect(matched.all.ids, rke.hospital.pair.ids(rke.all, hid))
-    rke.h <- rke.remove.pairs(rke=rke.list[[hid]], rm.pair.ids=matched.hospital.ids)
+    matched.hospital.ids <- intersect(total.matching$match$pair.id,
+                                      rke.hospital.pair.ids(rke.all, hid))
+    rke.h <- rke.remove.pairs(rke=rke.list[[hid]],
+                              rm.pair.ids=matched.hospital.ids)
     internal.matching = max.matching(rke.h, 
                                      include.3way=include.3way,
                                      regular.matching=T)
-    ## Make sure OD ids are not R or S pairs
-    CHECK_DISJOINT(get.matching.ids(internal.matching),
-                   matched.all.ids, 
-                   msg="Don't match already matched pairs.")
-    matched.all.ids = c(matched.all.ids,  get.matching.ids(internal.matching))
+    # 0.3 Add matching information from internal matching.
+    total.matching <- add.matching(total.matching, internal.matching)
   }
-  return(get.matching.from.ids(matched.all.ids, rke.all))
+  
+  return(matching=total.matching)
 }
 
 
@@ -497,16 +511,19 @@ Bonus = function(rke.pool, include.3way=F) {
   # unload
   rke.list = rke.pool$rke.list
   rke.all = rke.pool$rke.all
-  warning("Bonus not unit-tested")
-  matched.all.ids = c()  # output of mechanism
   
+  # Total matching computed by the mechanism.
+  total.matching = empty.match.result(empty.rke())
+    
   ## 0. Initialize mechanism
   m = length(rke.list)  # no. of hospitals.
 
   ## 1. Match S pairs internally
   s.subrke = rke.subgraph(rke.all, pair.type="S")
   s.matching = max.matching(s.subrke, include.3way=include.3way)
-  s.matched.ids = get.matching.ids(s.matching)
+  
+  ## 0.1 Add S-matching
+  total.matching <- add.matching(total.matching, s.matching)
   
   ## 2. Match R pairs
   # Compute constraints.
@@ -514,12 +531,9 @@ Bonus = function(rke.pool, include.3way=F) {
   r.subrke = rke.subgraph(rke.all, pair.type="R")
   r.matching = max.matching(r.subrke, include.3way=include.3way, 
                             ir.constraints=R.constraints)
-  r.matched.ids = get.matching.ids(r.matching)
+  ## 0.1 Add R-matching
+  total.matching <- add.matching(total.matching, r.matching)
   
-  matched.all.ids = c(r.matched.ids, s.matched.ids)
-  CHECK_UNIQUE(matched.all.ids)
-  CHECK_MEMBER(subset(rke.all$pairs, pair.id %in% matched.all.ids)$pair.type, 
-               c("S", "R"), msg="Only S and R pair types matched")
   #  3. Match OD/UD pairs.
   #   3a. Split hospital in two sets
   k = as.integer(m/2)
@@ -568,13 +582,10 @@ Bonus = function(rke.pool, include.3way=F) {
       # Here you match   X-Y pairs from Hj   with   Y-X pairs from Hother
       subrke = rke.keep.pairs(rke.all, pair.ids=XYYX.ids)
       Mj = max.matching(subrke, include.3way=include.3way, regular.matching=F)
-      # Test if newly matched have already been matched.
-      CHECK_DISJOINT(get.matching.ids(Mj),
-                     matched.all.ids,
-                     msg="Should not match already matched pairs.")
       
-      matched.all.ids = c(matched.all.ids, get.matching.ids(Mj))
+      ## 0.3 Add new matching
+      total.matching <- add.matching(total.matching, Mj)
     }
   }
-  return(get.matching.from.ids(matched.all.ids, rke.all))
+  return(total.matching)
 }
