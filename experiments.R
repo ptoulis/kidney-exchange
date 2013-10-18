@@ -557,8 +557,8 @@ table.matching.breakdown <- function(m=4, size=20, ntrials=10, strategy="t") {
   for(i in 1:ntrials) {
     rke.pool = rrke.pool(m=m, n=size, uniform.pra=T)
     kpd = kpd.create(rke.pool, strategy.str=paste(rep(strategy, m), collapse=""))
-    m1 = Run.Mechanicm(mech="xCM", kpd=kpd, include.3way=T)
-    m2 = Run.Mechanicm(mech="Bonus", kpd=kpd, include.3way=T)
+    m1 = Run.Mechanism(mech="xCM", kpd=kpd, include.3way=T)
+    m2 = Run.Mechanism(mech="Bonus", kpd=kpd, include.3way=T)
     xcm.info <- xcm.info + m1$information
     bonus.info <- bonus.info + m2$information
     setTxtProgressBar(pb, value=i/ntrials)
