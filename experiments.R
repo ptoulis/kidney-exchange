@@ -244,8 +244,10 @@ relative.gain = function(kpd1, kpd2, mech, hid, include.3way) {
   #
   # Returns:
   #   A 1x2 vector of two utilities
-  U1 = Run.Mechanism(kpd=kpd1, mech=mech, include.3way=include.3way)
-  U2 = Run.Mechanism(kpd=kpd2, mech=mech, include.3way=include.3way)
+  m1 = Run.Mechanism(kpd=kpd1, mech=mech, include.3way=include.3way)
+  m2 = Run.Mechanism(kpd=kpd2, mech=mech, include.3way=include.3way)
+  U1 <- get.matching.hospital.utilities(m1)
+  U2 <- get.matching.hospital.utilities(m2)
   c(U1[hid], U2[hid])
 }
 
@@ -440,9 +442,10 @@ table.efficiency = function(m=4, sizes=c(20), uniform.pra, include.3way,
         strategy = config[[mech.name]][["str"]]
         mech = config[[mech.name]][["mech"]]
         kpd = kpd.create(rke.pool, strategy)
-        welfare = sum(Run.Mechanism(kpd=kpd, mech=mech, include.3way=include.3way))
+        matching = Run.Mechanism(kpd=kpd, mech=mech, include.3way=include.3way)
+        welfare = get.matching.utility(matching)
         # Append welfare to the mechanism vector.
-        results[[mech.name]][[n.str]] = c( results[[mech.name]][[n.str]], welfare )
+        results[[mech.name]][[n.str]] = c( results[[mech.name]][[n.str]], welfare)
         count = count + 1
         setTxtProgressBar(pb, value=count)
       } # iterate over all mechanisms.
@@ -481,8 +484,9 @@ table.efficiency.to.graph = function() {
         cat("Summary:\n")
         print(summary(obj[[size]]))
       }
-      boxplot(obj, ylim=c(0.6, 1.1), main=sprintf("mech=%s", mech),
-              ylab="ratio (str/base)", xlab="size")
+      if(mech != "rCM_c")
+        boxplot(obj, ylim=c(0.6, 1.1), main=sprintf("mech=%s", mech),
+                ylab="ratio (str/base)", xlab="size")
     }
     dev.off();
   }

@@ -23,6 +23,13 @@ get.matching.from.ids <- function(matched.ids, rke) {
   return(x)
 }
 
+get.matching.hospital.utilities <- function(matching, m) {
+  hospital.ids <- 1:m  # hospital ids=1,2,3....m
+  CHECK_MEMBER(matching$match$hospital, hospital.ids)
+  utilities <- sapply(hospital.ids, function(hid) nrow(subset(matching$match, hospital==hid)))
+  return(utilities)
+}
+
 add.matching <- function(m1, m2) {
   CHECK_matching(m1)
   CHECK_matching(m2)
