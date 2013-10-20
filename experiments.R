@@ -583,10 +583,10 @@ compare.mechanisms <- function(mechanisms,
       m.deviation = Run.Mechanism(kpd=kpd.deviation, mech=mech, include.3way=include.3way)
   
       result$baseline[[mech]]$utility[, i] <- get.matching.hospital.utilities(m.baseline, m)
-      result$baseline$[[mech]]$matching.info = result$baseline$[[mech]]$matching.info + m.baseline$information
+      result$baseline[[mech]]$matching.info = result$baseline[[mech]]$matching.info + m.baseline$information
       
       result$deviation[[mech]]$utility[, i] <- get.matching.hospital.utilities(m.deviation, m)
-      result$deviation$[[mech]]$matching.info = result$deviation$[[mech]]$matching.info + m.deviation$information
+      result$deviation[[mech]]$matching.info = result$deviation[[mech]]$matching.info + m.deviation$information
    }
     setTxtProgressBar(pb, value=i/ntrials)
   }
