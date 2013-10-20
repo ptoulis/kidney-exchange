@@ -601,7 +601,7 @@ table.Rdeviation <- function(m=4, size=20, ntrials=10) {
                               baseline.strategy=baseline.str,
                               deviation.strategy=deviation.str,
                               m=m, n=size, include.3way=T, uniform.pra=T,
-                              ntrials=nrials)
+                              ntrials=ntrials)
   save(result, file="out/Rdev-experiment.Rdata")
 }
 
