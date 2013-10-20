@@ -552,28 +552,56 @@ table.efficiency.many.to.graph = function() {
   dev.off();
 }
 
-table.Rdeviation <- function(m=4, size=20, ntrials=10, strategy="t") {
-  xcm.info <- empty.match.result(empty.rke())$information
-  bonus.info <- empty.match.result(empty.rke())$information
-  xcm.util <- c()
-  bonus.util <- c()
+compare.mechanisms <- function(mechanisms,
+                               baseline.strategy,
+                               deviation.strategy,
+                               m, n, include.3way, uniform.pra,
+                               ntrials=10) {
+  # Compares two mechanisms.
+  # Result looks like this:
+  #   baseline=> { strategy="...", 
+  #                rCM=LIST(utility=MATRIX(m x Ntrials), matching.info),
+  #                ...}
+  #   deviation = > {...}
+  CHECK_MEMBER(mechanisms, c("rCM", "xCM", "Bonus"))
+  result = list(baseline=list(strategy=baseline.strategy),
+                deviation=list(strategy=deviation.strategy))
+  # Initialize
+  for (mech in mechanisms) {
+    for (j in names(result))
+      result[[j]][[mech]] <- list(utility=matrix(0, nrow=m, ncol=ntrials),
+                                  matching.info=empty.match.result(empty.rke())$information)
+  }
+  
   pb = txtProgressBar(style=3)
   for(i in 1:ntrials) {
-    rke.pool = rrke.pool(m=m, n=size, uniform.pra=T)
-    kpd = kpd.create(rke.pool, strategy.str=paste(rep(strategy, m), collapse=""))
-    m1 = Run.Mechanism(mech="xCM", kpd=kpd, include.3way=T)
-    m2 = Run.Mechanism(mech="Bonus", kpd=kpd, include.3way=T)
-    xcm.info <- xcm.info + m1$information
-    bonus.info <- bonus.info + m2$information
+    rke.pool = rrke.pool(m=m, n=n, uniform.pra=uniform.pra)
+    kpd.baseline = kpd.create(rke.pool=rke.pool, strategy.str=baseline.strategy)
+    kpd.deviation = kpd.create(rke.pool=rke.pool, strategy.str=deviation.strategy)
+    for (mech in mechanisms) {
+      m.baseline = Run.Mechanism(kpd=kpd.baseline, mech=mech, include.3way=include.3way)
+      m.deviation = Run.Mechanism(kpd=kpd.deviation, mech=mech, include.3way=include.3way)
+  
+      result$baseline[[mech]]$utility[, i] <- get.matching.hospital.utilities(m.baseline, m)
+      result$baseline$[[mech]]$matching.info = result$baseline$[[mech]]$matching.info + m.baseline$information
+      
+      result$deviation[[mech]]$utility[, i] <- get.matching.hospital.utilities(m.deviation, m)
+      result$deviation$[[mech]]$matching.info = result$deviation$[[mech]]$matching.info + m.deviation$information
+   }
     setTxtProgressBar(pb, value=i/ntrials)
-    xcm.util <- c(xcm.util, get.matching.utility(m1))
-    bonus.util <- c(bonus.util, get.matching.utility(m2))
   }
-  loginfo("Matching information")
-  print(xcm.info / ntrials)
-  print(bonus.info / ntrials)
-  loginfo("Utilities")
-  print(summary(xcm.util))
-  print(summary(bonus.util))
+  return(result)                       
+}
+
+table.Rdeviation <- function(m=4, size=20, ntrials=10) {
+  baseline.str = paste(rep("t", m), collapse="")
+  deviation.str = paste(c("r", rep("t", m-1)), collapse="")
+  mechs = c("xCM", "Bonus")
+  result = compare.mechanisms(mechanisms=mechs,
+                              baseline.strategy=baseline.str,
+                              deviation.strategy=deviation.str,
+                              m=m, n=size, include.3way=T, uniform.pra=T,
+                              ntrials=nrials)
+  save(result, file="out/Rdev-experiment.Rdata")
 }
 
