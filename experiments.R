@@ -287,7 +287,7 @@ relative.gain.scenario = function(scenario, mech, m, n, include.3way, trials,
     loginfo(sprintf("Scenario %s, Mechanism %s TEST, size=%d, 3-chains=%s: profile %s vs. baseline %s, uniform.pra=%s",
                     scenario, mech, n, include.3way, str1, str2, is.uniform.pra))
   }
-  rownames(A) <- c(sprintf("%s(test)", str1), sprintf("%s(baseline)", str2))
+  
   for(i in 1:trials) {
     rke.pool = rrke.pool(m=m, n=n, uniform.pra=is.uniform.pra)
     # Create the Kidney-Paired Donation market
