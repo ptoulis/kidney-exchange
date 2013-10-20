@@ -236,7 +236,7 @@ e2.once <- function(size) {
   return(M)
 }
 
-relative.gain.scenario = function(scenario, mech, m, n, include.3way, trials,
+relative.gain.scenario = function(scenario, mech, nhospitals, n, include.3way, trials,
                                   pb=txtProgressBar(max=trials, style=3),
                                   pb.start=0, verbose=F) {
   # Runs the scenario for the particular mechanism
@@ -269,7 +269,7 @@ relative.gain.scenario = function(scenario, mech, m, n, include.3way, trials,
   
   ## define the parameters based on mechanism + scenario
   h1.strategy = h1.str.list[[mech]][[scenario]]
-  others = rep(others.list[[mech]][[scenario]],  m-1)
+  others = rep(others.list[[mech]][[scenario]],  nhospitals-1)
   is.uniform.pra = uniform.pra.list[[scenario]]  
   # output matrix
   result = list(control=list(utility=rep(0, 0),
@@ -289,7 +289,7 @@ relative.gain.scenario = function(scenario, mech, m, n, include.3way, trials,
   }
   
   for(i in 1:trials) {
-    rke.pool = rrke.pool(m=m, n=n, uniform.pra=is.uniform.pra)
+    rke.pool = rrke.pool(m=nhospitals, n=n, uniform.pra=is.uniform.pra)
     # Create the Kidney-Paired Donation market
     kpd1 = kpd.create(rke.pool, str1)
     kpd2 = kpd.create(rke.pool, str2)
@@ -298,11 +298,11 @@ relative.gain.scenario = function(scenario, mech, m, n, include.3way, trials,
     m2 = Run.Mechanism(kpd=kpd2, mech=mech, include.3way=include.3way)
     
     result$control$utility = c(result$control$utility,
-                                get.matching.hospital.utilities(m1)[1]
+                                get.matching.hospital.utilities(m1, nhospitals)[1]
                                 )
     result$control$matching.info = result$control$matching.info + m1$information
     result$treatment$utility = c(result$treatment$utility,
-                               get.matching.hospital.utilities(m2)[1]
+                               get.matching.hospital.utilities(m2, nhospitals)[1]
     )
     result$treatment$matching.info = result$treatment$matching.info + m2$information
     setTxtProgressBar(pb, value=pb.start + i)
