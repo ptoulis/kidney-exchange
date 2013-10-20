@@ -235,21 +235,6 @@ e2.once <- function(size) {
   colnames(M) = c("n","Reg.", "R", "OO", "AA","BB","ABAB")
   return(M)
 }
-## Compute the relative gain for _hid.interest_ 
-# mechanism _mech_ under _setup_, for two different strategies
-# Returns:  2 x trials   matrix of utiliies.
-relative.gain = function(kpd1, kpd2, mech, hid, include.3way) {
-  # Runs both KPD markets for the same mechanism
-  # Then returns the utility for the particular hospital (hid)
-  #
-  # Returns:
-  #   A 1x2 vector of two utilities
-  m1 = Run.Mechanism(kpd=kpd1, mech=mech, include.3way=include.3way)
-  m2 = Run.Mechanism(kpd=kpd2, mech=mech, include.3way=include.3way)
-  U1 <- get.matching.hospital.utilities(m1)
-  U2 <- get.matching.hospital.utilities(m2)
-  c(U1[hid], U2[hid])
-}
 
 relative.gain.scenario = function(scenario, mech, m, n, include.3way, trials,
                                   pb=txtProgressBar(max=trials, style=3),
@@ -266,11 +251,12 @@ relative.gain.scenario = function(scenario, mech, m, n, include.3way, trials,
   #   pb.start = where to start the progress bar from
   #
   # Returns:
-  #   A 2 x trials matrix that has utilities.
-  #   Row 1 has the utility of the strategic H1
-  #   Row 2 has the utility for the baseline "ttt..." scenario
-  #
-  # What H-1 is doing per mechanism, per scenario
+  #   result = LIST(control=list(utility, info), treatment=LIST(..))
+  #     utility = vector of utilities for H1
+  #     info = matching information for control
+  #     
+  #   Control refers to the control case and treatment refers to 
+  #   the case where H1 is deviating/attempting some different strategy
   h1.str.list = list("rCM" = list(A="c", B="c", C="c", D="c"),
                      "xCM" = list(A="c", B="r", C="c", D="r"),
                      "Bonus"=list(A="c", B="r", C="c", D="r") )
@@ -286,7 +272,12 @@ relative.gain.scenario = function(scenario, mech, m, n, include.3way, trials,
   others = rep(others.list[[mech]][[scenario]],  m-1)
   is.uniform.pra = uniform.pra.list[[scenario]]  
   # output matrix
-  A = matrix(NA, nrow=2, ncol=trials)
+  result = list(control=list(utility=rep(0, 0),
+                             matching.info=empty.match.result(empty.rke())$information),
+                treatment=list(utility=rep(0, 0),
+                               matching.info=empty.match.result(empty.rke())$information)
+  )
+  
   ## e.g. Scenario A ->  str1 = "ctt" str2 = "ttt"
   str1 = paste(c(h1.strategy, others), collapse="")
   ## str2 =  baseline strategy profile.
@@ -294,7 +285,7 @@ relative.gain.scenario = function(scenario, mech, m, n, include.3way, trials,
   if(verbose) {
     cat("\n")
     loginfo(sprintf("Scenario %s, Mechanism %s TEST, size=%d, 3-chains=%s: profile %s vs. baseline %s, uniform.pra=%s",
-                  scenario, mech, n, include.3way, str1, str2, is.uniform.pra))
+                    scenario, mech, n, include.3way, str1, str2, is.uniform.pra))
   }
   rownames(A) <- c(sprintf("%s(test)", str1), sprintf("%s(baseline)", str2))
   for(i in 1:trials) {
@@ -303,15 +294,23 @@ relative.gain.scenario = function(scenario, mech, m, n, include.3way, trials,
     kpd1 = kpd.create(rke.pool, str1)
     kpd2 = kpd.create(rke.pool, str2)
     
-    utils = relative.gain(kpd1, kpd2, mech=mech, hid=1, include.3way=include.3way)
-    A[1,i] = utils[1] # has the utility for KPD1
-    A[2,i] = utils[2]  # has the utility for KPD2
+    m1 = Run.Mechanism(kpd=kpd1, mech=mech, include.3way=include.3way)
+    m2 = Run.Mechanism(kpd=kpd2, mech=mech, include.3way=include.3way)
+    
+    result$control$utility = c(result$control$utility,
+                                get.matching.hospital.utilities(m1)[1]
+                                )
+    result$control$matching.info = result$control$matching.info + m1$information
+    result$treatment$utility = c(result$treatment$utility,
+                               get.matching.hospital.utilities(m2)[1]
+    )
+    result$treatment$matching.info = result$treatment$matching.info + m2$information
     setTxtProgressBar(pb, value=pb.start + i)
   }
   if(verbose) {
     cat("\nSimulation over")
   }
-  return(A)
+  return(result)
 }
 
 table.mechs = function(mech, m=3, sizes=c(20), include.3way, trials=10,
@@ -381,10 +380,11 @@ table.mechs.to.graph = function() {
     png(file= png.file)
     par(mfrow=c(2,2) )
     for(i in names(results) ) {
-      obj=  results[[i]]
+      # obj = relative gain / scenario
+      obj =  results[[i]]
       for(j in names(obj)) {
-        A = obj[[j]]  ## 2 x trials 
-        obj[[j]] = A[1,] / A[2,]
+        result.scenario = obj[[j]] ## result from a single relative scenario
+        obj[[j]] = result.scenario$treatment$utility / result.scenario$control$utility
       }
       boxplot(obj, ylim=c(0.5, 2), main=sprintf("mech=%s scenario= %s", mech, i ), ylab="ratio (str/base)", xlab="size")
     }
@@ -548,7 +548,7 @@ table.efficiency.many.to.graph = function() {
   dev.off();
 }
 
-table.matching.breakdown <- function(m=4, size=20, ntrials=10, strategy="t") {
+table.Rdeviation <- function(m=4, size=20, ntrials=10, strategy="t") {
   xcm.info <- empty.match.result(empty.rke())$information
   bonus.info <- empty.match.result(empty.rke())$information
   xcm.util <- c()
