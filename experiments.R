@@ -272,39 +272,43 @@ relative.gain.scenario = function(scenario, mech, nhospitals, n, include.3way, t
   others = rep(others.list[[mech]][[scenario]],  nhospitals-1)
   is.uniform.pra = uniform.pra.list[[scenario]]  
   # output matrix
-  result = list(control=list(utility=rep(0, 0),
+  result = list(baseline=list(strategy="na",
+                             utility=rep(0, 0),
                              matching.info=empty.match.result(empty.rke())$information),
-                treatment=list(utility=rep(0, 0),
+                deviation=list(strategy="na",
+                               utility=rep(0, 0),
                                matching.info=empty.match.result(empty.rke())$information)
   )
   
   ## e.g. Scenario A ->  str1 = "ctt" str2 = "ttt"
-  str1 = paste(c(h1.strategy, others), collapse="")
+  str.deviation = paste(c(h1.strategy, others), collapse="")
   ## str2 =  baseline strategy profile.
-  str2 = paste(c("t", others), collapse="")
+  str.baseline = paste(c("t", others), collapse="")
   if(verbose) {
     cat("\n")
     loginfo(sprintf("Scenario %s, Mechanism %s TEST, size=%d, 3-chains=%s: profile %s vs. baseline %s, uniform.pra=%s",
-                    scenario, mech, n, include.3way, str1, str2, is.uniform.pra))
+                    scenario, mech, n, include.3way, str.deviation, str.baseline, is.uniform.pra))
   }
   
   for(i in 1:trials) {
     rke.pool = rrke.pool(m=nhospitals, n=n, uniform.pra=is.uniform.pra)
     # Create the Kidney-Paired Donation market
-    kpd1 = kpd.create(rke.pool, str1)
-    kpd2 = kpd.create(rke.pool, str2)
+    kpd.baseline = kpd.create(rke.pool, str.baseline)
+    kpd.deviation = kpd.create(rke.pool, str.deviation)
     
-    m1 = Run.Mechanism(kpd=kpd1, mech=mech, include.3way=include.3way)
-    m2 = Run.Mechanism(kpd=kpd2, mech=mech, include.3way=include.3way)
+    m.baseline = Run.Mechanism(kpd=kpd.baseline, mech=mech, include.3way=include.3way)
+    m.deviation = Run.Mechanism(kpd=kpd.deviation, mech=mech, include.3way=include.3way)
     
-    result$control$utility = c(result$control$utility,
-                                get.matching.hospital.utilities(m1, nhospitals)[1]
+    result$baseline$strategy = str.baseline
+    result$baseline$utility = c(result$baseline$utility,
+                                get.matching.hospital.utilities(m.baseline, nhospitals)[1]
                                 )
-    result$control$matching.info = result$control$matching.info + m1$information
-    result$treatment$utility = c(result$treatment$utility,
-                               get.matching.hospital.utilities(m2, nhospitals)[1]
-    )
-    result$treatment$matching.info = result$treatment$matching.info + m2$information
+    result$baseline$matching.info = result$baseline$matching.info + m.baseline$information
+    result$deviation$strategy = str.deviation
+    result$deviation$utility = c(result$deviation$utility,
+                                 get.matching.hospital.utilities(m.deviation,
+                                                                 nhospitals)[1])
+    result$deviation$matching.info = result$deviation$matching.info + m.deviation$information
     setTxtProgressBar(pb, value=pb.start + i)
   }
   if(verbose) {
