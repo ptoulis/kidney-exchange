@@ -593,9 +593,10 @@ compare.mechanisms <- function(mechanisms,
   return(result)                       
 }
 
-table.Rdeviation <- function(m=4, size=20, ntrials=10) {
+table.deviation <- function(m=4, size=20, dev.strategy="r",
+                            ntrials=10) {
   baseline.str = paste(rep("t", m), collapse="")
-  deviation.str = paste(c("r", rep("t", m-1)), collapse="")
+  deviation.str = paste(c(dev.strategy, rep("t", m-1)), collapse="")
   mechs = c("xCM", "Bonus")
   result = compare.mechanisms(mechanisms=mechs,
                               baseline.strategy=baseline.str,
