@@ -48,11 +48,18 @@ basicConfig()
 # * A mechanism M is a function (rke.pool -> matching) 
 #     The format of matching is the output of the max.matching function:
 #     (see above)
+#
+# *  A "simulation setup" object (SimSetup) is a LIST that defines
+#    nhospitals=#hospitals, sizes=ARRAY of hospital sizes,
+#    uniform.pra, include.3way and nsims=#simulations
+#
 kAccuracy = 10^5
 kBloodTypes  <- c("O", "A", "B", "AB")
 kBloodCodes  <- c(1, 2, 3, 6)
 kPairCodes <- 1:16
 kBloodTypeDistribution <- c(50, 30, 15, 5) / 100
+# warning("Using special blood-type distribution")
+# kBloodTypeDistribution <<- c(0, 50, 50, 0) / 100
 
 get.blood.code.prob <- function(blood.code) {
   # Gets the marginal frequency of a specific blood code
@@ -314,6 +321,24 @@ CHECK_strategy <- function(strategy, all.pair.ids) {
     CHECK_DISJOINT(strategy$hide, strategy$report, msg="Report^Hide=0")
     CHECK_SETEQ(union(strategy$hid, strategy$report), all.pair.ids, msg="Union=all")
   }
+}
+
+simple.simSetup <- function() {
+  return(list(nhospitals=4,
+              sizes=c(10),
+              uniform.pra=T,
+              include.3way=T,
+              nsims=10))
+}
+
+CHECK_SimSetup <- function(simSetup) {
+  CHECK_MEMBER(names(simSetup), c("nhospitals", "sizes", "uniform.pra", "include.3way", "nsims"))
+  CHECK_TRUE(is.logical(simSetup$uniform.pra))
+  CHECK_TRUE(is.logical(simSetup$include.3way))
+  CHECK_GT(simSetup$nhospitals, 0)
+  CHECK_TRUE(is.numeric(simSetup$sizes, 0))
+  CHECK_GT(length(simSetup$sizes), 0)
+  CHECK_GT(simSetup$nsims, 0)
 }
 
 rke.list.hospital.ids <- function(rke.list) {
