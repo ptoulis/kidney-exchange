@@ -696,6 +696,7 @@ Rdeviation.experiments <- function(m=4, n=20, ntrials=1, verbose=F) {
     x = compare.mechanisms.kpd(mechanisms=mechanisms, m=m, include.3way=F,
                                kpd.baseline=kpd.base, kpd.deviation=kpd.dev)
     x$deviate.hid = deviate.hid
+    x$deviation.factor <- ABpairs[deviate.hid, 5]
     results[[trial]] <- x
     
     if(verbose)
