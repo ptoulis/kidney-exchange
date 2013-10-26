@@ -632,19 +632,6 @@ compare.mechanisms <- function(mechanisms,
 }
 
 
-table.deviation <- function(m=4, size=20, dev.strategy="r",
-                            ntrials=10) {
-  baseline.str = paste(rep("t", m), collapse="")
-  deviation.str = paste(c(dev.strategy, rep("t", m-1)), collapse="")
-  mechs = c("xCM", "Bonus")
-  result = compare.mechanisms(mechanisms=mechs,
-                              baseline.strategy=baseline.str,
-                              deviation.strategy=deviation.str,
-                              m=m, n=size, include.3way=T, uniform.pra=T,
-                              ntrials=ntrials)
-  save(result, file="out/Rdev-experiment.Rdata")
-}
-
 Rdeviation.experiments <- function(m=4, n=20, ntrials=1, verbose=F) {
   mechanisms <- c("xCM", "Bonus", "rCM")
   gains = list(surplus.diff=rep(0, 0))
@@ -720,8 +707,11 @@ Rdeviation.experiments <- function(m=4, n=20, ntrials=1, verbose=F) {
       gain <- x$deviation[[mech]]$utility[deviate.hid] - x$baseline[[mech]]$utility[deviate.hid]
       gains[[mech]] <- c(gains[[mech]], gain)
     }
+    if(verbose)
+      print(gains)
     x$deviate.hid = deviate.hid
     setTxtProgressBar(pb, value=trial/ntrials)
+    save(gains, file="out/Rdev-experiment.Rdata")
   }
   return(gains)
 }
