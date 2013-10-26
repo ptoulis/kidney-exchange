@@ -52,7 +52,10 @@ basicConfig()
 # *  A "simulation setup" object (SimSetup) is a LIST that defines
 #    nhospitals=#hospitals, sizes=ARRAY of hospital sizes,
 #    uniform.pra, include.3way and nsims=#simulations
-#
+#   *  A "mechanism evaluation" object (mechEval) is a LIST of the following:
+#      LIST(baseline= LIST(mech1=>{utility=c(..), matchingInfo}, mech2...),
+#           deviation= LIST(mech1=...))
+#     The basic concept is to compare between mechanisms.
 kAccuracy = 10^5
 kBloodTypes  <- c("O", "A", "B", "AB")
 kBloodCodes  <- c(1, 2, 3, 6)
@@ -340,6 +343,7 @@ CHECK_simSetup <- function(simSetup) {
   CHECK_GT(length(simSetup$sizes), 0)
   CHECK_GT(simSetup$nsims, 0)
 }
+
 
 rke.list.hospital.ids <- function(rke.list) {
   hids = 1:length(rke.list)

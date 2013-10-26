@@ -586,6 +586,8 @@ compare.mechanisms.kpd <- function(mechanisms,
   return(result)                       
 }
 
+
+
 compare.mechanisms <- function(mechanisms,
                                baseline.strategy,
                                deviation.strategy,
@@ -634,12 +636,11 @@ compare.mechanisms <- function(mechanisms,
 
 Rdeviation.experiments <- function(m=4, n=20, ntrials=1, verbose=F) {
   mechanisms <- c("xCM", "Bonus", "rCM")
-  gains = list(surplus.diff=rep(0, 0))
-  pb = txtProgressBar(style=3)
+  ##  This will have the final results 
+  # List of  compare.mechanisms.kpd objects()
+  results <- list()
   
-  for(mech in mechanisms) {
-    gains[[mech]] <- rep(0, 0)  
-  }
+  pb = txtProgressBar(style=3)
   
   for(trial in 1:ntrials) {
     # 1. Sample RKE pool
@@ -694,6 +695,8 @@ Rdeviation.experiments <- function(m=4, n=20, ntrials=1, verbose=F) {
     kpd.base <- kpd.create(rke.pool=rp, strategy.str=base.strategy)
     x = compare.mechanisms.kpd(mechanisms=mechanisms, m=m, include.3way=F,
                                kpd.baseline=kpd.base, kpd.deviation=kpd.dev)
+    x$deviate.hid = deviate.hid
+    results[[trial]] <- x
     
     if(verbose)
       for (mech in mechanisms){
@@ -701,18 +704,9 @@ Rdeviation.experiments <- function(m=4, n=20, ntrials=1, verbose=F) {
                       x$baseline[[mech]]$utility[deviate.hid],
                       x$deviation[[mech]]$utility[deviate.hid]))
       }
-    ## Populate results
-    gains$surplus.diff <- c(gains$surplus.diff, round(as.numeric(ABpairs[deviate.hid, 5]), digits=3))
-    for (mech in mechanisms) {
-      gain <- x$deviation[[mech]]$utility[deviate.hid] - x$baseline[[mech]]$utility[deviate.hid]
-      gains[[mech]] <- c(gains[[mech]], gain)
-    }
-    if(verbose)
-      print(gains)
-    x$deviate.hid = deviate.hid
     setTxtProgressBar(pb, value=trial/ntrials)
-    save(gains, file="out/Rdev-experiment.Rdata")
+    save(results, file="out/Rdev-experiment.Rdata")
   }
-  return(gains)
+  return(results)
 }
 
