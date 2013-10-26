@@ -702,7 +702,7 @@ Rdeviation.experiments <- function(m=4, n=20, ntrials=1, verbose=F) {
                       x$deviation[[mech]]$utility[deviate.hid]))
       }
     ## Populate results
-    gains$surplus.diff <- c(gains$surplus.diff, ABpairs[deviate.hid, 5])
+    gains$surplus.diff <- c(gains$surplus.diff, round(as.numeric(ABpairs[deviate.hid, 5]), digits=3))
     for (mech in mechanisms) {
       gain <- x$deviation[[mech]]$utility[deviate.hid] - x$baseline[[mech]]$utility[deviate.hid]
       gains[[mech]] <- c(gains[[mech]], gain)
