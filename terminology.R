@@ -331,7 +331,7 @@ simple.simSetup <- function() {
               nsims=10))
 }
 
-CHECK_SimSetup <- function(simSetup) {
+CHECK_simSetup <- function(simSetup) {
   CHECK_MEMBER(names(simSetup), c("nhospitals", "sizes", "uniform.pra", "include.3way", "nsims"))
   CHECK_TRUE(is.logical(simSetup$uniform.pra))
   CHECK_TRUE(is.logical(simSetup$include.3way))
