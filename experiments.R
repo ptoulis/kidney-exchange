@@ -552,6 +552,40 @@ table.efficiency.many.to.graph = function() {
   dev.off();
 }
 
+compare.mechanisms.kpd <- function(mechanisms,
+                                   m, include.3way,
+                                   kpd.baseline,
+                                   kpd.deviation) {
+  # Compares two mechanisms.
+  # m = #hospitals
+  # Result looks like this:
+  #   baseline=> { strategy="...", 
+  #                rCM=LIST(utility=MATRIX(m x Ntrials), matching.info),
+  #                ...}
+  #   deviation = > {...}
+  CHECK_MEMBER(mechanisms, c("rCM", "xCM", "Bonus"))
+  result = list(baseline=list(strategy="na"),
+                deviation=list(strategy="na"))
+  # Initialize
+  for (mech in mechanisms) {
+    for (j in names(result))
+      result[[j]][[mech]] <- list(utility=rep(0, m),
+                                  matching.info=empty.match.result(empty.rke())$information)
+  }
+  
+  for (mech in mechanisms) {
+    m.baseline = Run.Mechanism(kpd=kpd.baseline, mech=mech, include.3way=include.3way)
+    m.deviation = Run.Mechanism(kpd=kpd.deviation, mech=mech, include.3way=include.3way)
+    
+    result$baseline[[mech]]$utility <- get.matching.hospital.utilities(m.baseline, m)
+    result$baseline[[mech]]$matching.info = m.baseline$information
+    
+    result$deviation[[mech]]$utility <- get.matching.hospital.utilities(m.deviation, m)
+    result$deviation[[mech]]$matching.info = m.deviation$information
+  }
+  return(result)                       
+}
+
 compare.mechanisms <- function(mechanisms,
                                baseline.strategy,
                                deviation.strategy,
@@ -578,20 +612,25 @@ compare.mechanisms <- function(mechanisms,
     rke.pool = rrke.pool(m=m, n=n, uniform.pra=uniform.pra)
     kpd.baseline = kpd.create(rke.pool=rke.pool, strategy.str=baseline.strategy)
     kpd.deviation = kpd.create(rke.pool=rke.pool, strategy.str=deviation.strategy)
+    
+    single.result <- compare.mechanisms.kpd(mechanisms,m=m, include.3way=include.3way,
+                                            kpd.baseline=kpd.baseline,
+                                            kpd.deviation=kpd.deviation)
     for (mech in mechanisms) {
-      m.baseline = Run.Mechanism(kpd=kpd.baseline, mech=mech, include.3way=include.3way)
-      m.deviation = Run.Mechanism(kpd=kpd.deviation, mech=mech, include.3way=include.3way)
-  
-      result$baseline[[mech]]$utility[, i] <- get.matching.hospital.utilities(m.baseline, m)
-      result$baseline[[mech]]$matching.info = result$baseline[[mech]]$matching.info + m.baseline$information
+      result$baseline[[mech]]$utility[, i] <- single.result$baseline[[mech]]$utility
+      result$baseline[[mech]]$matching.info = result$baseline[[mech]]$matching.info + 
+        single.result$baseline[[mech]]$matching.info
       
-      result$deviation[[mech]]$utility[, i] <- get.matching.hospital.utilities(m.deviation, m)
-      result$deviation[[mech]]$matching.info = result$deviation[[mech]]$matching.info + m.deviation$information
-   }
+      
+      result$deviation[[mech]]$utility[, i] <- single.result$deviation[[mech]]$utility
+      result$deviation[[mech]]$matching.info = result$deviation[[mech]]$matching.info +
+        single.result$deviation[[mech]]$matching.info
+    }
     setTxtProgressBar(pb, value=i/ntrials)
   }
   return(result)                       
 }
+
 
 table.deviation <- function(m=4, size=20, dev.strategy="r",
                             ntrials=10) {
@@ -604,5 +643,86 @@ table.deviation <- function(m=4, size=20, dev.strategy="r",
                               m=m, n=size, include.3way=T, uniform.pra=T,
                               ntrials=ntrials)
   save(result, file="out/Rdev-experiment.Rdata")
+}
+
+Rdeviation.experiments <- function(m=4, n=20, ntrials=1, verbose=F) {
+  mechanisms <- c("xCM", "Bonus", "rCM")
+  gains = list(surplus.diff=rep(0, 0))
+  pb = txtProgressBar(style=3)
+  
+  for(mech in mechanisms) {
+    gains[[mech]] <- rep(0, 0)  
+  }
+  
+  for(trial in 1:ntrials) {
+    # 1. Sample RKE pool
+    rp <- rrke.pool(m=m, n=n, uniform.pra=T)
+    
+    # 2. Compute A-B/B-A pairs/hospital
+    # col1-2 = AB/BA of hospital,   Cols3-4=AB/BA rest of hospitals
+    # col5 = R-attack successful
+    ABpairs <- matrix(0, nrow=m, ncol=5)
+    # Compute the A-B pairs for each hospitals
+    for (i in 1:m) {
+      ABpairs[i, 1] <- nrow(subset(rp$rke.all$pairs, desc=="A-B" & hospital==i))
+      ABpairs[i, 2] <- nrow(subset(rp$rke.all$pairs, desc=="B-A" & hospital==i))
+      ABpairs[i, 3] <- nrow(subset(rp$rke.all$pairs, desc=="A-B" & hospital!=i))
+      ABpairs[i, 4] <- nrow(subset(rp$rke.all$pairs, desc=="B-A" & hospital!=i))
+      longSide = which.max(c(ABpairs[i, c(1,2)]))  # 1=A-B, 2=B-A
+      shortSide = setdiff(c(1,2), c(longSide))
+      otherOppSide = 5 - longSide  # e.g. 1(A-B) -> 4 (B-A), 2->3
+      otherSameSide = longSide + 2  # e.g 1=A-B -> 3 (A-B)
+      
+      expected.matches <- ABpairs[i, longSide] * ABpairs[i, otherOppSide] /
+        (ABpairs[i, longSide] + ABpairs[i, otherSameSide])
+      surplus = abs(ABpairs[i,1] - ABpairs[i,2])
+      # Expected gain = surplus - expected.matches
+      # if E[matches] > surplus this is bad. 
+      # E[matches] < surplus  is unlikely to happen (hospital sizes)  
+      # Ideally we want to match our surplus exactly
+      # So, if the below is negative, then this is bad news.
+      #   and the closer to the 0 the better.
+      ABpairs[i, 5] <- surplus - expected.matches
+    }
+    
+    colnames(ABpairs) <- c("A-B(H)", "B-A(H)", "A-B(rest)", "B-A(rest)", "Gain-R-Dev")
+    # 3. Choose which hospital will be deviating
+    #    Choose from a deviation criterion
+    deviate.hid = which.max(ABpairs[, 5])
+    # Create strategy
+    strategy = rep("t", m)
+    strategy[deviate.hid] <- "r"
+    
+    base.strategy <- paste(rep("t", m), collapse="")
+    dev.strategy <- paste(strategy, collapse="")
+    
+    if(verbose) {
+      print("A-B pairs are")
+      print(ABpairs)
+      print(sprintf("Deviating hospital=%d", deviate.hid))
+      print(sprintf("Strategies base=%s dev=%s", base.strategy, dev.strategy))
+    }
+    
+    kpd.dev <- kpd.create(rke.pool=rp, strategy.str=dev.strategy)
+    kpd.base <- kpd.create(rke.pool=rp, strategy.str=base.strategy)
+    x = compare.mechanisms.kpd(mechanisms=mechanisms, m=m, include.3way=F,
+                               kpd.baseline=kpd.base, kpd.deviation=kpd.dev)
+    
+    if(verbose)
+      for (mech in mechanisms){
+        print(sprintf("%s before:%d -> %d", mech,
+                      x$baseline[[mech]]$utility[deviate.hid],
+                      x$deviation[[mech]]$utility[deviate.hid]))
+      }
+    ## Populate results
+    gains$surplus.diff <- c(gains$surplus.diff, ABpairs[deviate.hid, 5])
+    for (mech in mechanisms) {
+      gain <- x$deviation[[mech]]$utility[deviate.hid] - x$baseline[[mech]]$utility[deviate.hid]
+      gains[[mech]] <- c(gains[[mech]], gain)
+    }
+    x$deviate.hid = deviate.hid
+    setTxtProgressBar(pb, value=trial/ntrials)
+  }
+  return(gains)
 }
 
