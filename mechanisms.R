@@ -119,7 +119,7 @@ Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
   # Runs a mechanism for a specified KPD
   # Returns:
   #     A matching object.
-  warning("No unit tests for RunMechanism")
+  # warning("No unit tests for RunMechanism")
   logthis(sprintf("Mechanism %s. Checking KPD", mech), verbose)
   CHECK_kpd(kpd)
   
@@ -260,7 +260,7 @@ g.share = function(demand, supply) {
   #   m x 1 vector of allocation
   #
   # J = { those ids that have positive demand }
-  warning("Not unit-tests for g share")
+  # warning("Not unit-tests for g share")
   set.J = which(demand > 0)
   # allocation vector
   alloc = rep(0, length(demand))

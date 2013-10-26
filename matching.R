@@ -193,7 +193,7 @@ max.matching <- function(rke, include.3way=F,
                          timeLimit=3600,
                          verbose=F,
                          regular.matching=F) {
-  warning("Regular Matching not implemented.")
+  # warning("Regular Matching not implemented.")
   CHECK_rke(rke)
   num.pairs = rke.size(rke)
   num.edges = length(rke.edge.ids(rke))
