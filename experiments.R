@@ -674,8 +674,8 @@ Rdeviation.experiments <- function(m=4, n=20, ntrials=1, verbose=F) {
     
     colnames(ABpairs) <- c("A-B(H)", "B-A(H)", "A-B(rest)", "B-A(rest)", "Gain-R-Dev")
     # 3. Choose which hospital will be deviating
-    #    Choose from a deviation criterion
-    deviate.hid = which.max(ABpairs[, 5])
+    #    The one where the surplus is best matched.
+    deviate.hid = which.min(abs(ABpairs[, 5]))
     # Create strategy
     strategy = rep("t", m)
     strategy[deviate.hid] <- "r"
