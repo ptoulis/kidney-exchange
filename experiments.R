@@ -579,9 +579,11 @@ compare.mechanisms.kpd <- function(mechanisms,
     
     result$baseline[[mech]]$utility <- get.matching.hospital.utilities(m.baseline, m)
     result$baseline[[mech]]$matching.info = m.baseline$information
-    
+    result$baseline[[mech]]$matching = m.baseline
+        
     result$deviation[[mech]]$utility <- get.matching.hospital.utilities(m.deviation, m)
     result$deviation[[mech]]$matching.info = m.deviation$information
+    result$deviation[[mech]]$matching = m.deviation
   }
   return(result)                       
 }
@@ -696,7 +698,7 @@ Rdeviation.experiments <- function(m=4, n=20, ntrials=1, verbose=F) {
     x = compare.mechanisms.kpd(mechanisms=mechanisms, m=m, include.3way=F,
                                kpd.baseline=kpd.base, kpd.deviation=kpd.dev)
     x$deviate.hid = deviate.hid
-    x$deviation.factor <- ABpairs[deviate.hid, 5]
+    x$deviation.factor <- as.numeric(ABpairs[deviate.hid, 5])
     results[[trial]] <- x
     
     if(verbose)
@@ -705,6 +707,8 @@ Rdeviation.experiments <- function(m=4, n=20, ntrials=1, verbose=F) {
                       x$baseline[[mech]]$utility[deviate.hid],
                       x$deviation[[mech]]$utility[deviate.hid]))
       }
+    ###  Some sanity checks
+    
     setTxtProgressBar(pb, value=trial/ntrials)
     save(results, file="out/Rdev-experiment.Rdata")
   }

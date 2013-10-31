@@ -7,7 +7,7 @@ library(gurobi)
 #   status = "OK" if everything is fine
 CHECK_matching <- function(matching) {
   # Checks whether a matching has the valid format.
-  CHECK_MEMBER(c("match", "utility", "status"), names(matching), msg="Matching members")
+  CHECK_MEMBER(c("match", "utility", "status", "matched.cycles"), names(matching), msg="Matching members")
   CHECK_pairs(matching$match)
   CHECK_GE(matching$utility, 0, "Utility is >=0")
   CHECK_TRUE(is.character(matching$status), msg="Status should be a string")
@@ -40,6 +40,7 @@ add.matching <- function(m1, m2) {
   m$status = "OK"
   m$utility = m1$utility + m2$utility
   m$information = m1$information + m2$information
+  m$matched.cycles = rbind(m1$matched.cycles, m2$matched.cycles)
   return(m)
 }
 
@@ -68,7 +69,8 @@ empty.match.result <- function(rke) {
   x = subset(rke$pairs, pair.id < 0)
   CHECK_TRUE(nrow(x) == 0, "should be empty")
   ret = list(match=x, status="OK", utility=0, 
-             information=empty.matching.information())
+             information=empty.matching.information(),
+             matched.cycles=matrix(0, nrow=0, ncol=3))
   return(ret)
 }
 
@@ -182,6 +184,7 @@ gurobi.matched.pairs <- function(gurobi.result, rke, cycles) {
   x$status="OK"
   x$utility = length(matched.ids)
   x$information = get.matching.information(rke, matched.cycles)
+  x$matched.cycles = matched.cycles
   CHECK_matching(x)
   return (x)
 }

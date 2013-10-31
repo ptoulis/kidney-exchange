@@ -1,6 +1,6 @@
 # Copyright 2013 Panos Toulis, David C.Parkes
 # Author: Panos Toulis(ptoulis@fas.harvard.edu)
-source("testing.R")
+
 library(plyr)
 library(logging)
 library(stringr)
@@ -115,6 +115,10 @@ kPairs$pair.type <- kPairTypes[1+ with(kPairs, 2 *blood.compatible + symmetric.c
 kPairs$symmetric.compatible <- NULL
 kPairs<- cbind(pc=kPairCodes, kPairs)
 kPairs$pair.color <- laply(kPairs$pair.type, function(i) kPairTypeColors[[i]])
+
+compatibility.mask = kUniformPRA * kPairs$blood.compatible + (1 - kPairs$blood.compatible)
+kPairs$marginal.prob <- kPairs$prob * compatibility.mask
+kPairs$marginal.prob <- kPairs$marginal.prob / sum(kPairs$marginal.prob)
 
 # Functions on kPairs.
 pc.to.desc <- function(pcs) {

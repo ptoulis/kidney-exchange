@@ -4,8 +4,10 @@
 # Contains code implementing different KPD mechanisms. 
 # Currently supported:   rCM,  xCM
 # A mechanism receives a combined donor-patient graph and outputs a matching. 
-source("rke.R")
-source("matching.R")
+
+# Make sure these are loaded.
+# source("rke.R")
+# source("matching.R")
 
 kpd.create <- function(rke.pool, strategy.str, verbose=F) {
   # Creates a KPD from the specific pool.
@@ -170,7 +172,6 @@ Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
     
     # 0.2 Add this matching to the total
     total.matching <- add.matching(total.matching, matching)
-    
   }
   return(total.matching)
 }
