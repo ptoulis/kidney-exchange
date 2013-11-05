@@ -343,6 +343,22 @@ test.play.strategies <- function() {
   }
 }
 
+test.kpd.create <- function() {
+  pool = rrke.pool(3, 20, T)
+  strategies <- sample(c("t", "c", "r"), size=3, replace=T)
+  strategy.str = paste(strategies, collapse="")
+  loginfo(sprintf("Strategies= %s", strategy.str))
+  kpd <- kpd.create(rke.pool=pool, strategy.str=strategy.str)
+  for(hid in 1:length(kpd$reported.pool$rke.list)) {
+    rke.report <- kpd$reported.pool$rke.list[[hid]]
+    rke.real <- kpd$real.pool$rke.list[[hid]]
+    CHECK_TRUE(rke.equal(rke.real, pool$rke.list[[hid]]))
+    out = list(report=rke.pair.ids(rke.report),
+               hide=setdiff(rke.pair.ids(rke.real), rke.pair.ids(rke.report)))
+    check.rke.strategy(rke.real, out, strategies[hid])
+  }
+}
+
 ####    Testing for mechanisms.R
 test.rCM <- function() {
   source("mechanisms.R")

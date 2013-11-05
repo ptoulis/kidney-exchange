@@ -26,19 +26,23 @@ kpd.create <- function(rke.pool, strategy.str, verbose=F) {
   rke.list = rke.pool$rke.list
   rke.all = rke.pool$rke.all
   m = length(rke.list)
+  hospital.ids <- rke.list.hospital.ids(rke.list)
   CHECK_EQ(nchar(strategy.str), m, msg="Correct #of strategies")
+  CHECK_SETEQ(1:m, hospital.ids)
   logthis("Playing strategies", verbose)
   hospital.action = play.strategies(rke.list, strategy.str)
+  
   reported.rke.list = list()
   ## hidden.pairs = ids in terms of rke.all  that were hidden
   all.hidden.pairs = c()
   #  1b.  Populate the reported and hidden graphs.
-  for(hid in 1:m) {
+  for(hid in hospital.ids) {
     hospitalAction = hospital.action[[hid]]
     logthis(sprintf("Hospital %d is hiding %d pairs", hid, length(hospitalAction$hide)),
             verbose)
     reported.rke.list[[hid]] = rke.remove.pairs(rke.list[[hid]],
                                                 hospitalAction$hide)
+    CHECK_DISJOINT(all.hidden.pairs, hospitalAction$hide)
     all.hidden.pairs = c(all.hidden.pairs, hospitalAction$hide)
   }
   ##  Save the "kpd" object
@@ -47,7 +51,7 @@ kpd.create <- function(rke.pool, strategy.str, verbose=F) {
   kpd = list()
   kpd$reported.pool = list(rke.list=reported.rke.list,
                            rke.all=rke.remove.pairs(rke.all, all.hidden.pairs))
-  kpd$real.pool = list(rke.list=rke.list, rke.all = rke.all)
+  kpd$real.pool = list(rke.list=rke.list, rke.all=rke.all)
   CHECK_kpd(kpd)
   return(kpd)
 }
@@ -111,7 +115,6 @@ Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
   # Runs a mechanism for a specified KPD
   # Returns:
   #     A matching object.
-  # warning("No unit tests for RunMechanism")
   logthis(sprintf("Mechanism %s. Checking KPD", mech), verbose)
   CHECK_kpd(kpd)
   
