@@ -1,6 +1,8 @@
 # Copyright 2013 Panos Toulis, David C.Parkes
 # Author: Panos Toulis(ptoulis@fas.harvard.edu)
-source("../r-toolkit/checks.R")
+rm(list=ls())
+# Loads everything.
+source("experiments.R")
 
 repeat.test = function(test, ntrials) {
   for(t in 1:ntrials) {
@@ -282,7 +284,6 @@ test.rke.cycles <- function() {
   CHECK_EQ(nrow(subset(cycles3, type==3)), ntriangles)
 }
 
-#     Tests for MATCHING.
 test.matching <- function() {
   ntriangles = rpois(1, lambda=20)
   rke = get.RKE0(ntriangles)
@@ -293,18 +294,68 @@ test.matching <- function() {
   CHECK_EQ(m$utility, 3 * ntriangles)
 }
 
+#     Tests for MATCHING.
+check.rke.strategy <- function(rke, strategy.out, strategy.str) {
+  rke.hide <- rke.keep.pairs(rke, strategy.out$hide)
+  rke.report <- rke.keep.pairs(rke, strategy.out$report)
+  # union of hide + report gives the original one.
+  CHECK_TRUE(rke.equal(rke.add(rke.hide, rke.report), rke))
+  CHECK_DISJOINT(strategy.out$hide, strategy.out$report)
+  CHECK_SETEQ(union(strategy.out$hide, strategy.out$report), rke.pair.ids(rke))
+  # strategy-specific considerations
+  if (strategy.str=="t") {
+    # no hiding
+    CHECK_EQ(length(strategy.out$hide), 0)
+    CHECK_TRUE(rke.equal(rke$report, rke))
+  } else if (strategy.str=="c") {
+    m = max.matching(rke)
+    # matched ids should be same in # with a max matching
+    CHECK_EQ(length(get.matching.ids(m)), length(strategy.out$hide))
+  } else {
+    nAB <- nrow(subset(rke$pairs, desc=="A-B"))
+    nBA <- nrow(subset(rke$pairs, desc=="B-A"))
+    CHECK_EQ(length(strategy.out$hide), min(nAB, nBA))
+  }
+}
+
+test.play.strategy <- function() {
+  rke <- rrke(20)
+  CHECK_ERROR(play.strategy(rke, strategy.str="p", include.3way=F),
+              msg="Not valid strategy")
+  for (s in c("t", "c", "r")) {
+    out <- play.strategy(rke, s)
+    check.rke.strategy(rke, out, s)
+  }
+}
+
+test.play.strategies <- function() {
+  pool <- rrke.pool(m=3, n=20, uniform.pra=T)
+  # wrong no. of strategies.
+  CHECK_ERROR(play.strategies(rke.list=pool$rke.list, strategy.str="tttttt"))
+  
+  strategies <- sample(c("t", "c", "r"), size=3, replace=T)
+  strategy.str = paste(strategies, collapse="")
+  out = play.strategies(rke.list=pool$rke.list, strategy.str=strategy.str)
+  hids = rke.list.hospital.ids(rke.list=pool$rke.list)
+  for(i in hids) {
+    loginfo(sprintf("Checking hospital %d strategy=%s", i, strategies[i]))
+    check.rke.strategy(pool$rke.list[[i]], out[[i]], strategies[i])
+  }
+}
+
 ####    Testing for mechanisms.R
 test.rCM <- function() {
   source("mechanisms.R")
-  rke.pool <- rrke.pool(m=3, n=30, uniform.pra=T)
+  nhospitals = 3
+  rke.pool <- rrke.pool(m=nhospitals, n=30, uniform.pra=T)
   kpd <- kpd.create(rke.pool, "ttt")
-  U = Run.Mechanism(kpd, "rCM")
-  m = max.matching(rke.pool$rke.all)
-  U2 = get.hospitals.utility(rke.all=rke.pool$rke.all, matched.ids=m$match$pair.id)
+  U1 = get.matching.hospital.utilities(Run.Mechanism(kpd, "rCM", include.3way=F), nhospitals)
+  match = max.matching(rke.pool$rke.all)
+  U2 = get.matching.hospital.utilities(match, nhospitals)
+  
   # All truthful matching
-  CHECK_EQ(U, U2)
+  CHECK_EQ(U1, U2)
 }
-
 
 
 

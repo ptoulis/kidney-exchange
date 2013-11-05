@@ -24,6 +24,10 @@ rrke.pool <- function(m=3, n=60, uniform.pra, verbose=F) {
   return(list(rke.list=rke.list, rke.all=rke.all))
 }
 
+rke.equal <- function(rke1, rke2) {
+  all(table(rke1$pairs$desc) == table(rke2$pairs$desc))
+}
+
 ## Total number of pairs in the graph
 rke.size <- function(rke) {
   CHECK_EQ(nrow(rke$pairs), length(unique(rke$pairs$pair.id)))
@@ -78,7 +82,10 @@ rke.edge.ids = function(rke) {
     return(c())
   as.vector(subset(rke$edges, can.donate==1)$edge.id)
 }
-rke.pair.ids = function(rke) as.vector(rke$pairs$pair.id)
+
+rke.pair.ids = function(rke) { 
+  as.vector(rke$pairs$pair.id)
+}
 
 rke.pairs.hospitals <- function(rke, pair.ids) {
   CHECK_UNIQUE(pair.ids)

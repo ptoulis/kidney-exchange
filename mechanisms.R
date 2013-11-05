@@ -60,7 +60,9 @@ play.strategy <- function(rke, strategy.str, include.3way=F) {
   #   rke: An RKE object
   #   strategy.str : A strategy profile as string, "tttcc" etc..
   # Returns:
-  #   A strategy object (see terminology) -- has "report" and "hide" fields
+  #   A strategy object =LIST(hide, report) (see terminology) -- has "report" and "hide" fields
+  #      hide, report = ARRAY(pair ids)
+  CHECK_MEMBER(strategy.str, c("t", "c", "r"))
   ret = list()
   if(strategy.str == "t") {
     ret$hide = c()
@@ -72,8 +74,7 @@ play.strategy <- function(rke, strategy.str, include.3way=F) {
   }  else if(strategy.str == "r") {
     pairs.AB = rke.filter.pairs(rke, attr="desc", value="A-B")
     pairs.BA = rke.filter.pairs(rke, attr="desc", value="B-A")
-    pairs.O = rke.filter.pairs(rke, attr="pair.type", value="O")
-    ## want to hide the "short" side of R
+    # want to hide the "short" side of R
     hide.R = pairs.AB
     if(length(pairs.BA) < length(pairs.AB))
       hide.R = pairs.BA
@@ -93,30 +94,19 @@ play.strategies = function(rke.list, strategy.str,
   # Calls play.strategy()
   #
   # Returns:
-  #   A list(hospital.id => strategy)
+  #   A LIST(hospital.id => strategy)
   CHECK_rke.list(rke.list)
   strategies = strsplit(strategy.str,split="")[[1]]
-  CHECK_MEMBER(strategies, c("t","c", "r", "b"), msg="Correct strategy spec")
-  logthis("Strategies", verbose)
-  logthis(strategies, verbose)
+  CHECK_MEMBER(strategies, c("t", "c", "r"), msg="Correct strategy spec")
+  CHECK_EQ(length(strategies), length(rke.list))
   hids <- rke.list.hospital.ids(rke.list)
-  logthis("Hospital ids are: ", verbose)
-  logthis(hids, verbose)
   strategy.list = llply(hids, function(h) play.strategy(rke.list[[h]],
                                                     strategy.str=strategies[h],
                                                     include.3way=include.3way))
   return(strategy.list)
 }
 
-get.hospitals.utility <- function(rke.all, matched.ids, all.hospital.ids) {
-  # Calculates utility per hospital given the supplied matched pair ids.
-  # Returns a m x 1 vector of utilities
-  matched.hospitals = rke.pairs.hospitals(rke.all, matched.ids)
-  freq = sapply(all.hospital.ids, function(hid) length(which(matched.hospitals==hid)))
-  return(as.matrix(freq, ncol=1))
-}
-
-##  Runs a mechanism
+#  Runs a mechanism
 Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
   # Runs a mechanism for a specified KPD
   # Returns:

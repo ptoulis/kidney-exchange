@@ -1,6 +1,12 @@
 ##  Tables of the paper. 
 ## Code to save into latex table.
 library(xtable)
+
+# Add necessary libs.
+source("../r-toolkit/checks.R")
+source("terminology.R")
+source("rke.R")
+source("matching.R")
 source("mechanisms.R")
 ## hand-made bootstrap (USDA organic)
 bootstrap = function(x) sd(replicate(1000, { y = sample(x, replace=T); mean(y)}))
