@@ -596,7 +596,7 @@ compare.mechanisms.kpd <- function(mechanisms,
 
 
 
-compare.mechanisms <- function(mechanisms,
+compare.mechanisms.strategy <- function(mechanisms,
                                baseline.strategy,
                                deviation.strategy,
                                m, n, include.3way, uniform.pra,
@@ -642,82 +642,139 @@ compare.mechanisms <- function(mechanisms,
 }
 
 
-Rdeviation.experiments <- function(m=4, n=20, ntrials=1, verbose=F) {
-  mechanisms <- c("xCM", "Bonus", "rCM")
-  ##  This will have the final results 
-  # List of  compare.mechanisms.kpd objects()
-  results <- list()
-  
+SingleDeviation.experiments <- function(deviate.to="r", mech,
+                                        m=4, n=20, ntrials=1,
+                                        verbose=F) {
+  # These experiments check the utility gains 
+  # of one hospital going from "truthful" to "deviate.to" strategy.
+  # We take "ntrials" samples and run on "m" hospitals with "n" pairs each.
+  #
   pb = txtProgressBar(style=3)
+  performance.deviator <- c()
   
   for(trial in 1:ntrials) {
     # 1. Sample RKE pool
     rp <- rrke.pool(m=m, n=n, uniform.pra=T)
     
+    # Which hospital is going to deviate?
+    deviate.hid <- sample(1:m, size=1)
+    
+    # If deviation is "R" then make sure it makes sense, i.e.
+    # pick the hospital for which we expect better results.
+    # 
     # 2. Compute A-B/B-A pairs/hospital
     # col1-2 = AB/BA of hospital,   Cols3-4=AB/BA rest of hospitals
     # col5 = R-attack successful
-    ABpairs <- matrix(0, nrow=m, ncol=5)
-    # Compute the A-B pairs for each hospitals
-    for (i in 1:m) {
-      ABpairs[i, 1] <- nrow(subset(rp$rke.all$pairs, desc=="A-B" & hospital==i))
-      ABpairs[i, 2] <- nrow(subset(rp$rke.all$pairs, desc=="B-A" & hospital==i))
-      ABpairs[i, 3] <- nrow(subset(rp$rke.all$pairs, desc=="A-B" & hospital!=i))
-      ABpairs[i, 4] <- nrow(subset(rp$rke.all$pairs, desc=="B-A" & hospital!=i))
-      longSide = which.max(c(ABpairs[i, c(1,2)]))  # 1=A-B, 2=B-A
-      shortSide = setdiff(c(1,2), c(longSide))
-      otherOppSide = 5 - longSide  # e.g. 1(A-B) -> 4 (B-A), 2->3
-      otherSameSide = longSide + 2  # e.g 1=A-B -> 3 (A-B)
+    # 
+    if (deviate.to=="r") {
+      ABpairs <- matrix(0, nrow=m, ncol=5)
+      # Compute the A-B pairs for each hospitals
+      for (i in 1:m) {
+        ABpairs[i, 1] <- nrow(subset(rp$rke.all$pairs, desc=="A-B" & hospital==i))
+        ABpairs[i, 2] <- nrow(subset(rp$rke.all$pairs, desc=="B-A" & hospital==i))
+        ABpairs[i, 3] <- nrow(subset(rp$rke.all$pairs, desc=="A-B" & hospital!=i))
+        ABpairs[i, 4] <- nrow(subset(rp$rke.all$pairs, desc=="B-A" & hospital!=i))
+        longSide = which.max(c(ABpairs[i, c(1,2)]))  # 1=A-B, 2=B-A
+        shortSide = setdiff(c(1,2), c(longSide))
+        otherOppSide = 5 - longSide  # e.g. 1(A-B) -> 4 (B-A), 2->3
+        otherSameSide = longSide + 2  # e.g 1=A-B -> 3 (A-B)
+        
+        expected.matches <- ABpairs[i, longSide] * ABpairs[i, otherOppSide] /
+          (ABpairs[i, longSide] + ABpairs[i, otherSameSide])
+        surplus = abs(ABpairs[i,1] - ABpairs[i,2])
+        # Expected gain = surplus - expected.matches
+        # if E[matches] > surplus this is bad. 
+        # E[matches] < surplus  is unlikely to happen (hospital sizes)  
+        # Ideally we want to match our surplus exactly
+        # So, if the below is negative, then this is bad news.
+        #   and the closer to the 0 the better.
+        ABpairs[i, 5] <- surplus - expected.matches
+      }
       
-      expected.matches <- ABpairs[i, longSide] * ABpairs[i, otherOppSide] /
-        (ABpairs[i, longSide] + ABpairs[i, otherSameSide])
-      surplus = abs(ABpairs[i,1] - ABpairs[i,2])
-      # Expected gain = surplus - expected.matches
-      # if E[matches] > surplus this is bad. 
-      # E[matches] < surplus  is unlikely to happen (hospital sizes)  
-      # Ideally we want to match our surplus exactly
-      # So, if the below is negative, then this is bad news.
-      #   and the closer to the 0 the better.
-      ABpairs[i, 5] <- surplus - expected.matches
+      colnames(ABpairs) <- c("A-B(H)", "B-A(H)", "A-B(rest)", "B-A(rest)", "Gain-R-Dev")
+      # 3. Choose which hospital will be deviating
+      #    The one where the surplus is best matched.
+      deviate.hid = which.min(abs(ABpairs[, 5]))
+      
+      if(verbose) {
+        print("A-B pairs are")
+        print(ABpairs)
+       }
     }
-    
-    colnames(ABpairs) <- c("A-B(H)", "B-A(H)", "A-B(rest)", "B-A(rest)", "Gain-R-Dev")
-    # 3. Choose which hospital will be deviating
-    #    The one where the surplus is best matched.
-    deviate.hid = which.min(abs(ABpairs[, 5]))
     # Create strategy
     strategy = rep("t", m)
-    strategy[deviate.hid] <- "r"
-    
+    strategy[deviate.hid] <- deviate.to
+    # Define strategies.
+    # baseline = "ttttt..."
+    # deviation = "tt...x...ttt"  where x=deviate.to
     base.strategy <- paste(rep("t", m), collapse="")
     dev.strategy <- paste(strategy, collapse="")
     
-    if(verbose) {
-      print("A-B pairs are")
-      print(ABpairs)
-      print(sprintf("Deviating hospital=%d", deviate.hid))
-      print(sprintf("Strategies base=%s dev=%s", base.strategy, dev.strategy))
-    }
-    
+    # Create the baseline/deviation KPDs and then compare mechanisms.
     kpd.dev <- kpd.create(rke.pool=rp, strategy.str=dev.strategy)
     kpd.base <- kpd.create(rke.pool=rp, strategy.str=base.strategy)
-    x = compare.mechanisms.kpd(mechanisms=mechanisms, m=m, include.3way=F,
+    # Output values.
+    x = compare.mechanisms.kpd(mechanisms=c(mech), m=m, include.3way=F,
                                kpd.baseline=kpd.base, kpd.deviation=kpd.dev)
     x$deviate.hid = deviate.hid
-    x$deviation.factor <- as.numeric(ABpairs[deviate.hid, 5])
-    results[[trial]] <- x
-    
-    if(verbose)
-      for (mech in mechanisms){
-        print(sprintf("%s before:%d -> %d", mech,
-                      x$baseline[[mech]]$utility[deviate.hid],
-                      x$deviation[[mech]]$utility[deviate.hid]))
-      }
-    ###  Some sanity checks
-    
     setTxtProgressBar(pb, value=trial/ntrials)
-    save(results, file="out/Rdev-experiment.Rdata")
+    # Save how well the deviator improved.
+    performance.deviator <- c(performance.deviator, 
+                              x$deviation[[mech]]$utility[deviate.hid] -  x$baseline[[mech]]$utility[deviate.hid])
+    
+    if(verbose) {
+      print(sprintf("Deviating hospital=%d", deviate.hid))
+      print(sprintf("Strategies base=%s dev=%s", base.strategy, dev.strategy))
+      
+      print(sprintf("%s before:%d -> %d", mech,
+                    x$baseline[[mech]]$utility[deviate.hid],
+                    x$deviation[[mech]]$utility[deviate.hid]))
+      print(sprintf("mu=%.3f  se=%.3f", mean(performance.deviator),
+                    bootstrap.mean(performance.deviator)))
+    }
+   
+    save(performance.deviator, file="out/Rdev-experiment.Rdata")
   }
-  return(results)
 }
 
+random.walk.matchings <- function(size=20) {
+  rke <- rrke(size)
+  all.ids <- rke.pair.ids(rke)
+  m = max.matching(rke)
+  M = get.matching.utility(m)
+  plot(rke)
+  G0 = get.matching.ids(m)
+  G1 <- setdiff(all.ids, G0)
+  All.G <- matrix(G0, nrow=1, ncol=length(G0))
+  
+  for(i in 1:100) {
+    el0 <- sample(G0, size=1)
+    el1 <- sample(G1, size=1)
+    print(sprintf("i=%d moving el0=%d  el1=%d", i, el0, el1))
+    G0.new <- c(el1, setdiff(G0, el0))
+    G1.new <- setdiff(all.ids, G0.new)
+    m <- max.matching(rke.keep.pairs(rke, G0.new))
+    if(get.matching.utility(m)==M) {
+      print(sprintf("Bingo %.2f%% success", 100 * nrow(All.G) / i))
+      G0 <- G0.new
+      G1 <- G1.new
+      All.G <- rbind(All.G, sort(G0))
+    }
+  }
+  print(All.G)
+}
+
+random.walk.matching.edges <- function(npairs, keep.prop=0.6) {
+  rke <- rrke(npairs)
+  M = max.matching(rke)$utility
+  print(sprintf("Max =%d", M))
+  nE = nrow(rke2$edges)
+  keep.edges <- as.integer(keep.prop * nE)
+  print(sprintf("Total %d edges. Keep=%d ", nE, keep.edges))
+  x = replicate(100, { rke2=rke; ind = sample(1:nE, size=keep.edges, replace=F); 
+                       rke2$edges = rke2$edges[ind, ];
+                       rke2$A = map.edges.adjacency(rke2$edges, rke2$pairs$pair.id)
+                       max.matching(rke2)$utility})
+  print(sprintf("Success %.2f%%", 100 * mean(x==M) ))
+  return(x)
+}

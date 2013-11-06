@@ -134,7 +134,7 @@ Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
   
   total.matching = add.matching(total.matching, mech.matching)
   
-  # Process matching.
+  # Zero-tolerance to errors.
   if (get.matching.status(mech.matching) != "OK") {
     print(sprintf("Error happened in mechanism %s. Saving", mech))
     save(kpd, file="debug/kpd-%s.Rdata", kpd)
@@ -148,8 +148,8 @@ Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
   
   ## 4. Compute utility from mechanism
   logthis("Computing utilities", verbose)
-  all.hospitals <- rke.list.hospital.ids(rke.list)
-  hids <- all.hospitals # important to have all hospitals
+  hids <- rke.list.hospital.ids(rke.list)
+  
   ## 5.  Utility from final internal matches.   
   for(h in hids) {
     rke.h = rke.list[[h]]
@@ -175,16 +175,10 @@ rCM <- function(rke.pool, include.3way=F) {
   CHECK_rke.pool(rke.pool)
   rke.all <- rke.pool$rke.all
   
-  # Total matching computed by the mechanism.
-  total.matching = empty.match.result(empty.rke())
-  
   ## 1. Simply calculate a maximum-matching (this will shuffle the edges by default)
-  m.all =  max.matching(rke.all, include.3way=include.3way)
+  m =  max.matching(rke.all, include.3way=include.3way)
   
-  ## 0.1 Add matching
-  total.matching <- add.matching(total.matching, m.all)
-  
-  return(total.matching)
+  return(m)
 }
 
 
