@@ -343,6 +343,49 @@ test.play.strategies <- function() {
   }
 }
 
+test.rrke.pool <- function(nsamples=10) {
+  # Check whether pooling through rrke.pool()
+  # and using rrke() yield the same observed frequencies for pairs.
+  rrke.table <- c()
+  pool.table <- c()
+  kpd.table <- c()
+  nsize = 30
+  pb <- txtProgressBar(style=3)
+  for(i in 1:nsamples) {
+    pool <- rrke.pool(m=3, n=nsize / 3, uniform.pra=T)
+    kpd <- kpd.create(pool, strategy.str="ttt")
+    rke <- rrke(nsize, uniform.pra=T)
+    if(length(pool.table)==0) {
+      pool.table = table(pool$rke.all$pairs$desc)
+    } else {
+      pool.table = pool.table + table(pool$rke.all$pairs$desc)
+    }
+    
+    if (length(rrke.table)==0) {
+      rrke.table = table(rke$pairs$desc)
+    } else {
+      rrke.table = rrke.table + table(rke$pairs$desc)
+    }
+    if(length(kpd.table) == 0) {
+      kpd.table <- table(kpd$real.pool$rke.all$pairs$desc)
+    } else {
+      kpd.table <- kpd.table+ table(kpd$real.pool$rke.all$pairs$desc)
+    }
+      
+    setTxtProgressBar(pb, value=i/nsamples)
+  }
+  rmu <- 100 * rrke.table / (nsize * nsamples)
+  pmu <- 100 * pool.table / (nsize * nsamples)
+  kmu <- 100 * kpd.table  / (nsize  * nsamples)
+  CHECK_NEAR(kmu, pmu, tol=1e-3)
+  print("Comparing observed frequencies")
+  print(round(rmu, 4))
+  print(round(pmu, 4))
+  print(round(kmu, 4))
+  print(chisq.test(rmu, pmu))
+  print(chisq.test(rmu, kmu))
+}
+
 test.kpd.create <- function() {
   pool = rrke.pool(3, 20, T)
   strategies <- sample(c("t", "c", "r"), size=3, replace=T)

@@ -113,12 +113,19 @@ play.strategies = function(rke.list, strategy.str,
 Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
   # Runs a mechanism for a specified KPD
   # Returns:
-  #     A matching object.
+  #   A LIST of MATCHING objects:
+  #     LIST(total.matching, mech.matching, internal.matchings)
+  #   total.matching = overall MATCHING from running the mechanism
+  #   mech.matching = MATCHING of the mechanism
+  #   internal.matchings = LIST of m MATCHING elements, one for each hospital
+  #     it is the internal matchings that hospitals make on the remainders.
   logthis(sprintf("Mechanism %s. Checking KPD", mech), verbose)
   CHECK_kpd(kpd)
   
   # Init total matching.
   total.matching <- empty.match.result(empty.rke())
+  mech.matching <- empty.match.result(empty.rke())
+  internal.matchings <- list()
   
   # unload
   reported.rke.list = kpd$reported.pool$rke.list
@@ -161,11 +168,13 @@ Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
     logthis(sprintf("Remainder graph has %d pairs", rke.size(rke.remainder)), 
             verbose)
     matching = max.matching(rke.remainder, include.3way=include.3way)
-    
+    internal.matchings[[h]] <- matching
     # 0.2 Add this matching to the total
     total.matching <- add.matching(total.matching, matching)
   }
-  return(total.matching)
+  return(list(total.matching=total.matching,
+              mech.matching=mech.matching,
+              internal.matchings=internal.matchings))
 }
 
 rCM <- function(rke.pool, include.3way=F) {
@@ -206,10 +215,12 @@ compute.ir.constraints = function(rke.pool, pair.types=c(), include.3way=F) {
     warning("Empty RKE list.")
     return(out)
   }
-  for(hid in 1:length(rke.list)) {
+  
+  hospital.ids <- rke.list.hospital.ids(rke.list)
+  for(hid in hospital.ids) {
     # 1. Compute max matching internally in S
     rke.h = rke.list[[hid]]
-    for (type in intersect(pair.types, c("S", "R"))) {
+    for (type in intersect(pair.types, c("O", "U", "S", "R"))) {
       # Take the pairs the belong to this group
       sub.pair.ids = rke.filter.pairs(rke.h, attr="pair.type", value=type)
       subrke = rke.keep.pairs(rke.h, pair.ids=sub.pair.ids)
