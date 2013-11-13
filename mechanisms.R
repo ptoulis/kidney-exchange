@@ -110,7 +110,6 @@ play.strategies = function(rke.list, strategy.str,
   return(strategy.list)
 }
 
-#  Runs a mechanism
 Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
   # Runs a mechanism for a specified KPD
   # Returns:

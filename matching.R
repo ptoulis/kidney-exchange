@@ -220,21 +220,28 @@ gurobi.matched.pairs <- function(gurobi.result, rke, cycles) {
   return (x)
 }
 
-##   Maximum  2min / maximum matching.
-##  Can return NA if time out.
-max.matching <- function(rke, include.3way=F,
+max.matching <- function(rke,
+                         include.3way=F,
                          ir.constraints=data.frame(),
                          timeLimit=3600,
-                         verbose=F,
-                         regular.matching=F) {
-  # warning("Regular Matching not implemented.")
+                         verbose=F) {
+  # Performs some form of maximum matching on the specific RKE object.
+  #
+  # Args:
+  #   rke = the RKE object
+  #   include.3way = {T, F} whether to use 3-cycles or not
+  #   ir.constraints = data.frame with columns (pc, hospital, internal.matches)
+  #     Each row has a the #matches of pair "pc" that "hospital" can match internally.
+  #
+  # Returns:
+  #   A MATCHING object. See terminology and above for definitions.
+  #   See empty.match.result() for details on the MATCHING object.
   CHECK_rke(rke)
   num.pairs = rke.size(rke)
   num.edges = length(rke.edge.ids(rke))
   # Define Gurobi model 
   # Gurobi defines the problem as: 
   # A * x   <sense>   rhs   ,  sense in {"<=", ">="}
-  #
   Cycles = rke.cycles(rke, include.3way=include.3way)
   model.w <- Cycles$type
   if (length(model.w) == 0 | (num.edges == 0)) {
