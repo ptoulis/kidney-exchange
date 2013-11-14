@@ -295,19 +295,31 @@ test.matching <- function() {
 }
 
 test.matching.randomness <- function(nsamples=10) {
-  nhospitals=4
-  pool <- rrke.pool(m=nhospitals, n=20, uniform.pra=T)
-  U = rep(0, nhospitals)
+  nhospitals = 2
+  rke.all <- rrke.pool(m=nhospitals, n=40, uniform.pra=T)$rke.all
+  rke.all$A <- 1 * (rke.all$A + t(rke.all$A) > 0)
+  # create symmetric hospitals
+  U = matrix(0, nrow=0, ncol=nhospitals)
+  Unorandom <- matrix(0, nrow=0, ncol=nhospitals)
   pb = txtProgressBar(style=3)
   for (i in 1:nsamples) {
-    m = max.matching(pool$rke.all, include.3way=F)
-    um <- get.matching.hospital.utilities(m, nhospitals)
-    U <- U + um
-    setTxtProgressBar(pb, value=i/nsamples)
+    m = max.matching(rke.all, include.3way=F, randomize.matching=T)
+    m2 <- max.matching(rke.all, include.3way=F, randomize.matching=F)
+    
+    U <- rbind(U, get.matching.hospital.utilities(m, nhospitals))
+    Unorandom <- rbind(Unorandom,  get.matching.hospital.utilities(m2, nhospitals))
+    print(sprintf("%s", paste(round(colMeans(U), 3), collapse=", "))) 
+    print(sprintf("%s", paste(round(colMeans(Unorandom), 3), collapse=", "))) 
+    # setTxtProgressBar(pb, value=i/nsamples)
   }
+  print("Checking all maximum matchings.")
+  CHECK_SETEQ(rowSums(U), c(sum(U[1, ])))
   print("Observed counts.")
   print(U)
-  print(chisq.test(U))
+  print("Colsums")
+  print(colSums(U))
+  print("Test")
+  print(chisq.test(colSums(U)))
 }
 
 #     Tests for MATCHING.

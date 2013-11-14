@@ -223,6 +223,7 @@ gurobi.matched.pairs <- function(gurobi.result, rke, cycles) {
 max.matching <- function(rke,
                          include.3way=F,
                          ir.constraints=data.frame(),
+                         randomize.matching=T,
                          regular.matching=F,
                          timeLimit=3600,
                          verbose=F) {
@@ -318,6 +319,15 @@ max.matching <- function(rke,
                      MIPFocus=2,
                      TimeLimit=timeLimit)
   ##  Make sure results > 0
+  # Gurobi setup:
+  #   max x' obj
+  #    A * x   ?sense   rhs
+  #
+  # randomize. Perturb the weights so that we get some randomization
+  if(randomize.matching) {
+    model$obj <- model$obj + runif(length(model$obj), min=-0.1, max=0.1)
+  }
+
   dimx <- length(model.w)
   model$A <- rbind(model$A, diag(dimx))
   model$rhs <- c(model$rhs, rep(0, dimx))
