@@ -258,7 +258,6 @@ g.share = function(demand, supply) {
   #   m x 1 vector of allocation
   #
   # J = { those ids that have positive demand }
-  # warning("Not unit-tests for g share")
   set.J = which(demand > 0)
   # allocation vector
   alloc = rep(0, length(demand))
@@ -336,7 +335,6 @@ compute.Rsubgraph.constraints <- function(ir.constraints, rke.pool) {
 # Returns: LIST(matching=total.matching)
 xCM <- function(rke.pool, include.3way=F, verbose=F) {
   CHECK_rke.pool(rke.pool)
-  # loginfo(sprintf("Running xCM 3-chain=%s", include.3way))
   # unload
   rke.list = rke.pool$rke.list
   rke.all = rke.pool$rke.all
@@ -378,11 +376,12 @@ xCM <- function(rke.pool, include.3way=F, verbose=F) {
   ## remove some stuff that are not needed anymore
   rm(ir.constraints)
   logthis(sprintf("Total S matches = %d", length(get.matching.ids(s.matching))), verbose)
-  logthis(sprintf("Total R matches = %d", length(get.matching.ids(r.matching))), verbose)
+  logthis(sprintf("q=%d Total R matches = %d", q, length(get.matching.ids(r.matching))), verbose)
 
   #  4. Almost regular matching to the remainder
   ## Match OD's individually.
-  for(hid in 1:m) {
+  hospital.ids <- rke.list.hospital.ids(rke.list)
+  for(hid in hospital.ids) {
     matched.hospital.ids <- intersect(total.matching$match$pair.id,
                                       rke.hospital.pair.ids(rke.all, hid))
     rke.h <- rke.remove.pairs(rke=rke.list[[hid]],

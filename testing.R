@@ -294,6 +294,22 @@ test.matching <- function() {
   CHECK_EQ(m$utility, 3 * ntriangles)
 }
 
+test.matching.randomness <- function(nsamples=10) {
+  nhospitals=4
+  pool <- rrke.pool(m=nhospitals, n=20, uniform.pra=T)
+  U = rep(0, nhospitals)
+  pb = txtProgressBar(style=3)
+  for (i in 1:nsamples) {
+    m = max.matching(pool$rke.all, include.3way=F)
+    um <- get.matching.hospital.utilities(m, nhospitals)
+    U <- U + um
+    setTxtProgressBar(pb, value=i/nsamples)
+  }
+  print("Observed counts.")
+  print(U)
+  print(chisq.test(U))
+}
+
 #     Tests for MATCHING.
 check.rke.strategy <- function(rke, strategy.out, strategy.str) {
   rke.hide <- rke.keep.pairs(rke, strategy.out$hide)
@@ -416,6 +432,9 @@ test.rCM <- function() {
   CHECK_EQ(U1, U2)
 }
 
-
+test.g.share <- function() {
+  # Tests the g-sharing function.
+  stop("not implemented")
+}
 
 

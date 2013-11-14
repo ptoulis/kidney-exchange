@@ -223,6 +223,7 @@ gurobi.matched.pairs <- function(gurobi.result, rke, cycles) {
 max.matching <- function(rke,
                          include.3way=F,
                          ir.constraints=data.frame(),
+                         regular.matching=F,
                          timeLimit=3600,
                          verbose=F) {
   # Performs some form of maximum matching on the specific RKE object.
