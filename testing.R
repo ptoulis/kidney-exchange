@@ -520,7 +520,7 @@ test.g.share <- function(ntrials=10, N1=10, N0=5, mech, pra.value=kUniformPRA) {
     kpd.t <- kpd.create(rke.pool, "ttt")
     kpd.r <- kpd.create(rke.pool, "ttr")
     out.t = Run.Mechanism(kpd.t, mech=mech, include.3way=F)
-    out.r = Run.Mechanism(kpd.r, mech=mech, include.3way=F)
+    out.r = Run.Mechanism(kpd.r, mech=mech, include.3way=F, verbose=F)
     
     Utotal.t <- get.matching.hospital.utilities(out.t$total.matching, 3)
     Utotal.r <- get.matching.hospital.utilities(out.r$total.matching, 3)
