@@ -497,9 +497,9 @@ test.g.share <- function(ntrials=10, N1=10, N0=5, mech, pra.value=kUniformPRA) {
     print(sprintf("Running mechanism %s", mech))
     rke.pool <- list(rke.list=list(), rke.all=empty.rke())
     CHECK_GE(N1, N0)
-    r1 <- create.Ronly.rke(N1, N0, hid=1, 1, uniform.pra=uniform.pra)
-    r2 <- create.Ronly.rke(N0, N1, hid=2, 100, uniform.pra=uniform.pra)
-    r3 <- create.Ronly.rke(x, y, hid=3,  200, uniform.pra=uniform.pra)
+    r1 <- create.Ronly.rke(N1, N0, hid=1, 1, uniform.pra=T)
+    r2 <- create.Ronly.rke(N0, N1, hid=2, 100, uniform.pra=T)
+    r3 <- create.Ronly.rke(x, y, hid=3,  200, uniform.pra=T)
     
     print("Sampled PRA")
     print(r1$pairs$pra)
