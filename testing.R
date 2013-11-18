@@ -303,7 +303,7 @@ test.matching.randomness <- function(nsamples=10) {
   Unorandom <- matrix(0, nrow=0, ncol=nhospitals)
   pb = txtProgressBar(style=3)
   for (i in 1:nsamples) {
-    m = max.matching(rke.all, include.3way=F, randomize.matching=T)
+    m = max.matching(rke.all, include.3way=F)
     m2 <- max.matching(rke.all, include.3way=F, randomize.matching=F)
     
     U <- rbind(U, get.matching.hospital.utilities(m, nhospitals))
@@ -321,6 +321,8 @@ test.matching.randomness <- function(nsamples=10) {
   print("Test")
   print(chisq.test(colSums(U)))
 }
+
+
 
 #     Tests for MATCHING.
 check.rke.strategy <- function(rke, strategy.out, strategy.str) {
@@ -430,6 +432,7 @@ test.kpd.create <- function() {
   }
 }
 
+
 ####    Testing for mechanisms.R
 test.rCM <- function() {
   source("mechanisms.R")
@@ -444,9 +447,66 @@ test.rCM <- function() {
   CHECK_EQ(U1, U2)
 }
 
-test.g.share <- function() {
+
+create.Ronly.rke <- function(nAB, nBA, hid, start.pair.id, uniform.pra) {
+  all.pairs <- subset(kPairs, desc=="none")
+  for (i in 1:nAB)
+    all.pairs <- rbind(all.pairs, subset(kPairs, desc=="A-B"))
+  for(i in 1:nBA) 
+    all.pairs <- rbind(all.pairs, subset(kPairs, desc=="B-A"))
+  
+  N <- nrow(all.pairs)
+  all.pairs$hospital <- rep(hid, N)
+  all.pairs$pair.id <- start.pair.id + seq(0, N-1)
+  all.pairs$pra <- rpra(N, is.uniform=uniform.pra)
+  
+  rke = empty.rke()
+  rke$pairs <- all.pairs
+  rke <- rke.update.new.pairs(rke, keep.edges=NULL)
+  return(rke)
+}
+
+test.g.share <- function(ntrials=10, N1=10, N0=5, mech, uniform.pra) {
   # Tests the g-sharing function.
-  stop("not implemented")
+  # Creates a R-only graph.
+  # compute the overall
+  H3.Rdev.util <- c()
+  y = N1-N0
+  x = as.integer(y/2)
+  print(sprintf("H3 will have x=%d, y=%d, x+y=%d, total pairs ", x, y, y + x))
+  for(trials in 1:ntrials) {
+    print(sprintf("Running mechanism %s", mech))
+    rke.pool <- list(rke.list=list(), rke.all=empty.rke())
+    CHECK_GE(N1, N0)
+    r1 <- create.Ronly.rke(N1, N0, hid=1, 1, uniform.pra=uniform.pra)
+    r2 <- create.Ronly.rke(N0, N1, hid=2, 100, uniform.pra=uniform.pra)
+    r3 <- create.Ronly.rke(x, y, hid=3,  200, uniform.pra=uniform.pra)
+    # print(r1$pairs$pra)
+    # print(r2$pairs$pra)
+    rke.pool$rke.list[[1]] <- r1
+    rke.pool$rke.list[[2]] <- r2
+    rke.pool$rke.list[[3]] <- r3
+    
+    for(i in 1:3) {
+      m = max.matching(rke.pool$rke.list[[i]])
+      # print(sprintf("Hospital can match total %d pairs", get.matching.utility(m)))
+      rke.pool$rke.all <- rke.add(rke.pool$rke.all, rke.pool$rke.list[[i]])
+    }
+    
+    kpd.t <- kpd.create(rke.pool, "ttt")
+    kpd.r <- kpd.create(rke.pool, "ttr")
+    out.t = Run.Mechanism(kpd.t, mech=mech, include.3way=F)
+    out.r = Run.Mechanism(kpd.r, mech=mech, include.3way=F)
+    
+    Utotal.t <- get.matching.hospital.utilities(out.t$total.matching, 3)
+    Utotal.r <- get.matching.hospital.utilities(out.r$total.matching, 3)
+    print(Utotal.t)
+    print(Utotal.r)
+    H3.Rdev.util <- c(H3.Rdev.util, Utotal.r[3] - Utotal.t[3])
+    mu <- mean(H3.Rdev.util)
+    se <- bootstrap.mean(H3.Rdev.util)
+    print(sprintf("Current estimate %.2f, CI=[%.2f, %.2f]", mu, mu-2*se, mu+2*se))
+  }
 }
 
 

@@ -382,7 +382,9 @@ xCM <- function(rke.pool, include.3way=F, verbose=F) {
   ## Match OD's individually.
   hospital.ids <- rke.list.hospital.ids(rke.list)
   for(hid in hospital.ids) {
-    matched.hospital.ids <- intersect(total.matching$match$pair.id,
+    CHECK_SETEQ(rke.hospital.pair.ids(rke.all, hid),
+             rke.pair.ids(rke.list[[hid]]))
+    matched.hospital.ids <- intersect(get.matching.ids(total.matching),
                                       rke.hospital.pair.ids(rke.all, hid))
     rke.h <- rke.remove.pairs(rke=rke.list[[hid]],
                               rm.pair.ids=matched.hospital.ids)

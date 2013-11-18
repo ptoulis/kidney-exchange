@@ -580,8 +580,8 @@ compare.mechanisms.kpd <- function(mechanisms,
   }
   
   for (mech in mechanisms) {
-    m.baseline = Run.Mechanism(kpd=kpd.baseline, mech=mech, include.3way=include.3way)
-    m.deviation = Run.Mechanism(kpd=kpd.deviation, mech=mech, include.3way=include.3way)
+    m.baseline = Run.Mechanism(kpd=kpd.baseline, mech=mech, include.3way=include.3way)$total.matching
+    m.deviation = Run.Mechanism(kpd=kpd.deviation, mech=mech, include.3way=include.3way)$total.matching
     
     result$baseline[[mech]]$utility <- get.matching.hospital.utilities(m.baseline, m)
     result$baseline[[mech]]$matching.info = m.baseline$information
@@ -658,7 +658,7 @@ SingleDeviation.experiments <- function(deviate.to="r", mech,
     
     # Which hospital is going to deviate?
     deviate.hid <- sample(1:m, size=1)
-    
+    deviate.factor <- 0
     # If deviation is "R" then make sure it makes sense, i.e.
     # pick the hospital for which we expect better results.
     # 
@@ -694,7 +694,8 @@ SingleDeviation.experiments <- function(deviate.to="r", mech,
       colnames(ABpairs) <- c("A-B(H)", "B-A(H)", "A-B(rest)", "B-A(rest)", "Gain-R-Dev")
       # 3. Choose which hospital will be deviating
       #    The one where the surplus is best matched.
-      deviate.hid = which.min(abs(ABpairs[, 5]))
+      deviate.hid = which.max(ABpairs[, 5])
+      deviate.factor = max(ABpairs[, 5])
       
       if(verbose) {
         print("A-B pairs are")
@@ -704,6 +705,10 @@ SingleDeviation.experiments <- function(deviate.to="r", mech,
     # Create strategy
     strategy = rep("t", m)
     strategy[deviate.hid] <- deviate.to
+    if(deviate.to == "r") {
+      if (deviate.factor < 0.2) 
+        strategy[deviate.hid] <- "t"
+    }
     # Define strategies.
     # baseline = "ttttt..."
     # deviation = "tt...x...ttt"  where x=deviate.to
@@ -737,44 +742,3 @@ SingleDeviation.experiments <- function(deviate.to="r", mech,
   }
 }
 
-random.walk.matchings <- function(size=20) {
-  rke <- rrke(size)
-  all.ids <- rke.pair.ids(rke)
-  m = max.matching(rke)
-  M = get.matching.utility(m)
-  plot(rke)
-  G0 = get.matching.ids(m)
-  G1 <- setdiff(all.ids, G0)
-  All.G <- matrix(G0, nrow=1, ncol=length(G0))
-  
-  for(i in 1:100) {
-    el0 <- sample(G0, size=1)
-    el1 <- sample(G1, size=1)
-    print(sprintf("i=%d moving el0=%d  el1=%d", i, el0, el1))
-    G0.new <- c(el1, setdiff(G0, el0))
-    G1.new <- setdiff(all.ids, G0.new)
-    m <- max.matching(rke.keep.pairs(rke, G0.new))
-    if(get.matching.utility(m)==M) {
-      print(sprintf("Bingo %.2f%% success", 100 * nrow(All.G) / i))
-      G0 <- G0.new
-      G1 <- G1.new
-      All.G <- rbind(All.G, sort(G0))
-    }
-  }
-  print(All.G)
-}
-
-random.walk.matching.edges <- function(npairs, keep.prop=0.6) {
-  rke <- rrke(npairs)
-  M = max.matching(rke)$utility
-  print(sprintf("Max =%d", M))
-  nE = nrow(rke2$edges)
-  keep.edges <- as.integer(keep.prop * nE)
-  print(sprintf("Total %d edges. Keep=%d ", nE, keep.edges))
-  x = replicate(100, { rke2=rke; ind = sample(1:nE, size=keep.edges, replace=F); 
-                       rke2$edges = rke2$edges[ind, ];
-                       rke2$A = map.edges.adjacency(rke2$edges, rke2$pairs$pair.id)
-                       max.matching(rke2)$utility})
-  print(sprintf("Success %.2f%%", 100 * mean(x==M) ))
-  return(x)
-}
