@@ -466,12 +466,29 @@ create.Ronly.rke <- function(nAB, nBA, hid, start.pair.id, uniform.pra) {
   return(rke)
 }
 
-test.g.share <- function(ntrials=10, N1=10, N0=5, mech, uniform.pra) {
+
+create.utility.matrix <- function(m) {
+  M <- matrix(0, nrow=3, ncol=3)
+  rownames(M) <- c("H1", "H2", "H3")
+  colnames(M) <- c("Mech", "Internal", "Total")
+  Um <- get.matching.hospital.utilities(m$mech.matching, 3)
+  Ut <- get.matching.hospital.utilities(m$total.matching, 3)
+  for(i in 1:3) {
+    M[i, 1] = Um[i]
+    M[i, 2] = get.matching.utility(m$internal.matchings[[i]])
+    M[i, 3] = Ut[i]
+  }
+  return(M)
+}
+
+test.g.share <- function(ntrials=10, N1=10, N0=5, mech, pra.value=kUniformPRA) {
   # Tests the g-sharing function.
   # Creates a R-only graph.
   # compute the overall
   H3.Rdev.util <- c()
   H3.truth.util <- c()
+  
+  kUniformPRA <<- pra.value
   
   y = N1-N0
   x = as.integer(y/2)
@@ -483,15 +500,20 @@ test.g.share <- function(ntrials=10, N1=10, N0=5, mech, uniform.pra) {
     r1 <- create.Ronly.rke(N1, N0, hid=1, 1, uniform.pra=uniform.pra)
     r2 <- create.Ronly.rke(N0, N1, hid=2, 100, uniform.pra=uniform.pra)
     r3 <- create.Ronly.rke(x, y, hid=3,  200, uniform.pra=uniform.pra)
-    # print(r1$pairs$pra)
+    
+    print("Sampled PRA")
+    print(r1$pairs$pra)
     # print(r2$pairs$pra)
     rke.pool$rke.list[[1]] <- r1
     rke.pool$rke.list[[2]] <- r2
     rke.pool$rke.list[[3]] <- r3
     
     for(i in 1:3) {
-      m = max.matching(rke.pool$rke.list[[i]])
-      # print(sprintf("Hospital can match total %d pairs", get.matching.utility(m)))
+      rke = rke.pool$rke.list[[i]]
+      m = max.matching(rke)
+      print(sprintf("H-%d: AB=%d BA=%d : Internally matching %d pairs",
+                    i, nrow(subset(rke$pairs, desc=="A-B")), nrow(subset(rke$pairs, desc=="B-A")),
+                    get.matching.utility(m)))
       rke.pool$rke.all <- rke.add(rke.pool$rke.all, rke.pool$rke.list[[i]])
     }
     
@@ -502,8 +524,12 @@ test.g.share <- function(ntrials=10, N1=10, N0=5, mech, uniform.pra) {
     
     Utotal.t <- get.matching.hospital.utilities(out.t$total.matching, 3)
     Utotal.r <- get.matching.hospital.utilities(out.r$total.matching, 3)
-    print(Utotal.t)
-    print(Utotal.r)
+    print(sprintf("ttt: %s | total = %d", paste(Utotal.t, collapse=", "), sum(Utotal.t)))
+    print(create.utility.matrix(out.t))
+    
+    print(sprintf("ttr: %s | total = %d", paste(Utotal.r, collapse=", "), sum(Utotal.r)))
+    print(create.utility.matrix(out.r))
+    
     H3.Rdev.util <- c(H3.Rdev.util, Utotal.r[3])
     H3.truth.util <- c(H3.truth.util, Utotal.t[3])
     print.stats <- function(vec, str) {
