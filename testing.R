@@ -471,6 +471,8 @@ test.g.share <- function(ntrials=10, N1=10, N0=5, mech, uniform.pra) {
   # Creates a R-only graph.
   # compute the overall
   H3.Rdev.util <- c()
+  H3.truth.util <- c()
+  
   y = N1-N0
   x = as.integer(y/2)
   print(sprintf("H3 will have x=%d, y=%d, x+y=%d, total pairs ", x, y, y + x))
@@ -502,10 +504,16 @@ test.g.share <- function(ntrials=10, N1=10, N0=5, mech, uniform.pra) {
     Utotal.r <- get.matching.hospital.utilities(out.r$total.matching, 3)
     print(Utotal.t)
     print(Utotal.r)
-    H3.Rdev.util <- c(H3.Rdev.util, Utotal.r[3] - Utotal.t[3])
-    mu <- mean(H3.Rdev.util)
-    se <- bootstrap.mean(H3.Rdev.util)
-    print(sprintf("Current estimate %.2f, CI=[%.2f, %.2f]", mu, mu-2*se, mu+2*se))
+    H3.Rdev.util <- c(H3.Rdev.util, Utotal.r[3])
+    H3.truth.util <- c(H3.truth.util, Utotal.t[3])
+    print.stats <- function(vec, str) {
+      mu <- mean(vec)
+      se <- bootstrap.mean(vec)
+      print(sprintf("Current estimate: %s : %.2f, CI=[%.2f, %.2f]", str, mu, mu-2*se, mu+2*se))
+    }
+    print.stats(H3.Rdev.util, "R-deviation")
+    print.stats(H3.truth.util, "Truthful")
+    print.stats(H3.Rdev.util - H3.truth.util, "Diff")
   }
 }
 
