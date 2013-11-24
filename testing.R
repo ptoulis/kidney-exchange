@@ -448,6 +448,24 @@ test.rCM <- function() {
 }
 
 
+
+create.utility.matrix <- function(m) {
+  M <- matrix(0, nrow=3, ncol=3)
+  rownames(M) <- c("H1", "H2", "H3")
+  colnames(M) <- c("Mech", "Internal", "Total")
+  Um <- get.matching.hospital.utilities(m$mech.matching, 3)
+  Ut <- get.matching.hospital.utilities(m$total.matching, 3)
+  for(i in 1:3) {
+    M[i, 1] = Um[i]
+    M[i, 2] = get.matching.utility(m$internal.matchings[[i]])
+    M[i, 3] = Ut[i]
+  }
+  return(M)
+}
+
+
+
+
 create.Ronly.rke <- function(nAB, nBA, hid, start.pair.id, uniform.pra) {
   all.pairs <- subset(kPairs, desc=="none")
   for (i in 1:nAB)
@@ -466,40 +484,90 @@ create.Ronly.rke <- function(nAB, nBA, hid, start.pair.id, uniform.pra) {
   return(rke)
 }
 
-
-create.utility.matrix <- function(m) {
-  M <- matrix(0, nrow=3, ncol=3)
-  rownames(M) <- c("H1", "H2", "H3")
-  colnames(M) <- c("Mech", "Internal", "Total")
-  Um <- get.matching.hospital.utilities(m$mech.matching, 3)
-  Ut <- get.matching.hospital.utilities(m$total.matching, 3)
-  for(i in 1:3) {
-    M[i, 1] = Um[i]
-    M[i, 2] = get.matching.utility(m$internal.matchings[[i]])
-    M[i, 3] = Ut[i]
-  }
-  return(M)
+rbipartite.allocation <- function(a, b, y) {
+  ## Consider the following problem:
+  #   AB     BA
+  #   (a)    (b+y)
+  #
+  # i.e. need to allocated a AB pairs to b+y BA pairs.
+  # How #many  BA pairs from the y in total will be used?
+  # Define this as N(b, y; a).  We know E N =  a * y / (y + b)
+  # What about the distribution?
+  if (y == 0) return(0)
+  if (a==0) return(0)
+  # know that a, y != 0
+  if(b==0) return(1)
+  
+  X <- rbinom(1, size=1, prob = y / (y+b))
+  if(X == 1) return(rbipartite.allocation(a-1, b, y-1) + 1)
+  return(rbipartite.allocation(a-1, b-1, y))
 }
 
-test.g.share <- function(ntrials=10, N1=10, N0=5, mech, pra.value=kUniformPRA) {
-  # Tests the g-sharing function.
-  # Creates a R-only graph.
-  # compute the overall
-  H3.Rdev.util <- c()
-  H3.truth.util <- c()
+Nmatchings <- function(a, b, x, y) {
+  # Assume x AB, y BA pairs    and  x AB, y BA for some Hospital Hi
+  # Returns matches for Hi assuming random bipartite matching.
+  CHECK_GE(b + y, a + x)
+  N <- x + replicate(5000, { rbipartite.allocation(a + x, b, y) })
+  return(N)
+}
+
+CHECK_Rpairs <- function(Rpairs) {
+  CHECK_SETEQ(names(Rpairs), c("AB", "BA"))
+  CHECK_EQ(nrow(Rpairs), 3)
+}
+
+mech.theor.matchings.Rdev <- function(mech, h3.strategy,
+                                      Rpairs) {
+  CHECK_MEMBER(h3.strategy, c("t", "r"))
+  CHECK_Rpairs(Rpairs)
+  a = sum(head(Rpairs$AB, 2))
+  b = sum(head(Rpairs$BA, 2))
+  x = Rpairs$AB[3]
+  y = Rpairs$BA[3]
   
+  if(mech=="rCM") {
+    if(h3.strategy == "t") {
+      return(Nmatchings(a, b, x, y))
+    } else {
+      ## strategy = r
+      N = Nmatchings(a, b, x=0, y)
+      y.remainder = y - N
+      internal <-2 * sapply(y.remainder, function(i) min(i, x))
+      return(N + internal)
+    }
+  }
+}
+
+example.Rpairs <- function() {
+  return(data.frame(AB=c(40, 10, 15), 
+                    BA=c(10, 40, 30)))
+}
+
+test.Rdeviation <- function(ntrials=10, Rpairs=example.Rpairs(),
+                            mech="rCM", pra.value=0) {
+  # Tests only on the R subgraph, whether the R-deviation works.
+  # Creates a R-only graph.
+  #
+  #  Example, nAB=30   nBA=10
+  #  H1=(30, 10)   H2=(10, 30)  H3=(h3.nAB, h3.nBA)
+  CHECK_Rpairs(Rpairs)
+  H3.truth.util <- c()
+  H3.Rdev.util <- c()
   kUniformPRA <<- pra.value
   
-  y = N1-N0
-  x = as.integer(y/2)
-  print(sprintf("H3 will have x=%d, y=%d, x+y=%d, total pairs ", x, y, y + x))
+  print("Computing theoretical differences.")
+  ## Compute theoretical 
+  theoretical.true.matches <-  mech.theor.matchings.Rdev(mech=mech, h3.strategy="t",
+                                                         Rpairs=Rpairs)
+  theoretical.rdev.matches <- mech.theor.matchings.Rdev(mech=mech, h3.strategy="r",
+                                                        Rpairs=Rpairs)
   for(trials in 1:ntrials) {
     print(sprintf("Running mechanism %s", mech))
     rke.pool <- list(rke.list=list(), rke.all=empty.rke())
-    CHECK_GE(N1, N0)
-    r1 <- create.Ronly.rke(N1, N0, hid=1, 1, uniform.pra=T)
-    r2 <- create.Ronly.rke(N0, N1, hid=2, 100, uniform.pra=T)
-    r3 <- create.Ronly.rke(x, y, hid=3,  200, uniform.pra=T)
+    
+    r1 <- create.Ronly.rke(Rpairs$AB[1], Rpairs$BA[1], hid=1, 1, uniform.pra=T)
+    r2 <- create.Ronly.rke(Rpairs$AB[2], Rpairs$BA[2], hid=2, 100, uniform.pra=T)
+    r3 <- create.Ronly.rke(Rpairs$AB[3], Rpairs$BA[3], hid=3,  200, uniform.pra=T)
     
     print("Sampled PRA")
     print(r1$pairs$pra)
@@ -535,11 +603,16 @@ test.g.share <- function(ntrials=10, N1=10, N0=5, mech, pra.value=kUniformPRA) {
     print.stats <- function(vec, str) {
       mu <- mean(vec)
       se <- bootstrap.mean(vec)
-      print(sprintf("Current estimate: %s : %.2f, CI=[%.2f, %.2f]", str, mu, mu-2*se, mu+2*se))
+      print(sprintf("%s : %.2f, CI=[%.2f, %.2f]", str, mu, mu-2*se, mu+2*se))
     }
-    print.stats(H3.Rdev.util, "R-deviation")
-    print.stats(H3.truth.util, "Truthful")
-    print.stats(H3.Rdev.util - H3.truth.util, "Diff")
+    print.stats(H3.Rdev.util, "R-deviation estimate")
+    print.stats(theoretical.rdev.matches, str="R-dev theoretical: ")
+    print("******")
+    print.stats(H3.truth.util, "Truthful estimate")
+    print.stats(theoretical.true.matches, str="Truth theoretical: ")
+    print("*****")
+    print.stats(H3.Rdev.util - H3.truth.util, "Empirical Difference")
+    print.stats(theoretical.rdev.matches - theoretical.true.matches, "Theoretical difference")
   }
 }
 
