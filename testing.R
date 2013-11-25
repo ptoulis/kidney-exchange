@@ -544,7 +544,7 @@ mech.theor.matchings.Rdev <- function(mech, h3.strategy,
     b = b - 2 * s
     print(sprintf("Bonus mechanism matches 4 * %d = %d internally", s , 4 * s))
     if(h3.strategy == "t") {
-      return(Nmatchings(a, b, x, y))
+      return(2 * x + Nmatchings(a, b, 0, y-x))
     } else {
       ## strategy = r
       N = Nmatchings(a, b, x=0, y)
