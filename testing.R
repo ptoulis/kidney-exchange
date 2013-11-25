@@ -535,6 +535,23 @@ mech.theor.matchings.Rdev <- function(mech, h3.strategy,
       internal <-2 * sapply(y.remainder, function(i) min(i, x))
       return(N + internal)
     }
+  } else if (mech=="Bonus") {
+    short.side = head(apply(Rpairs, 1, min), 2)
+    pairtype = head(apply(Rpairs, 1, which.min), 2)
+    s = sum(short.side[pairtype==1])
+    CHECK_EQ(s, sum(short.side[pairtype==2]))
+    a = a - 2 * s
+    b = b - 2 * s
+    print(sprintf("Bonus mechanism matches 4 * %d = %d internally", s , 4 * s))
+    if(h3.strategy == "t") {
+      return(Nmatchings(a, b, x, y))
+    } else {
+      ## strategy = r
+      N = Nmatchings(a, b, x=0, y)
+      y.remainder = y - N
+      internal <-2 * sapply(y.remainder, function(i) min(i, x))
+      return(N + internal)
+    }
   }
 }
 
