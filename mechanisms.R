@@ -339,12 +339,20 @@ xCM <- function(rke.pool, include.3way=F, verbose=F) {
   rke.list = rke.pool$rke.list
   rke.all = rke.pool$rke.all
   
+  debug.matching <- function(matching) {
+    x = subset(matching$match, select=c("hospital", "desc", "pair.type"))
+    print("     DEBUG    ")
+    print(table(x$hospital))
+  }
   # Total matching computed by the mechanism.
   total.matching = empty.match.result(empty.rke())
   
   m = length(rke.list)  # no. of hospitals
   ##  1. Compute IR constraints
   ir.constraints = compute.ir.constraints(rke.pool, pair.types=c("S", "R"), include.3way=include.3way)
+  print(sprintf("Total hospitals=%d", m))
+  print("IR constraints")
+  print(ir.constraints)
   
   # 2.  Match S internally
   s.subrke = rke.subgraph(rke.all, pair.type="S")
@@ -352,6 +360,9 @@ xCM <- function(rke.pool, include.3way=F, verbose=F) {
   s.matching = max.matching(s.subrke,
                             ir.constraints=s.constraints,
                             include.3way=include.3way)
+  print("Matching S subgraph")
+  debug.matching(s.matching)
+  
   # 0.1 Add matching information from S
   total.matching <- add.matching(total.matching, s.matching)
   
@@ -360,17 +371,28 @@ xCM <- function(rke.pool, include.3way=F, verbose=F) {
   r.constraints = compute.Rsubgraph.constraints(ir.constraints, rke.pool=rke.pool)
   # R-constraints have additionally the "y" lottery allocation (see notes)
   CHECK_EQ(nrow(r.constraints), 2 * m, msg="AB and BA pairs for each hospital")
+  print("R constraints")
+  print(r.constraints)
+  
   r.matching = list()
   q = 0    
   loop.ended = F
   while(!loop.ended) {
     loop.r.constraints = r.constraints
-    loop.r.constraints$unmatched <- r.constraints$unmatched + max(0, r.constraints$y - q)
+    # loop.r.constraints$unmatched <- r.constraints$unmatched + max(0, r.constraints$y - q)
+    loop.r.constraints$internal.matches = sapply(1:nrow(r.constraints), function(i) {
+        r.constraints$internal.matches[i] + r.constraints$y[i] - q
+      })
+    print(sprintf("q=%d", q))
+    print(loop.r.constraints)
     r.matching = max.matching(r.subrke, ir.constraints = loop.r.constraints,
                               include.3way=include.3way)
     loop.ended = get.matching.status(r.matching) == "OK"
     q = q + 1
   }
+  print(sprintf("Final q=%d", q))
+  debug.matching(r.matching)
+
   # 0.2 Add matching information from R
   total.matching <- add.matching(total.matching, r.matching)
   ## remove some stuff that are not needed anymore
@@ -391,6 +413,8 @@ xCM <- function(rke.pool, include.3way=F, verbose=F) {
     internal.matching = max.matching(rke.h, 
                                      include.3way=include.3way,
                                      regular.matching=T)
+    print(sprintf("Internal matching for hospital %d", hid))
+    debug.matching(internal.matching)
     # 0.3 Add matching information from internal matching.
     total.matching <- add.matching(total.matching, internal.matching)
   }
