@@ -543,14 +543,38 @@ mech.theor.matchings.Rdev <- function(mech, h3.strategy,
     a = a - 2 * s
     b = b - 2 * s
     print(sprintf("Bonus mechanism matches 4 * %d = %d internally", s , 4 * s))
+    print(sprintf("New market a=%d, b=%d", a, b))
     if(h3.strategy == "t") {
       return(2 * x + Nmatchings(a, b, 0, y-x))
     } else {
       ## strategy = r
       N = Nmatchings(a, b, x=0, y)
       y.remainder = y - N
-      internal <-2 * sapply(y.remainder, function(i) min(i, x))
+      internal <- 2 * sapply(y.remainder, function(i) min(i, x))
       return(N + internal)
+    }
+  } else if(mech=="xCM") {
+    theor.xCM.matches <- function(rpairs.df) {
+      short.side = apply(rpairs.df, 1, min)
+      short.type = apply(rpairs.df, 1, which.min)
+      remainder = apply(rpairs.df, 1, function(x) abs(x[1]-x[2]))
+      same.short <- short.type == short.type[3]
+      z = sapply(1:3, function(i) ifelse(same.short[i], remainder[i], 0))
+      x = sum(remainder[!same.short])
+      print(sprintf("Supply x=%d, Demand=", x))
+      print(z)
+      print(g.share(z, x))
+      return(2 * short.side[3] + g.share(z, x)[3])
+    }
+      
+    if(h3.strategy == "t") {
+      return(rep(theor.xCM.matches(Rpairs), 1000))
+    } else {
+      ## strategy = r
+      xAB <- Rpairs[3, 1]
+      Rpairs[3, 1] <- 0
+      mech.match = theor.xCM.matches(Rpairs)
+      return(rep(2 * min(xAB, Rpairs[3, 2] - mech.match) + mech.match, 1000))
     }
   }
 }
