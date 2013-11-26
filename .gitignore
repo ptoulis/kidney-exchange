@@ -1,6 +1,7 @@
 *.log
 *.Rhistory
 debug/*
+docs/*
 experiments/*
 out/*
 out/png/*
