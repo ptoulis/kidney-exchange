@@ -1,0 +1,20 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath}
+
+\begin{document}
+
+Notation followed: 
+\begin{align} 
+& V = \text{ all pairs } \\
+& V_h = \text{ pairs from a hospital } h \\
+& P = \text{ set of all pairs, O-A, O-B, ... } \\
+& T = \text { pairs types , R, S, O , U } \\
+& P^t = \text{ pairs of a specific type } t \in T \\
+& e.g. P^U = \text{ underdemanded pairs, i.e. A-O, B-O ...}\\
+& \tau(S, t) = \{  u \in S \text{ \& }  type(u) =t \} \\
+& \tau(S, T') = \cup_{t \in T'} \tau(S, t) \\ 
+& \text{e.g. } \tau (M_{P^U}^{V_h}, P^U) = \text{ max set of Underdemanded pairs internally } \\
+& M_T^V = \text { random allocation in $V$ that maximizes matched $T$ }
+\end{align}
+
+\end{document}

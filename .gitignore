@@ -4,8 +4,6 @@ debug/*
 experiments/*
 out/*
 out/png/*
-docs/*
-tests/*
 null.R
 .Rproj.user
 *Rproj
