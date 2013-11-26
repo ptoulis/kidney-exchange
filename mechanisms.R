@@ -341,7 +341,7 @@ xCM <- function(rke.pool, include.3way=F, verbose=F) {
   
   debug.matching <- function(matching) {
     x = subset(matching$match, select=c("hospital", "desc", "pair.type"))
-    print("     DEBUG    ")
+    print("    DEBUG    ")
     print(table(x$hospital))
   }
   # Total matching computed by the mechanism.
@@ -503,7 +503,7 @@ Bonus.QS = function(rke.pool, include.3way=F)  {
     hospital.pcs = subset(rke.all$pairs, hospital==hid)$pc
     # 2 . Compute a regular matching on the specific hospital (internal)
     internal.matching = max.matching(rke.list[[hid]], include.3way=include.3way,
-                                     regular.matching=T)
+                                     regular.matching=F)
     ## Iterate over all UD codes
     for(pc in ud.pcs) {
       hpairs.of.type = hospital.pair.ids[which(hospital.pcs==pc)]
