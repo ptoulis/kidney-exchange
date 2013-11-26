@@ -220,7 +220,7 @@ gurobi.matched.pairs <- function(gurobi.result, rke, cycles) {
   return (x)
 }
 
-regular.cycles <- function(Cycles) {
+regular.cycles <- function(rke, Cycles) {
   Cycles$type <- NULL
   are.regular <- apply(Cycles, 1, function(row) {
       types <- paste(subset(rke$pairs, pair.id %in% row)$pair.type, collapse="")
@@ -262,7 +262,7 @@ max.matching <- function(rke,
   #   Regular matching gives some bonus to O-U pairs.
   # i.e. cycles that have O-U pairs get a +1 bonus.
   if(regular.matching) {
-    model.w <- model.w + regular.cycles(Cycles)
+    model.w <- model.w + regular.cycles(rke, Cycles)
   }
   
   if (length(model.w) == 0 | (num.edges == 0)) {

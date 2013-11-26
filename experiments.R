@@ -2,6 +2,7 @@
 ## Code to save into latex table.
 library(xtable)
 
+rm(list=ls())
 # Add necessary libs.
 source("../r-toolkit/checks.R")
 source("terminology.R")
