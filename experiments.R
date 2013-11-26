@@ -53,12 +53,12 @@ create.comparison <- function(mechanisms,
               nsamples=nsamples))
 }
 
-example.comparison = create.comparison(mechanisms=c("rCM", "xCM"),
-                                       nHospitals=4, nSize=20,
+example.comparison = create.comparison(mechanisms=c("rCM", "xCM", "Bonus"),
+                                       nHospitals=4, nSize=35,
                                        uniform.pra=T, include.3way=F,
                                        baseline.strategy="tttt",
                                        deviation.strategy="cccc",
-                                       nsamples=10)
+                                       nsamples=100)
 
 compare.mechanisms <- function(comparison) {
   # Compares two mechanisms.
