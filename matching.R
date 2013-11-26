@@ -220,11 +220,20 @@ gurobi.matched.pairs <- function(gurobi.result, rke, cycles) {
   return (x)
 }
 
+regular.cycles <- function(Cycles) {
+  Cycles$type <- NULL
+  are.regular <- apply(Cycles, 1, function(row) {
+      types <- paste(subset(rke$pairs, pair.id %in% row)$pair.type, collapse="")
+      return(length(c(grep("OU", types), grep("UO", types))) > 0)
+  })
+  return(as.numeric(are.regular))
+}
+
 max.matching <- function(rke,
                          include.3way=F,
                          ir.constraints=data.frame(),
                          randomize.matching=T,
-                         regular.matching=F,
+                         regular.matching=T,
                          timeLimit=3600,
                          verbose=F) {
   # Performs some form of maximum matching on the specific RKE object.
@@ -245,7 +254,17 @@ max.matching <- function(rke,
   # Gurobi defines the problem as: 
   # A * x   <sense>   rhs   ,  sense in {"<=", ">="}
   Cycles = rke.cycles(rke, include.3way=include.3way)
+  # Set the Cycle weights
+  # For a 2-Cycle , weight=2, for 3-cycle = 3
+  # i.e. we value each cycle based on the #matches it achieves.
   model.w <- Cycles$type
+  #
+  #   Regular matching gives some bonus to O-U pairs.
+  # i.e. cycles that have O-U pairs get a +1 bonus.
+  if(regular.matching) {
+    model.w <- model.w + regular.cycles(Cycles)
+  }
+  
   if (length(model.w) == 0 | (num.edges == 0)) {
     logthis("Empty RKE", verbose)
     return (empty.match.result(rke))
@@ -263,7 +282,7 @@ max.matching <- function(rke,
     CHECK_MEMBER(pair.ids, ids)
     CHECK_UNIQUE(pair.ids)
     index = match(pair.ids, ids)
-    B = matrix(model.A[index,], nrow=length(pair.ids), ncol=ncol(model.A))
+    B = matrix(model.A[index, ], nrow=length(pair.ids), ncol=ncol(model.A))
     rownames(B) <- pair.ids
     return (B)
   }
