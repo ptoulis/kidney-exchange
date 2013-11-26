@@ -233,7 +233,7 @@ max.matching <- function(rke,
                          include.3way=F,
                          ir.constraints=data.frame(),
                          randomize.matching=T,
-                         regular.matching=T,
+                         regular.matching=F,
                          timeLimit=3600,
                          verbose=F) {
   # Performs some form of maximum matching on the specific RKE object.
