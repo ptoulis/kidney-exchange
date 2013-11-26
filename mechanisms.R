@@ -374,7 +374,7 @@ xCM <- function(rke.pool, include.3way=F, verbose=F) {
     loop.r.constraints = r.constraints
     # loop.r.constraints$unmatched <- r.constraints$unmatched + max(0, r.constraints$y - q)
     loop.r.constraints$internal.matches = sapply(1:nrow(r.constraints), function(i) {
-        r.constraints$internal.matches[i] + r.constraints$y[i] - q
+        r.constraints$internal.matches[i] + max(0, r.constraints$y[i] - q)
       })
 
     r.matching = max.matching(r.subrke, ir.constraints = loop.r.constraints,

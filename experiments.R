@@ -9,8 +9,9 @@ source("terminology.R")
 source("rke.R")
 source("matching.R")
 source("mechanisms.R")
+
 ## hand-made bootstrap (USDA organic)
-bootstrap = function(x) sd(replicate(1000, { y = sample(x, replace=T); mean(y)}))
+bootstrap.mean = function(x) sd(replicate(1000, { y = sample(x, replace=T); mean(y)}))
 
 ## Combines the result matrix with the SE errors.
 add.se = function(M, SE) {
@@ -53,6 +54,7 @@ create.comparison <- function(mechanisms,
               nsamples=nsamples))
 }
 
+# An example COMPARISON object.
 example.comparison = create.comparison(mechanisms=c("rCM", "xCM", "Bonus"),
                                        nHospitals=4, nSize=35,
                                        uniform.pra=T, include.3way=F,
