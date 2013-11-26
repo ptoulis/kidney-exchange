@@ -17,7 +17,7 @@ test.terminology.blood <- function() {
   CHECK_EQ(as.blood.code(c("O", "O", "A", "AB", "B", "B")), c(1,1,2,6,3,3))
   CHECK_ERROR(get.blood.code.prob(blood.code=5), msg="No blood code 5 exists.")
   CHECK_EQ(as.blood.code(rep(kBloodTypes, 3)), rep(kBloodCodes, 3))
-  print("[PASS]")
+  print("[ PASS ]")
 }
 
 ####    TESTS for terminology.R
