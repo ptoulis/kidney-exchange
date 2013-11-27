@@ -92,7 +92,7 @@ as.blood.type <- function(blood.code) {
 kUniformPRA <- 0.2
 kNonUniformPRA <- c(0.05, 0.45, 0.9)
 kNonUniformPRADistribution <- c(0.7, 0.2, 0.1)
-kPairTypes <- c("R" ,"U", "O", "S")
+kPairTypes <- factor(c("R" ,"U", "O", "S"))
 kPairTypeColors <- list(R="yellow", U="gray", O="green", S="cyan")
 # PAIRS object
 # kPairs = 16 x 7 matrix:  Basic structure
@@ -111,7 +111,7 @@ kPairs$blood.compatible <- as.numeric(with(kPairs, patient %% donor == 0))
 kPairs$symmetric.compatible <- as.numeric(with(kPairs, donor %% patient == 0))
 kPairs <- cbind(kPairs, desc=
                   apply(kPairs, 1, function(x) paste(as.blood.type(x[1:2]), collapse="-")))
-kPairs$pair.type <- kPairTypes[1+ with(kPairs, 2 *blood.compatible + symmetric.compatible)]
+kPairs$pair.type <- kPairTypes[1+ with(kPairs, 2 * blood.compatible + symmetric.compatible)]
 kPairs$symmetric.compatible <- NULL
 kPairs<- cbind(pc=kPairCodes, kPairs)
 kPairs$pair.color <- laply(kPairs$pair.type, function(i) kPairTypeColors[[i]])

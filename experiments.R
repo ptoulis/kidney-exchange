@@ -74,6 +74,7 @@ compare.mechanisms <- function(comparison) {
                 deviation=list(strategy=comparison$deviation.strategy))
   
   empty.matchingInfo <- empty.match.result(empty.rke())$information
+  empty.pairsBreakdown <- table(subset(kPairs, pc < 0)$pair.type)
   # 0. Initialize the result object.
   for (mech in comparison$mechanisms) {
     for (s in all.strategies) {
@@ -81,11 +82,14 @@ compare.mechanisms <- function(comparison) {
       result[[s]][[mech]] <- list(utility=matrix(0, nrow=comparison$m, ncol=comparison$nsamples),
                                   mech.matchingInfo=empty.matchingInfo,
                                   internal.matchingInfo=list(),
+                                  hospital.pairsBreakdown=list(),
                                   total.matchingInfo=empty.matchingInfo)
       
       for (hid in 1:comparison$m) {
         # Initialize the matching info
         result[[s]][[mech]]$internal.matchingInfo[[hid]] = empty.matchingInfo
+        # set empty table of pair types (O, R, S, U)
+        result[[s]][[mech]]$hospital.pairsBreakdown[[hid]] = empty.pairsBreakdown
       }
     }
   }  # done with initialization
@@ -124,6 +128,10 @@ compare.mechanisms <- function(comparison) {
         for (hid in 1:comparison$m) {
           result[[s]][[mech]]$internal.matchingInfo[[hid]] =  
             result[[s]][[mech]]$internal.matchingInfo[[hid]] + match$internal.matchings[[hid]]$information
+          ## pairs breakdown
+          result[[s]][[mech]]$hospital.pairsBreakdown[[hid]] = 
+            result[[s]][[mech]]$hospital.pairsBreakdown[[hid]] + 
+            table(subset(match$total.matching$match, hospital==hid)$pair.type)
         }  # for all hospitals, matching info
       } # all strategies (baseline, deviation)
       
