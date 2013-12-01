@@ -220,11 +220,15 @@ empty.edges <- function(size) {
 }
 
 CHECK_rke <- function(rke) {
+
   CHECK_SETEQ(c("pairs", "edges", "A"), names(rke), "Match RKE fields.")
   CHECK_EQ(nrow(rke$pairs), nrow(rke$A))
   CHECK_MEMBER(as.vector(rke$A), c(0,1), msg="Aij in {0,1}")  # A is binary adjacency matrix.
   if (nrow(rke$A) > 0)
     CHECK_SETEQ(diag(rke$A), c(0))  # no self-loops
+  if(rke.size(rke) == 0) {
+    return 
+  }
   CHECK_EQ(rownames(rke$A), rke$pairs$pair.id, msg="rownames A == pair.id?")
   warning("Muted test in CHECK_rke().")
   # CHECK_EQ(sum(rke$A), sum(rke$edges$can.donate), "Equal #edges in A and EDGES structs.")
