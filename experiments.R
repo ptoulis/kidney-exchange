@@ -147,8 +147,9 @@ compare.mechanisms <- function(comparison) {
   return(result)                       
 }
 
-mech.weakness <- function(mechanism, ntrials=10) {
-  warning("Writing to file.")
+mech.weakness <- function(mechanism, nHospitals=6, nSize=25, ntrials=10) {
+  CHECK_EQ(nHospitals %% 2, 0)
+  kCurrentLogLevel <<- 5
   OU = which(kPairs$desc %in% c("O-A", "A-O"))
   kPairs$prob[-OU] <<- 0
   print(kPairs)
@@ -156,16 +157,16 @@ mech.weakness <- function(mechanism, ntrials=10) {
   print(binom.test(x=ud.pairs, n=1000, p=5/6))
   ##
   mech=mechanism
-  nHospitals = 6
-  nSize = 25
   utils.t <- c()
   utils.c <- c()
   pb <- txtProgressBar(style=3)
   
   for(i in 1:ntrials) {
     pool = rrke.pool(m=nHospitals, n=nSize, uniform.pra=T)
-    kpd.t <- kpd.create(pool, strategy.str="tttttt")
-    kpd.c <- kpd.create(pool, strategy.str="cttttt")
+    str.truth <- paste(rep("t", nHospitals), collapse="")
+    str.dev <- paste(c("c", rep("t", nHospitals-1)), collapse="")
+    kpd.t <- kpd.create(pool, strategy.str=str.truth)
+    kpd.c <- kpd.create(pool, strategy.str=str.dev)
     
     kLogFile <<- "Bonus-H1-truthful.log"
     xt = Run.Mechanism(kpd.t, mech=mech,  include.3way=F)
@@ -186,7 +187,8 @@ mech.weakness <- function(mechanism, ntrials=10) {
   print(summary(utils.c))
 }
 
-mech.weakness.theoretical <- function(ntrials) {
+mech.weakness.theoretical <- function(nHospitals=6, nSize=25, ntrials=10) {
+  CHECK_EQ(nHospitals %% 2, 0)
   util.t <- c()
   util.c <- c()
   bad.cases <- 0
