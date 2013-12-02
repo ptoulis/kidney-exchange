@@ -147,39 +147,83 @@ compare.mechanisms <- function(comparison) {
   return(result)                       
 }
 
-bonus.weakness <- function(ntrials=10) {
-  kPairs <<- subset(kPairs, pair.type=="U" | pair.type=="O")
-  kPairs$pc <<- 1:nrow(kPairs)
+mech.weakness <- function(mechanism, ntrials=10) {
+  warning("Writing to file.")
+  OU = which(kPairs$desc %in% c("O-A", "A-O"))
+  kPairs$prob[-OU] <<- 0
   print(kPairs)
   ud.pairs = nrow(subset(rrke(1000)$pairs, pair.type=="U"))
   print(binom.test(x=ud.pairs, n=1000, p=5/6))
   ##
-  
+  mech=mechanism
   nHospitals = 6
   nSize = 25
   utils.t <- c()
   utils.c <- c()
   pb <- txtProgressBar(style=3)
+  
   for(i in 1:ntrials) {
     pool = rrke.pool(m=nHospitals, n=nSize, uniform.pra=T)
     kpd.t <- kpd.create(pool, strategy.str="tttttt")
     kpd.c <- kpd.create(pool, strategy.str="cttttt")
     
     kLogFile <<- "Bonus-H1-truthful.log"
-    xt = Run.Mechanism(kpd.t, mech="Bonus",  include.3way=F)
+    xt = Run.Mechanism(kpd.t, mech=mech,  include.3way=F)
     utils.t[i] <- get.matching.hospital.utilities(xt$total.matching, nHospitals)[1]
     kLogFile <<- "Bonus-H1-deviates.log"
-    xc = Run.Mechanism(kpd.c, mech="Bonus",  include.3way=F)
+    xc = Run.Mechanism(kpd.c, mech=mech,  include.3way=F)
     utils.c[i] <- get.matching.hospital.utilities(xc$total.matching, nHospitals)[1]
     
     setTxtProgressBar(pb, value=i/ntrials)
-    print("Truthful")
+    print(sprintf("Truthful H1 (%s)", mech))
     print(summary(utils.t))
-    print("Deviation")
+    print(sprintf("Deviating H1 (%s)", mech))
     print(summary(utils.c))
   }
   
   print(summary(utils.t))
   print("Deviation")
   print(summary(utils.c))
+}
+
+mech.weakness.theoretical <- function(ntrials) {
+  util.t <- c()
+  util.c <- c()
+  bad.cases <- 0
+  for(i in 1:ntrials) {
+    nHospitals <- 6
+    nSize = 25
+    U = rbinom(nHospitals, size=nSize, prob=5/6)
+    O = nSize-U
+    theta = sum(tail(O, nHospitals/2))  # supply of over-demanded.
+    if(any(U < O)) {
+      bad.cases <- bad.cases + 1
+      next
+    }
+    # H1=truthful case.
+    m.XY.t <- head(O, nHospitals/2)  # matched XY from side 1 = #YX pairs (PM assumption)
+    S1.t = sum(m.XY.t)  # XY pairs of one side that are matched
+    reports.XY.t <- head(U, nHospitals/2)
+    excess.t = theta - S1.t  # excess of supply to be allocated
+    excess.H1.t =  excess.t * reports.XY.t[1] / sum(reports.XY.t)  # excess that could go to H1
+    
+    # deviation case.
+    m.XY.c <- head(O, nHospitals/2) # matched XY from side 1
+    m.XY.c[1] <- 0
+    S1.c = sum(m.XY.c)  # XY pairs of one side that are matched
+    reports.XY.c <- head(U, nHospitals/2)
+    reports.XY.c[1] <- U[1] - O[1]
+    excess.c = theta - S1.c  # excess of supply to be allocated
+    excess.H1.c =  excess.c * reports.XY.c[1] / sum(reports.XY.c)  # excess that could go to H1
+    
+    # print(excess.H1.t)
+    # print(excess.H1.c)
+    util.t <- c(util.t, O[1] + max(excess.H1.t, 0) + O[1])
+    util.c = c(util.c, max(excess.H1.c, 0) + 2 * O[1])    
+  }
+  print(sprintf("Bad cases = %d / %d", bad.cases, ntrials))
+  print("Truthful case...")
+  print(summary(util.t))
+  print("Deviation case..")
+  print(summary(util.c))
 }
