@@ -193,8 +193,6 @@ mech.weakness.theoretical <- function(nHospitals=6, nSize=25, ntrials=10) {
   util.c <- c()
   bad.cases <- 0
   for(i in 1:ntrials) {
-    nHospitals <- 6
-    nSize = 25
     U = rbinom(nHospitals, size=nSize, prob=5/6)
     O = nSize-U
     theta = sum(tail(O, nHospitals/2))  # supply of over-demanded.
