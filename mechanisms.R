@@ -29,7 +29,8 @@ kpd.create <- function(rke.pool, strategy.str, verbose=F) {
   hospital.ids <- rke.list.hospital.ids(rke.list)
   CHECK_EQ(nchar(strategy.str), m, msg="Correct #of strategies")
   CHECK_SETEQ(1:m, hospital.ids)
-  logthis("Playing strategies", verbose)
+  logfine("Playing strategies")
+  
   hospital.action = play.strategies(rke.list, strategy.str)
   
   reported.rke.list = list()
@@ -38,8 +39,7 @@ kpd.create <- function(rke.pool, strategy.str, verbose=F) {
   #  1b.  Populate the reported and hidden graphs.
   for(hid in hospital.ids) {
     hospitalAction = hospital.action[[hid]]
-    logthis(sprintf("Hospital %d is hiding %d pairs", hid, length(hospitalAction$hide)),
-            verbose)
+    logfine(sprintf("Hospital %d is hiding %d pairs", hid, length(hospitalAction$hide)))
     reported.rke.list[[hid]] = rke.remove.pairs(rke.list[[hid]],
                                                 hospitalAction$hide)
     CHECK_DISJOINT(all.hidden.pairs, hospitalAction$hide)
@@ -119,7 +119,6 @@ Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
   #   mech.matching = MATCHING of the mechanism
   #   internal.matchings = LIST of m MATCHING elements, one for each hospital
   #     it is the internal matchings that hospitals make on the remainders.
-  logthis(sprintf("Mechanism %s. Checking KPD", mech), verbose)
   CHECK_kpd(kpd)
   
   # Init total matching.
@@ -134,7 +133,6 @@ Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
   rke.all = kpd$real.pool$rke.all
   
   ## 3. Run the mechanism. Get the matching
-  logthis("Unload complete. Running the mechanism", verbose)
   mech.matching = do.call(mech, args=list(rke.pool=kpd$reported.pool,
                                      include.3way=include.3way))
   
@@ -149,11 +147,9 @@ Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
   
   matched.pairs = get.matching.ids(mech.matching)
   ## Sometimes we get a list instead of a vector.
-  logthis("Checking matched pairs", verbose)
   mech.out.ids = matched.pairs
   
   ## 4. Compute utility from mechanism
-  logthis("Computing utilities", verbose)
   hids <- rke.list.hospital.ids(rke.list)
   
   ## 5.  Utility from final internal matches.   
@@ -165,9 +161,7 @@ Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
     # 2. Remove from hidden part
     rke.remainder = rke.remove.pairs(rke.h, hosp.matched.ids)
     # 3. Perform maximum matching on hidden part
-    logthis(sprintf("Remainder graph has %d pairs", rke.size(rke.remainder)), 
-            verbose)
-    matching = max.matching(rke.remainder, include.3way=include.3way)
+     matching = max.matching(rke.remainder, include.3way=include.3way)
     internal.matchings[[h]] <- matching
     # 0.2 Add this matching to the total
     total.matching <- add.matching(total.matching, matching)
@@ -387,9 +381,6 @@ xCM <- function(rke.pool, include.3way=F, verbose=F) {
   total.matching <- add.matching(total.matching, r.matching)
   ## remove some stuff that are not needed anymore
   rm(ir.constraints)
-  logthis(sprintf("Total S matches = %d", length(get.matching.ids(s.matching))), verbose)
-  logthis(sprintf("q=%d Total R matches = %d", q, length(get.matching.ids(r.matching))), verbose)
-
   #  4. Almost regular matching to the remainder
   ## Match OD's individually.
   hospital.ids <- rke.list.hospital.ids(rke.list)
@@ -426,7 +417,7 @@ ud.lottery = function(rke, ud.pc,
   #   An array of U pair ids (that belong to hospitals in Hn)
   #
   # warning("UD-lottery is not unit-tested.")
-
+  logdebug(sprintf("Running LOTTERY for UD=%d, theta=%d", ud.pc, theta))
   # X-Y pairs in rke for the Hn hospitals.
   rke.XY.pair.ids = subset(rke$pairs, pc==ud.pc & hospital %in% Hn)$pair.id
   # Bh.XY = LIST (per hospital).
@@ -453,23 +444,32 @@ ud.lottery = function(rke, ud.pc,
   # Main loop of lottery
   # Do not remove balls from J (that is the definition)
   # J = 1,1,1,2,2,2,3,3,4,...  (contains hospital ids)
-  if (length(set.J) > 0)
-    while(get.sum() < theta && plateau.count < 10) {
+  logdebug(sprintf("Before J-ball process. Sum=%d", get.sum()))
+  logdebug("J bin")
+  logdebug(set.J)
+  while(length(set.J) > 0 && get.sum() < theta && plateau.count < 100) {
+    h.sample = set.J[1]
+    if(length(set.J) > 1)
       h.sample = sample(set.J, size=1)
-      # set.J = set.J[-which(set.J==h.sample)[1]]
-      CHECK_MEMBER(Sh.XY[[h.sample]], Bh.XY[[h.sample]],
-                   msg="Matched ids subset of all")
-      
-      avail = setdiff(Bh.XY[[h.sample]], Sh.XY[[h.sample]])
-      if(length(avail) > 0) {
-        xy.pair = uniform.sample(avail)
-        Sh.XY[[h.sample]] = c(Sh.XY[[h.sample]], xy.pair)
-        plateau.count=0
-      } else {
-        plateau.count = plateau.count +1 
-      }
+    logdebug(sprintf(">> J ball: Hospital=%d", h.sample))
+    # Draw without replacement.
+    set.J = set.J[-which(set.J==h.sample)[1]]
+    CHECK_MEMBER(Sh.XY[[h.sample]], Bh.XY[[h.sample]],
+                 msg="Matched ids subset of all")
+    
+    avail = setdiff(Bh.XY[[h.sample]], Sh.XY[[h.sample]])
+    if(length(avail) > 0) {
+      xy.pair = uniform.sample(avail)
+      logdebug(sprintf(">> J ball: Hospital=%d Adding pair %d (%s)", 
+                       h.sample, xy.pair, subset(rke$pairs, pair.id==xy.pair)$desc))
+      Sh.XY[[h.sample]] = c(Sh.XY[[h.sample]], xy.pair)
+      plateau.count=0
+    } else {
+      plateau.count = plateau.count +1
+      logdebug(sprintf(">> J ball: Hospital=%d -- NO PAIR AVAIL.", h.sample))
     }
-  
+  }
+    
   ret.pair.ids = c()
   # Return the union.
   for(hid in Hn) {
@@ -485,6 +485,7 @@ Bonus.QS = function(rke.pool, include.3way=F)  {
   # Returns a LIST that has:
   #   Q[hid][X-Y] = how many #X-Y  in hospital hid 
   #   S[hid][X-Y] = { ids } of type X-Y which are included in a max regular matching.
+  logdebug("Computing MAX internal matchings..")
   Qh = list()
   Sh = list()
   CHECK_rke.pool(rke.pool)
@@ -499,17 +500,17 @@ Bonus.QS = function(rke.pool, include.3way=F)  {
   for(hid in all.hospital.ids) {
     Qh[[hid]] = rep(0, length(kPairCodes))
     Sh[[hid]] = list()
-    hospital.pair.ids = rke.hospital.pair.ids(rke.all, hospital.id=hid)
-    hospital.pcs = subset(rke.all$pairs, hospital==hid)$pc
+    rke.h = rke.list[[hid]]  # internal RKE
     # 2 . Compute a regular matching on the specific hospital (internal)
-    internal.matching = max.matching(rke.list[[hid]], include.3way=include.3way,
+    internal.matching = max.matching(rke.h, include.3way=include.3way,
                                      regular.matching=F)
     ## Iterate over all UD codes
-    for(pc in ud.pcs) {
-      hpairs.of.type = hospital.pair.ids[which(hospital.pcs==pc)]
-      Qh[[hid]][pc] = length(hpairs.of.type)
-      Sh[[hid]][[pc]] = intersect(get.matching.ids(internal.matching),
-                                  hpairs.of.type)
+    for(upc in ud.pcs) {
+      Qh[[hid]][upc] = nrow(subset(rke.h$pairs, pc==upc))
+      CHECK_EQ(Qh[[hid]][[upc]], nrow(subset(rke.all$pairs, pc==upc & hospital==hid)))
+      Sh[[hid]][[upc]] = subset(internal.matching$match, pc==upc)$pair.id
+      logdebug(sprintf("Hospital %d is matching %d internally of %s", hid, length(Sh[[hid]][[upc]]),
+                       subset(kPairs, pc==upc)$desc))
     }
   }
   ##  TO-DO(ptoulis): How do you know if you computed Qh, Sh correctly???
@@ -528,10 +529,16 @@ Bonus = function(rke.pool, include.3way=F) {
     
   ## 0. Initialize mechanism
   m = length(rke.list)  # no. of hospitals.
-
+  logdebug("######")
+  logdebug("New BONUS")
+  logdebug(sprintf("Total %d hospitals", m))
+  
   ## 1. Match S pairs internally
   s.subrke = rke.subgraph(rke.all, pair.type="S")
   s.matching = max.matching(s.subrke, include.3way=include.3way)
+  
+  logdebug("Performed S-matching..Utilities:")
+  logdebug(get.matching.hospital.utilities(s.matching, m))
   
   ## 0.1 Add S-matching
   total.matching <- add.matching(total.matching, s.matching)
@@ -542,6 +549,11 @@ Bonus = function(rke.pool, include.3way=F) {
   r.subrke = rke.subgraph(rke.all, pair.type="R")
   r.matching = max.matching(r.subrke, include.3way=include.3way, 
                             ir.constraints=R.constraints)
+  
+  logdebug("Performed R-matching. R-constraints + Utilities")
+  logdebug(R.constraints)
+  logdebug(get.matching.hospital.utilities(r.matching, m))
+  
   ## 0.1 Add R-matching
   total.matching <- add.matching(total.matching, r.matching)
   
@@ -552,8 +564,15 @@ Bonus = function(rke.pool, include.3way=F) {
   H.sets[[1]] = sample(1:m, size=k, replace=F)
   H.sets[[2]] = setdiff(1:m, H.sets[[1]])
 
+  logdebug("Split into two sets")
+  logdebug(H.sets[[1]])
+  logdebug(H.sets[[2]])
+  
   # All Underdemanded PC codes
   ud.pcs = subset(kPairs, pair.type=="U")$pc
+  logdebug("UD pair codes")
+  logdebug(ud.pcs)
+  
   # Compute Q-S:
   #   Q[hid][X-Y] = how many #X-Y in hospital hid
   #   S[hid][X-Y] = { ids of matched X-Y for hid }
@@ -570,6 +589,10 @@ Bonus = function(rke.pool, include.3way=F) {
       # Get YX pairs that belong to the H2
       # and XY pairs that belong to H1 (indexed by "j")
       # tau.Bhj.XY = { ids that belong to H1 and are of type XY }
+      logdebug("------------------")
+      logdebug("NEW XY pair")
+      logdebug("XY pairs from set=")
+      logdebug(H.sets[[j]])
       tau.BHj.XY = subset(rke.all$pairs,
                           hospital %in% H.sets[[j]] & pair.id %in% all.XY)$pair.id
       # tau.BHother.XY = { ids that belong to H2 and are of type YX }
@@ -578,6 +601,34 @@ Bonus = function(rke.pool, include.3way=F) {
       
        # no. of such pairs (supply of YX pairs to be used in lottery)
       theta.j.YX = length(tau.BHother.YX)
+      logdebug("X-Y pair=")
+      logdebug(as.character(subset(kPairs, pc==i)$desc))
+      logdebug("Y-X pair=")
+      logdebug(as.character(subset(kPairs, pc==pc.reciprocal(i))$desc))
+      logdebug("Before lottery: Pairs in J ball: ")
+      x1 = sapply(H.sets[[j]], function(h) QS.obj$Q[[h]][i])
+      x2 =sapply(H.sets[[j]], function(h) length(QS.obj$S[[h]][[i]]))
+      x1.other = sapply(H.sets[[j]], function(hid) nrow(subset(rke.all$pairs, pc==i & hospital==hid)))
+     
+      logdebug("Printing (Q,S). Q=total #XY pairs,  S=total #XY that can be matched.")
+      logdebug("Q=")
+      logdebug(x1)
+      logdebug("Some other way to get these numbers")
+      logdebug(x1.other)
+      logdebug("S=")
+      logdebug(x2)
+    
+      logdebug("BEFORE lottery = ")
+      logdebug("X-Y pairs set = {")
+      logdebug(tau.BHj.XY)
+      logdebug("Breakdown by hospital")
+      logdebug(table(rke.pairs.hospitals(rke.all, pair.ids=tau.BHj.XY)))
+      
+      logdebug("Y-X pairs set = {")
+      logdebug(tau.BHother.YX)
+      logdebug("Breakdown by hospital")
+      logdebug(table(rke.pairs.hospitals(rke.all, pair.ids=tau.BHother.YX)))
+      
       
       ## Run the under-demanded lottery  (contains pair ids)
       S.XY = ud.lottery(rke=rke.all,
@@ -585,6 +636,13 @@ Bonus = function(rke.pool, include.3way=F) {
                         Hn=H.sets[[j]],
                         theta=theta.j.YX,
                         QS=QS.obj)
+    
+      
+      logdebug("AFTER lottery = ")
+      logdebug("X-Y pairs matched in lottery = {")
+      logdebug(S.XY)
+      logdebug("Breakdown by hospital")
+      logdebug(table(rke.pairs.hospitals(rke.all, pair.ids=S.XY)))
       
       CHECK_DISJOINT(S.XY, tau.BHother.YX, msg="Not even the same type")
       CHECK_MEMBER(S.XY, tau.BHj.XY, msg="Matched subset of all")
@@ -593,6 +651,9 @@ Bonus = function(rke.pool, include.3way=F) {
       # Here you match   X-Y pairs from Hj   with   Y-X pairs from Hother
       subrke = rke.keep.pairs(rke.all, pair.ids=XYYX.ids)
       Mj = max.matching(subrke, include.3way=include.3way, regular.matching=F)
+      
+      logdebug("Performed OU-matching..Utilities:")
+      logdebug(get.matching.hospital.utilities(Mj, m))
       
       ## 0.3 Add new matching
       total.matching <- add.matching(total.matching, Mj)

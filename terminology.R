@@ -1,10 +1,9 @@
 # Copyright 2013 Panos Toulis, David C.Parkes
 # Author: Panos Toulis(ptoulis@fas.harvard.edu)
-
 library(plyr)
-library(logging)
 library(stringr)
-basicConfig()
+
+
 # Terminology:
 # *  A "blood-type" is in {"O", "A", "B", "AB"} and represents a blood-type
 #     A "blood-code" is an integer representation, in {1, 2, 3, 6} resp.
@@ -226,14 +225,14 @@ CHECK_rke <- function(rke) {
   CHECK_MEMBER(as.vector(rke$A), c(0,1), msg="Aij in {0,1}")  # A is binary adjacency matrix.
   if (nrow(rke$A) > 0)
     CHECK_SETEQ(diag(rke$A), c(0))  # no self-loops
-  if(rke.size(rke) == 0) {
-    return 
+  if(rke.size(rke) > 0) {
+    CHECK_EQ(rownames(rke$A), rke$pairs$pair.id, msg="rownames A == pair.id?")
+    warning("Muted test in CHECK_rke().")
+    # CHECK_EQ(sum(rke$A), sum(rke$edges$can.donate), "Equal #edges in A and EDGES structs.")
+    CHECK_pairs(rke$pairs)
+    CHECK_edges(rke$edges, rke$pairs)
   }
-  CHECK_EQ(rownames(rke$A), rke$pairs$pair.id, msg="rownames A == pair.id?")
-  warning("Muted test in CHECK_rke().")
-  # CHECK_EQ(sum(rke$A), sum(rke$edges$can.donate), "Equal #edges in A and EDGES structs.")
-  CHECK_pairs(rke$pairs)
-  CHECK_edges(rke$edges, rke$pairs)
+  return(TRUE)
 }
 
 CHECK_rke_subset <- function(rke.smaller, rke.bigger) {
@@ -490,12 +489,6 @@ rrke <- function(n, pair.ids=1:n, hospital.id=1,
 
 mu.thm = function(n, m=1) {
   0.556 * n *m -0.338 * sqrt(n * m)- 2
-}
-
-logthis <- function(x, verbose) {
-  if (is.array(x))
-    x = paste(x, collapse=", ")
-  if (verbose) loginfo(x);
 }
 
 uniform.sample <- function(x) {

@@ -5,6 +5,7 @@ library(xtable)
 rm(list=ls())
 # Add necessary libs.
 source("../r-toolkit/checks.R")
+source("../r-toolkit/logs.R")
 source("terminology.R")
 source("rke.R")
 source("matching.R")
@@ -65,6 +66,9 @@ example.comparison = create.comparison(mechanisms=c("rCM", "xCM", "Bonus"),
 compare.mechanisms <- function(comparison) {
   # Compares two mechanisms.
   # Result looks like  results[[strategy]][[mechanism]][[..attr..]]
+  #
+  # attr= { utility, hospital.pairsBreakdown, 
+  #         total.matchingInfo, internal.matchingInfo, mech.matchingInfo}
   # For example,
   #   result$baseline$rCM$utility = (m x samples) utility matrix
   #   result$baseline$rCM$internal.matchingInfo[[3]] = MATCHING_INFO for hospital 3
@@ -141,4 +145,41 @@ compare.mechanisms <- function(comparison) {
   
   ## Return the final result
   return(result)                       
+}
+
+bonus.weakness <- function(ntrials=10) {
+  kPairs <<- subset(kPairs, pair.type=="U" | pair.type=="O")
+  kPairs$pc <<- 1:nrow(kPairs)
+  print(kPairs)
+  ud.pairs = nrow(subset(rrke(1000)$pairs, pair.type=="U"))
+  print(binom.test(x=ud.pairs, n=1000, p=5/6))
+  ##
+  
+  nHospitals = 6
+  nSize = 25
+  utils.t <- c()
+  utils.c <- c()
+  pb <- txtProgressBar(style=3)
+  for(i in 1:ntrials) {
+    pool = rrke.pool(m=nHospitals, n=nSize, uniform.pra=T)
+    kpd.t <- kpd.create(pool, strategy.str="tttttt")
+    kpd.c <- kpd.create(pool, strategy.str="cttttt")
+    
+    kLogFile <<- "Bonus-H1-truthful.log"
+    xt = Run.Mechanism(kpd.t, mech="Bonus",  include.3way=F)
+    utils.t[i] <- get.matching.hospital.utilities(xt$total.matching, nHospitals)[1]
+    kLogFile <<- "Bonus-H1-deviates.log"
+    xc = Run.Mechanism(kpd.c, mech="Bonus",  include.3way=F)
+    utils.c[i] <- get.matching.hospital.utilities(xc$total.matching, nHospitals)[1]
+    
+    setTxtProgressBar(pb, value=i/ntrials)
+    print("Truthful")
+    print(summary(utils.t))
+    print("Deviation")
+    print(summary(utils.c))
+  }
+  
+  print(summary(utils.t))
+  print("Deviation")
+  print(summary(utils.c))
 }
