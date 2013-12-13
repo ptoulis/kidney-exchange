@@ -239,7 +239,7 @@ table1.theoretical.violations <- function(nsamples=100) {
   # Table 2 is of the form
   # n(size)  (OR OO OS....)  = MATCHING INFO
   
-  all.sizes <- c(10, 20, 50, 80, 100, 120, 150)
+  all.sizes <- round(seq(5, 150, length.out=120))
   sampled.sizes <- sample(all.sizes, size=nsamples, replace=T)
   print("Sampled sizes breakdown")
   print(table(sampled.sizes))
