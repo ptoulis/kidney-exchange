@@ -280,3 +280,27 @@ table1.theoretical.violations <- function(nsamples=100) {
   }
   print("Simulation complete. File saved in out/table1.Rdata")
 }
+
+table2.welfare.incentives.2way <- function(nsamples=100) {
+  # Table of 2way exchanges to compare Welfare and Incentives.
+  #
+  comparison = create.comparison(mechanisms=c("rCM", "xCM", "Bonus"),
+                                 nHospitals=6, nSize=25,
+                                 uniform.pra=T, 
+                                 include.3way=F,
+                                 baseline.strategy="tttt",
+                                 deviation.strategy="cttt",
+                                 nsamples=nsamples)
+  table2.part1 = compare.mechanisms(comparison)
+  save(table2.part1, file="out/table2-part1.Rdata")
+  
+  comparison$baseline.strategy = "cccc"
+  comparison$deviation.strategy= "tccc"
+  table2.part2 = compare.mechanisms(comparison)
+  save(table2.part2, file="out/table2-part2.Rdata")
+}
+
+
+
+
+
