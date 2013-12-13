@@ -391,12 +391,18 @@ xCM <- function(rke.pool, include.3way=F, verbose=F) {
                                       rke.hospital.pair.ids(rke.all, hid))
     rke.h <- rke.remove.pairs(rke=rke.list[[hid]],
                               rm.pair.ids=matched.hospital.ids)
-    internal.matching = max.matching(rke.h, 
-                                     include.3way=include.3way)
+    internal.matching = max.matching(rke.h, include.3way=include.3way, regular.matching=T)
     # 0.3 Add matching information from internal matching.
     total.matching <- add.matching(total.matching, internal.matching)
   }
   
+  ## Final matching.
+  remainder.hospital.ids <- setdiff(rke.pair.ids(rke.all), get.matching.ids(total.matching))
+  if(length(remainder.hospital.ids)) {
+    rke.remainder = rke.kee.pairs(rke.all, pair.ids=remainder.hospital.ids)
+    m.remainder = max.matching(rke.remainder, include.3way=include.3way)
+    total.matching <- add.matching(total.matching, m.remainder)
+  }
   return(matching=total.matching)
 }
 
