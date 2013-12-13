@@ -285,7 +285,7 @@ table2.welfare.incentives.2way <- function(nsamples=100) {
   # Table of 2way exchanges to compare Welfare and Incentives.
   #
   comparison = create.comparison(mechanisms=c("rCM", "xCM", "Bonus"),
-                                 nHospitals=6, nSize=25,
+                                 nHospitals=6, nSize=20,
                                  uniform.pra=T, 
                                  include.3way=F,
                                  baseline.strategy="tttttt",
