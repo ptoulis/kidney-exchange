@@ -392,8 +392,7 @@ xCM <- function(rke.pool, include.3way=F, verbose=F) {
     rke.h <- rke.remove.pairs(rke=rke.list[[hid]],
                               rm.pair.ids=matched.hospital.ids)
     internal.matching = max.matching(rke.h, 
-                                     include.3way=include.3way,
-                                     regular.matching=T)
+                                     include.3way=include.3way)
     # 0.3 Add matching information from internal matching.
     total.matching <- add.matching(total.matching, internal.matching)
   }
