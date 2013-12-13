@@ -288,14 +288,14 @@ table2.welfare.incentives.2way <- function(nsamples=100) {
                                  nHospitals=6, nSize=25,
                                  uniform.pra=T, 
                                  include.3way=F,
-                                 baseline.strategy="tttt",
-                                 deviation.strategy="cttt",
+                                 baseline.strategy="tttttt",
+                                 deviation.strategy="cttttt",
                                  nsamples=nsamples)
   table2.part1 = compare.mechanisms(comparison)
   save(table2.part1, file="out/table2-part1.Rdata")
   
-  comparison$baseline.strategy = "cccc"
-  comparison$deviation.strategy= "tccc"
+  comparison$baseline.strategy = "cccccc"
+  comparison$deviation.strategy= "tccccc"
   table2.part2 = compare.mechanisms(comparison)
   save(table2.part2, file="out/table2-part2.Rdata")
 }
