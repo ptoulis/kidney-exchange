@@ -227,3 +227,56 @@ mech.weakness.theoretical <- function(nHospitals=6, nSize=25, ntrials=10) {
   print("Deviation case..")
   print(summary(util.c))
 }
+
+table1.theoretical.violations <- function(nsamples=100) {
+  # This experiment explores two things
+  # 1. The μ(n) formula = expected #matches in Gn
+  # 2. The PM assumption, by checking on the matches of regular matching.
+  #
+  # Table1 is of the following form:
+  #  n (size)  #matches
+  # 
+  # Table 2 is of the form
+  # n(size)  (OR OO OS....)  = MATCHING INFO
+  
+  all.sizes <- c(10, 20, 50, 80, 100, 120, 150)
+  sampled.sizes <- sample(all.sizes, size=nsamples, replace=T)
+  print("Sampled sizes breakdown")
+  print(table(sampled.sizes))
+  # stores #matches for each RKE
+  nmatches <- c()
+  # stores #R pairs in each RKE (this is useful for the theoretical #matches)
+  nRpairs <- c()
+  # stores information about the matches e.g. OR, OO, OS, ...
+  match.information = matrix(NA, nrow=0, ncol=length(empty.match.result(empty.rke())$information))
+  # format of the output object.
+  get.result.object <- function() {
+    CHECK_EQ(length(nRpairs), length(nmatches))
+    CHECK_EQ(length(nRpairs), nrow(match.information))
+    return(data.frame(nsize=head(sampled.sizes, length(nRpairs)), 
+               Rsize=nRpairs,
+               matched=nmatches, 
+               match=match.information))
+  }
+  pb = txtProgressBar(style=3)
+  CHECK_EQ(length(sampled.sizes), nsamples)
+  
+  # save at the last iteration too.
+  save.checkpoints <- c(seq(1, nsamples-1, length.out=20), nsamples)
+  
+  for(i in 1:nsamples) {
+    n = sampled.sizes[i]
+    rke = rrke(n)
+    m = max.matching(rke, include.3way=F, regular.matching=T)
+    nmatches <- c(nmatches, get.matching.utility(m))
+    nRpairs <- c(nRpairs, nrow(subset(rke$pairs, pair.type=="R")))
+    match.information <- rbind(match.information, m$information)
+    setTxtProgressBar(pb, value=i/nsamples)
+    
+    if(i %in% save.checkpoints) {
+      table1 = get.result.object()
+      save(table1,file="out/table1.Rdata")
+    }
+  }
+  print("Simulation complete. File saved in out/table1.Rdata")
+}
