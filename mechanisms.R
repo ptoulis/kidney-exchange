@@ -399,7 +399,7 @@ xCM <- function(rke.pool, include.3way=F, verbose=F) {
   ## Final matching.
   remainder.hospital.ids <- setdiff(rke.pair.ids(rke.all), get.matching.ids(total.matching))
   if(length(remainder.hospital.ids) > 0) {
-    rke.remainder = rke.kee.pairs(rke.all, pair.ids=remainder.hospital.ids)
+    rke.remainder = rke.keep.pairs(rke.all, pair.ids=remainder.hospital.ids)
     m.remainder = max.matching(rke.remainder, include.3way=include.3way)
     total.matching <- add.matching(total.matching, m.remainder)
   }

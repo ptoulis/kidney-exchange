@@ -1,0 +1,968 @@
+Fri Dec 13 12:30:33 2013::	######
+Fri Dec 13 12:30:33 2013::	New BONUS
+Fri Dec 13 12:30:33 2013::	Total 6 hospitals
+Fri Dec 13 12:30:33 2013::	Performed S-matching..Utilities:
+Fri Dec 13 12:30:33 2013::	4	5	2	2	3	4
+Fri Dec 13 12:30:33 2013::	Performed R-matching. R-constraints + Utilities
+Fri Dec 13 12:30:33 2013::	DATA FRAME
+		pc	hospital	internal.matches	desc	pair.type
+Fri Dec 13 12:30:33 2013::	 7	10	 7	10	 7	10	1	1	5	5	6	6	1	1	3	3	1	1	B-A	A-B	B-A	A-B	B-A	A-B	R	R	R	R	R	R
+Fri Dec 13 12:30:33 2013::	2	0	0	0	6	2
+Fri Dec 13 12:30:33 2013::	Split into two sets
+Fri Dec 13 12:30:33 2013::	1	5	2
+Fri Dec 13 12:30:33 2013::	3	4	6
+Fri Dec 13 12:30:33 2013::	UD pair codes
+Fri Dec 13 12:30:33 2013::	2	3	4	8	12
+Fri Dec 13 12:30:33 2013::	Computing MAX internal matchings..
+Fri Dec 13 12:30:33 2013::	Hospital 1 is matching 0 internally of A-O
+Fri Dec 13 12:30:33 2013::	Hospital 1 is matching 1 internally of B-O
+Fri Dec 13 12:30:33 2013::	Hospital 1 is matching 0 internally of AB-O
+Fri Dec 13 12:30:33 2013::	Hospital 1 is matching 0 internally of AB-A
+Fri Dec 13 12:30:33 2013::	Hospital 1 is matching 0 internally of AB-B
+Fri Dec 13 12:30:33 2013::	Hospital 2 is matching 0 internally of A-O
+Fri Dec 13 12:30:33 2013::	Hospital 2 is matching 0 internally of B-O
+Fri Dec 13 12:30:33 2013::	Hospital 2 is matching 0 internally of AB-O
+Fri Dec 13 12:30:33 2013::	Hospital 2 is matching 0 internally of AB-A
+Fri Dec 13 12:30:33 2013::	Hospital 2 is matching 0 internally of AB-B
+Fri Dec 13 12:30:33 2013::	Hospital 3 is matching 0 internally of A-O
+Fri Dec 13 12:30:33 2013::	Hospital 3 is matching 0 internally of B-O
+Fri Dec 13 12:30:33 2013::	Hospital 3 is matching 0 internally of AB-O
+Fri Dec 13 12:30:33 2013::	Hospital 3 is matching 0 internally of AB-A
+Fri Dec 13 12:30:33 2013::	Hospital 3 is matching 0 internally of AB-B
+Fri Dec 13 12:30:33 2013::	Hospital 4 is matching 3 internally of A-O
+Fri Dec 13 12:30:33 2013::	Hospital 4 is matching 0 internally of B-O
+Fri Dec 13 12:30:33 2013::	Hospital 4 is matching 0 internally of AB-O
+Fri Dec 13 12:30:33 2013::	Hospital 4 is matching 0 internally of AB-A
+Fri Dec 13 12:30:33 2013::	Hospital 4 is matching 0 internally of AB-B
+Fri Dec 13 12:30:33 2013::	Hospital 5 is matching 0 internally of A-O
+Fri Dec 13 12:30:33 2013::	Hospital 5 is matching 1 internally of B-O
+Fri Dec 13 12:30:33 2013::	Hospital 5 is matching 0 internally of AB-O
+Fri Dec 13 12:30:33 2013::	Hospital 5 is matching 0 internally of AB-A
+Fri Dec 13 12:30:33 2013::	Hospital 5 is matching 0 internally of AB-B
+Fri Dec 13 12:30:33 2013::	Hospital 6 is matching 2 internally of A-O
+Fri Dec 13 12:30:33 2013::	Hospital 6 is matching 1 internally of B-O
+Fri Dec 13 12:30:33 2013::	Hospital 6 is matching 0 internally of AB-O
+Fri Dec 13 12:30:33 2013::	Hospital 6 is matching 0 internally of AB-A
+Fri Dec 13 12:30:33 2013::	Hospital 6 is matching 0 internally of AB-B
+Fri Dec 13 12:30:33 2013::	------------------
+Fri Dec 13 12:30:33 2013::	NEW XY pair
+Fri Dec 13 12:30:33 2013::	XY pairs from set=
+Fri Dec 13 12:30:33 2013::	1	5	2
+Fri Dec 13 12:30:33 2013::	X-Y pair=
+Fri Dec 13 12:30:33 2013::	A-O
+Fri Dec 13 12:30:33 2013::	Y-X pair=
+Fri Dec 13 12:30:33 2013::	O-A
+Fri Dec 13 12:30:33 2013::	Before lottery: Pairs in J ball: 
+Fri Dec 13 12:30:33 2013::	Printing (Q,S). Q=total #XY pairs,  S=total #XY that can be matched.
+Fri Dec 13 12:30:33 2013::	Q=
+Fri Dec 13 12:30:33 2013::	5	5	7
+Fri Dec 13 12:30:33 2013::	Some other way to get these numbers
+Fri Dec 13 12:30:33 2013::	5	5	7
+Fri Dec 13 12:30:33 2013::	S=
+Fri Dec 13 12:30:33 2013::	0	0	0
+Fri Dec 13 12:30:33 2013::	BEFORE lottery = 
+Fri Dec 13 12:30:33 2013::	X-Y pairs set = {
+Fri Dec 13 12:30:33 2013::	3	9	10	17	20	22	23	32	34	36	37	39	82	83	89	95	96
+Fri Dec 13 12:30:33 2013::	Breakdown by hospital
+Fri Dec 13 12:30:33 2013::	TABLE
+1	2	5
+5	7	5
+Fri Dec 13 12:30:33 2013::	Y-X pairs set = {
+Fri Dec 13 12:30:33 2013::	64	72	73	105	109
+Fri Dec 13 12:30:33 2013::	Breakdown by hospital
+Fri Dec 13 12:30:33 2013::	TABLE
+4	6
+3	2
+Fri Dec 13 12:30:33 2013::	Running LOTTERY for UD=2, theta=5
+Fri Dec 13 12:30:33 2013::	Before J-ball process. Sum=0
+Fri Dec 13 12:30:33 2013::	J bin
+Fri Dec 13 12:30:33 2013::	1	1	1	1	1	5	5	5	5	5	2	2	2	2	2	2	2
+Fri Dec 13 12:30:33 2013::	>> J ball: Hospital=5
+Fri Dec 13 12:30:33 2013::	>> J ball: Hospital=5 Adding pair 89 (A-O)
+Fri Dec 13 12:30:33 2013::	>> J ball: Hospital=1
+Fri Dec 13 12:30:33 2013::	>> J ball: Hospital=1 Adding pair 3 (A-O)
+Fri Dec 13 12:30:33 2013::	>> J ball: Hospital=2
+Fri Dec 13 12:30:33 2013::	>> J ball: Hospital=2 Adding pair 36 (A-O)
+Fri Dec 13 12:30:33 2013::	>> J ball: Hospital=1
+Fri Dec 13 12:30:33 2013::	>> J ball: Hospital=1 Adding pair 17 (A-O)
+Fri Dec 13 12:30:33 2013::	>> J ball: Hospital=1
+Fri Dec 13 12:30:33 2013::	>> J ball: Hospital=1 Adding pair 9 (A-O)
+Fri Dec 13 12:30:33 2013::	AFTER lottery = 
+Fri Dec 13 12:30:33 2013::	X-Y pairs matched in lottery = {
+Fri Dec 13 12:30:33 2013::	3	17	9	89	36
+Fri Dec 13 12:30:33 2013::	Breakdown by hospital
+Fri Dec 13 12:30:33 2013::	TABLE
+1	2	5
+3	1	1
+Fri Dec 13 12:30:33 2013::	Performed OU-matching..Utilities:
+Fri Dec 13 12:30:33 2013::	3	1	0	3	1	2
+Fri Dec 13 12:30:33 2013::	------------------
+Fri Dec 13 12:30:33 2013::	NEW XY pair
+Fri Dec 13 12:30:33 2013::	XY pairs from set=
+Fri Dec 13 12:30:33 2013::	3	4	6
+Fri Dec 13 12:30:33 2013::	X-Y pair=
+Fri Dec 13 12:30:33 2013::	A-O
+Fri Dec 13 12:30:33 2013::	Y-X pair=
+Fri Dec 13 12:30:33 2013::	O-A
+Fri Dec 13 12:30:33 2013::	Before lottery: Pairs in J ball: 
+Fri Dec 13 12:30:33 2013::	Printing (Q,S). Q=total #XY pairs,  S=total #XY that can be matched.
+Fri Dec 13 12:30:33 2013::	Q=
+Fri Dec 13 12:30:33 2013::	7	5	4
+Fri Dec 13 12:30:33 2013::	Some other way to get these numbers
+Fri Dec 13 12:30:33 2013::	7	5	4
+Fri Dec 13 12:30:33 2013::	S=
+Fri Dec 13 12:30:33 2013::	0	3	2
+Fri Dec 13 12:30:33 2013::	BEFORE lottery = 
+Fri Dec 13 12:30:33 2013::	X-Y pairs set = {
+Fri Dec 13 12:30:33 2013::	42	47	49	53	57	58	60	61	62	65	66	78	101	113	114	117
+Fri Dec 13 12:30:33 2013::	Breakdown by hospital
+Fri Dec 13 12:30:33 2013::	TABLE
+3	4	6
+7	5	4
+Fri Dec 13 12:30:33 2013::	Y-X pairs set = {
+Fri Dec 13 12:30:33 2013::
+Fri Dec 13 12:30:33 2013::	Breakdown by hospital
+Fri Dec 13 12:30:33 2013::	TABLE
+
+
+Fri Dec 13 12:30:33 2013::	Running LOTTERY for UD=2, theta=0
+Fri Dec 13 12:30:33 2013::	Before J-ball process. Sum=5
+Fri Dec 13 12:30:33 2013::	J bin
+Fri Dec 13 12:30:33 2013::	3	3	3	3	3	3	3	4	4	4	4	4	6	6	6	6
+Fri Dec 13 12:30:33 2013::	AFTER lottery = 
+Fri Dec 13 12:30:33 2013::	X-Y pairs matched in lottery = {
+Fri Dec 13 12:30:33 2013::	61	62	66	101	113
+Fri Dec 13 12:30:33 2013::	Breakdown by hospital
+Fri Dec 13 12:30:33 2013::	TABLE
+4	6
+3	2
+Fri Dec 13 12:30:33 2013::	Performed OU-matching..Utilities:
+Fri Dec 13 12:30:33 2013::	0	0	0	0	0	0
+Fri Dec 13 12:30:33 2013::	------------------
+Fri Dec 13 12:30:33 2013::	NEW XY pair
+Fri Dec 13 12:30:33 2013::	XY pairs from set=
+Fri Dec 13 12:30:33 2013::	1	5	2
+Fri Dec 13 12:30:33 2013::	X-Y pair=
+Fri Dec 13 12:30:33 2013::	B-O
+Fri Dec 13 12:30:33 2013::	Y-X pair=
+Fri Dec 13 12:30:33 2013::	O-B
+Fri Dec 13 12:30:33 2013::	Before lottery: Pairs in J ball: 
+Fri Dec 13 12:30:33 2013::	Printing (Q,S). Q=total #XY pairs,  S=total #XY that can be matched.
+Fri Dec 13 12:30:33 2013::	Q=
+Fri Dec 13 12:30:33 2013::	4	2	1
+Fri Dec 13 12:30:33 2013::	Some other way to get these numbers
+Fri Dec 13 12:30:33 2013::	4	2	1
+Fri Dec 13 12:30:33 2013::	S=
+Fri Dec 13 12:30:33 2013::	1	1	0
+Fri Dec 13 12:30:33 2013::	BEFORE lottery = 
+Fri Dec 13 12:30:33 2013::	X-Y pairs set = {
+Fri Dec 13 12:30:33 2013::	6	12	14	18	40	85	94
+Fri Dec 13 12:30:33 2013::	Breakdown by hospital
+Fri Dec 13 12:30:33 2013::	TABLE
+1	2	5
+4	1	2
+Fri Dec 13 12:30:33 2013::	Y-X pairs set = {
+Fri Dec 13 12:30:33 2013::	68	74	115
+Fri Dec 13 12:30:33 2013::	Breakdown by hospital
+Fri Dec 13 12:30:33 2013::	TABLE
+4	6
+2	1
+Fri Dec 13 12:30:33 2013::	Running LOTTERY for UD=3, theta=3
+Fri Dec 13 12:30:33 2013::	Before J-ball process. Sum=2
+Fri Dec 13 12:30:33 2013::	J bin
+Fri Dec 13 12:30:33 2013::	1	1	1	1	5	5	2
+Fri Dec 13 12:30:33 2013::	>> J ball: Hospital=2
+Fri Dec 13 12:30:33 2013::	>> J ball: Hospital=2 Adding pair 40 (B-O)
+Fri Dec 13 12:30:33 2013::	AFTER lottery = 
+Fri Dec 13 12:30:33 2013::	X-Y pairs matched in lottery = {
+Fri Dec 13 12:30:33 2013::	18	85	40
+Fri Dec 13 12:30:33 2013::	Breakdown by hospital
+Fri Dec 13 12:30:33 2013::	TABLE
+1	2	5
+1	1	1
+Fri Dec 13 12:30:33 2013::	Performed OU-matching..Utilities:
+Fri Dec 13 12:30:33 2013::	1	1	0	2	1	1
+Fri Dec 13 12:30:33 2013::	------------------
+Fri Dec 13 12:30:33 2013::	NEW XY pair
+Fri Dec 13 12:30:33 2013::	XY pairs from set=
+Fri Dec 13 12:30:33 2013::	3	4	6
+Fri Dec 13 12:30:33 2013::	X-Y pair=
+Fri Dec 13 12:30:33 2013::	B-O
+Fri Dec 13 12:30:33 2013::	Y-X pair=
+Fri Dec 13 12:30:33 2013::	O-B
+Fri Dec 13 12:30:33 2013::	Before lottery: Pairs in J ball: 
+Fri Dec 13 12:30:33 2013::	Printing (Q,S). Q=total #XY pairs,  S=total #XY that can be matched.
+Fri Dec 13 12:30:33 2013::	Q=
+Fri Dec 13 12:30:33 2013::	3	2	3
+Fri Dec 13 12:30:33 2013::	Some other way to get these numbers
+Fri Dec 13 12:30:33 2013::	3	2	3
+Fri Dec 13 12:30:33 2013::	S=
+Fri Dec 13 12:30:33 2013::	0	0	1
+Fri Dec 13 12:30:33 2013::	BEFORE lottery = 
+Fri Dec 13 12:30:33 2013::	X-Y pairs set = {
+Fri Dec 13 12:30:33 2013::	43	46	52	77	80	102	106	119
+Fri Dec 13 12:30:33 2013::	Breakdown by hospital
+Fri Dec 13 12:30:33 2013::	TABLE
+3	4	6
+3	2	3
+Fri Dec 13 12:30:33 2013::	Y-X pairs set = {
+Fri Dec 13 12:30:33 2013::	1	84
+Fri Dec 13 12:30:33 2013::	Breakdown by hospital
+Fri Dec 13 12:30:33 2013::	TABLE
+1	5
+1	1
+Fri Dec 13 12:30:33 2013::	Running LOTTERY for UD=3, theta=2
+Fri Dec 13 12:30:33 2013::	Before J-ball process. Sum=1
+Fri Dec 13 12:30:33 2013::	J bin
+Fri Dec 13 12:30:33 2013::	3	3	3	4	4	6	6	6
+Fri Dec 13 12:30:33 2013::	>> J ball: Hospital=3
+Fri Dec 13 12:30:33 2013::	>> J ball: Hospital=3 Adding pair 43 (B-O)
+Fri Dec 13 12:30:33 2013::	AFTER lottery = 
+Fri Dec 13 12:30:33 2013::	X-Y pairs matched in lottery = {
+Fri Dec 13 12:30:33 2013::	43	106
+Fri Dec 13 12:30:33 2013::	Breakdown by hospital
+Fri Dec 13 12:30:33 2013::	TABLE
+3	6
+1	1
+Fri Dec 13 12:30:33 2013::	Performed OU-matching..Utilities:
+Fri Dec 13 12:30:33 2013::	0	0	0	0	1	1
+Fri Dec 13 12:30:33 2013::	------------------
+Fri Dec 13 12:30:33 2013::	NEW XY pair
+Fri Dec 13 12:30:33 2013::	XY pairs from set=
+Fri Dec 13 12:30:33 2013::	1	5	2
+Fri Dec 13 12:30:33 2013::	X-Y pair=
+Fri Dec 13 12:30:33 2013::	AB-O
+Fri Dec 13 12:30:33 2013::	Y-X pair=
+Fri Dec 13 12:30:33 2013::	O-AB
+Fri Dec 13 12:30:33 2013::	Before lottery: Pairs in J ball: 
+Fri Dec 13 12:30:33 2013::	Printing (Q,S). Q=total #XY pairs,  S=total #XY that can be matched.
+Fri Dec 13 12:30:33 2013::	Q=
+Fri Dec 13 12:30:33 2013::	0	1	2
+Fri Dec 13 12:30:33 2013::	Some other way to get these numbers
+Fri Dec 13 12:30:33 2013::	0	1	2
+Fri Dec 13 12:30:33 2013::	S=
+Fri Dec 13 12:30:33 2013::	0	0	0
+Fri Dec 13 12:30:33 2013::	BEFORE lottery = 
+Fri Dec 13 12:30:33 2013::	X-Y pairs set = {
+Fri Dec 13 12:30:33 2013::	27	30	98
+Fri Dec 13 12:30:33 2013::	Breakdown by hospital
+Fri Dec 13 12:30:33 2013::	TABLE
+2	5
+2	1
+Fri Dec 13 12:30:33 2013::	Y-X pairs set = {
+Fri Dec 13 12:30:33 2013::
+Fri Dec 13 12:30:33 2013::	Breakdown by hospital
+Fri Dec 13 12:30:33 2013::	TABLE
+
+
+Fri Dec 13 12:30:33 2013::	Running LOTTERY for UD=4, theta=0
+Fri Dec 13 12:30:33 2013::	Before J-ball process. Sum=0
+Fri Dec 13 12:30:33 2013::	J bin
+Fri Dec 13 12:30:33 2013::	5	2	2
+Fri Dec 13 12:30:33 2013::	AFTER lottery = 
+Fri Dec 13 12:30:33 2013::	X-Y pairs matched in lottery = {
+Fri Dec 13 12:30:33 2013::
+Fri Dec 13 12:30:33 2013::	Breakdown by hospital
+Fri Dec 13 12:30:33 2013::	TABLE
+
+
+Fri Dec 13 12:30:33 2013::	Performed OU-matching..Utilities:
+Fri Dec 13 12:30:33 2013::	0	0	0	0	0	0
+Fri Dec 13 12:30:33 2013::	------------------
+Fri Dec 13 12:30:33 2013::	NEW XY pair
+Fri Dec 13 12:30:33 2013::	XY pairs from set=
+Fri Dec 13 12:30:33 2013::	3	4	6
+Fri Dec 13 12:30:33 2013::	X-Y pair=
+Fri Dec 13 12:30:33 2013::	AB-O
+Fri Dec 13 12:30:33 2013::	Y-X pair=
+Fri Dec 13 12:30:33 2013::	O-AB
+Fri Dec 13 12:30:33 2013::	Before lottery: Pairs in J ball: 
+Fri Dec 13 12:30:33 2013::	Printing (Q,S). Q=total #XY pairs,  S=total #XY that can be matched.
+Fri Dec 13 12:30:33 2013::	Q=
+Fri Dec 13 12:30:33 2013::	1	2	1
+Fri Dec 13 12:30:33 2013::	Some other way to get these numbers
+Fri Dec 13 12:30:33 2013::	1	2	1
+Fri Dec 13 12:30:33 2013::	S=
+Fri Dec 13 12:30:33 2013::	0	0	0
+Fri Dec 13 12:30:33 2013::	BEFORE lottery = 
+Fri Dec 13 12:30:33 2013::	X-Y pairs set = {
+Fri Dec 13 12:30:33 2013::	48	70	79	118
+Fri Dec 13 12:30:33 2013::	Breakdown by hospital
+Fri Dec 13 12:30:33 2013::	TABLE
+3	4	6
+1	2	1
+Fri Dec 13 12:30:33 2013::	Y-X pairs set = {
+Fri Dec 13 12:30:33 2013::	8	35
+Fri Dec 13 12:30:33 2013::	Breakdown by hospital
+Fri Dec 13 12:30:33 2013::	TABLE
+1	2
+1	1
+Fri Dec 13 12:30:33 2013::	Running LOTTERY for UD=4, theta=2
+Fri Dec 13 12:30:33 2013::	Before J-ball process. Sum=0
+Fri Dec 13 12:30:33 2013::	J bin
+Fri Dec 13 12:30:33 2013::	3	4	4	6
+Fri Dec 13 12:30:33 2013::	>> J ball: Hospital=4
+Fri Dec 13 12:30:33 2013::	>> J ball: Hospital=4 Adding pair 70 (AB-O)
+Fri Dec 13 12:30:33 2013::	>> J ball: Hospital=4
+Fri Dec 13 12:30:33 2013::	>> J ball: Hospital=4 Adding pair 79 (AB-O)
+Fri Dec 13 12:30:33 2013::	AFTER lottery = 
+Fri Dec 13 12:30:33 2013::	X-Y pairs matched in lottery = {
+Fri Dec 13 12:30:33 2013::	70	79
+Fri Dec 13 12:30:33 2013::	Breakdown by hospital
+Fri Dec 13 12:30:33 2013::	TABLE
+4
+2
+Fri Dec 13 12:30:33 2013::	Performed OU-matching..Utilities:
+Fri Dec 13 12:30:33 2013::	1	1	0	0	0	0
+Fri Dec 13 12:30:33 2013::	------------------
+Fri Dec 13 12:30:33 2013::	NEW XY pair
+Fri Dec 13 12:30:33 2013::	XY pairs from set=
+Fri Dec 13 12:30:33 2013::	1	5	2
+Fri Dec 13 12:30:33 2013::	X-Y pair=
+Fri Dec 13 12:30:33 2013::	AB-A
+Fri Dec 13 12:30:33 2013::	Y-X pair=
+Fri Dec 13 12:30:33 2013::	A-AB
+Fri Dec 13 12:30:33 2013::	Before lottery: Pairs in J ball: 
+Fri Dec 13 12:30:33 2013::	Printing (Q,S). Q=total #XY pairs,  S=total #XY that can be matched.
+Fri Dec 13 12:30:33 2013::	Q=
+Fri Dec 13 12:30:33 2013::	1	0	1
+Fri Dec 13 12:30:33 2013::	Some other way to get these numbers
+Fri Dec 13 12:30:33 2013::	1	0	1
+Fri Dec 13 12:30:33 2013::	S=
+Fri Dec 13 12:30:33 2013::	0	0	0
+Fri Dec 13 12:30:33 2013::	BEFORE lottery = 
+Fri Dec 13 12:30:33 2013::	X-Y pairs set = {
+Fri Dec 13 12:30:33 2013::	15	31
+Fri Dec 13 12:30:33 2013::	Breakdown by hospital
+Fri Dec 13 12:30:33 2013::	TABLE
+1	2
+1	1
+Fri Dec 13 12:30:33 2013::	Y-X pairs set = {
+Fri Dec 13 12:30:33 2013::	41
+Fri Dec 13 12:30:33 2013::	Breakdown by hospital
+Fri Dec 13 12:30:33 2013::	TABLE
+3
+1
+Fri Dec 13 12:30:33 2013::	Running LOTTERY for UD=8, theta=1
+Fri Dec 13 12:30:33 2013::	Before J-ball process. Sum=0
+Fri Dec 13 12:30:33 2013::	J bin
+Fri Dec 13 12:30:33 2013::	1	2
+Fri Dec 13 12:30:33 2013::	>> J ball: Hospital=1
+Fri Dec 13 12:30:33 2013::	>> J ball: Hospital=1 Adding pair 15 (AB-A)
+Fri Dec 13 12:30:33 2013::	AFTER lottery = 
+Fri Dec 13 12:30:33 2013::	X-Y pairs matched in lottery = {
+Fri Dec 13 12:30:33 2013::	15
+Fri Dec 13 12:30:33 2013::	Breakdown by hospital
+Fri Dec 13 12:30:33 2013::	TABLE
+1
+1
+Fri Dec 13 12:30:33 2013::	Performed OU-matching..Utilities:
+Fri Dec 13 12:30:33 2013::	0	0	0	0	0	0
+Fri Dec 13 12:30:33 2013::	------------------
+Fri Dec 13 12:30:33 2013::	NEW XY pair
+Fri Dec 13 12:30:33 2013::	XY pairs from set=
+Fri Dec 13 12:30:33 2013::	3	4	6
+Fri Dec 13 12:30:33 2013::	X-Y pair=
+Fri Dec 13 12:30:33 2013::	AB-A
+Fri Dec 13 12:30:33 2013::	Y-X pair=
+Fri Dec 13 12:30:33 2013::	A-AB
+Fri Dec 13 12:30:33 2013::	Before lottery: Pairs in J ball: 
+Fri Dec 13 12:30:33 2013::	Printing (Q,S). Q=total #XY pairs,  S=total #XY that can be matched.
+Fri Dec 13 12:30:33 2013::	Q=
+Fri Dec 13 12:30:33 2013::	1	1	1
+Fri Dec 13 12:30:33 2013::	Some other way to get these numbers
+Fri Dec 13 12:30:33 2013::	1	1	1
+Fri Dec 13 12:30:33 2013::	S=
+Fri Dec 13 12:30:33 2013::	0	0	0
+Fri Dec 13 12:30:33 2013::	BEFORE lottery = 
+Fri Dec 13 12:30:33 2013::	X-Y pairs set = {
+Fri Dec 13 12:30:33 2013::	55	71	110
+Fri Dec 13 12:30:33 2013::	Breakdown by hospital
+Fri Dec 13 12:30:33 2013::	TABLE
+3	4	6
+1	1	1
+Fri Dec 13 12:30:33 2013::	Y-X pairs set = {
+Fri Dec 13 12:30:33 2013::
+Fri Dec 13 12:30:33 2013::	Breakdown by hospital
+Fri Dec 13 12:30:33 2013::	TABLE
+
+
+Fri Dec 13 12:30:33 2013::	Running LOTTERY for UD=8, theta=0
+Fri Dec 13 12:30:33 2013::	Before J-ball process. Sum=0
+Fri Dec 13 12:30:33 2013::	J bin
+Fri Dec 13 12:30:33 2013::	3	4	6
+Fri Dec 13 12:30:33 2013::	AFTER lottery = 
+Fri Dec 13 12:30:33 2013::	X-Y pairs matched in lottery = {
+Fri Dec 13 12:30:33 2013::
+Fri Dec 13 12:30:33 2013::	Breakdown by hospital
+Fri Dec 13 12:30:33 2013::	TABLE
+
+
+Fri Dec 13 12:30:33 2013::	Performed OU-matching..Utilities:
+Fri Dec 13 12:30:33 2013::	0	0	0	0	0	0
+Fri Dec 13 12:30:33 2013::	------------------
+Fri Dec 13 12:30:33 2013::	NEW XY pair
+Fri Dec 13 12:30:33 2013::	XY pairs from set=
+Fri Dec 13 12:30:33 2013::	1	5	2
+Fri Dec 13 12:30:33 2013::	X-Y pair=
+Fri Dec 13 12:30:33 2013::	AB-B
+Fri Dec 13 12:30:33 2013::	Y-X pair=
+Fri Dec 13 12:30:33 2013::	B-AB
+Fri Dec 13 12:30:33 2013::	Before lottery: Pairs in J ball: 
+Fri Dec 13 12:30:33 2013::	Printing (Q,S). Q=total #XY pairs,  S=total #XY that can be matched.
+Fri Dec 13 12:30:33 2013::	Q=
+Fri Dec 13 12:30:33 2013::	1	0	0
+Fri Dec 13 12:30:33 2013::	Some other way to get these numbers
+Fri Dec 13 12:30:33 2013::	1	0	0
+Fri Dec 13 12:30:33 2013::	S=
+Fri Dec 13 12:30:33 2013::	0	0	0
+Fri Dec 13 12:30:33 2013::	BEFORE lottery = 
+Fri Dec 13 12:30:33 2013::	X-Y pairs set = {
+Fri Dec 13 12:30:33 2013::	11
+Fri Dec 13 12:30:33 2013::	Breakdown by hospital
+Fri Dec 13 12:30:33 2013::	TABLE
+1
+1
+Fri Dec 13 12:30:33 2013::	Y-X pairs set = {
+Fri Dec 13 12:30:33 2013::
+Fri Dec 13 12:30:33 2013::	Breakdown by hospital
+Fri Dec 13 12:30:33 2013::	TABLE
+
+
+Fri Dec 13 12:30:33 2013::	Running LOTTERY for UD=12, theta=0
+Fri Dec 13 12:30:33 2013::	Before J-ball process. Sum=0
+Fri Dec 13 12:30:33 2013::	J bin
+Fri Dec 13 12:30:33 2013::	1
+Fri Dec 13 12:30:33 2013::	AFTER lottery = 
+Fri Dec 13 12:30:33 2013::	X-Y pairs matched in lottery = {
+Fri Dec 13 12:30:33 2013::
+Fri Dec 13 12:30:33 2013::	Breakdown by hospital
+Fri Dec 13 12:30:33 2013::	TABLE
+
+
+Fri Dec 13 12:30:33 2013::	Performed OU-matching..Utilities:
+Fri Dec 13 12:30:33 2013::	0	0	0	0	0	0
+Fri Dec 13 12:30:33 2013::	------------------
+Fri Dec 13 12:30:33 2013::	NEW XY pair
+Fri Dec 13 12:30:33 2013::	XY pairs from set=
+Fri Dec 13 12:30:33 2013::	3	4	6
+Fri Dec 13 12:30:33 2013::	X-Y pair=
+Fri Dec 13 12:30:33 2013::	AB-B
+Fri Dec 13 12:30:33 2013::	Y-X pair=
+Fri Dec 13 12:30:33 2013::	B-AB
+Fri Dec 13 12:30:33 2013::	Before lottery: Pairs in J ball: 
+Fri Dec 13 12:30:33 2013::	Printing (Q,S). Q=total #XY pairs,  S=total #XY that can be matched.
+Fri Dec 13 12:30:33 2013::	Q=
+Fri Dec 13 12:30:33 2013::	0	0	0
+Fri Dec 13 12:30:33 2013::	Some other way to get these numbers
+Fri Dec 13 12:30:33 2013::	0	0	0
+Fri Dec 13 12:30:33 2013::	S=
+Fri Dec 13 12:30:33 2013::	0	0	0
+Fri Dec 13 12:30:33 2013::	BEFORE lottery = 
+Fri Dec 13 12:30:33 2013::	X-Y pairs set = {
+Fri Dec 13 12:30:33 2013::
+Fri Dec 13 12:30:33 2013::	Breakdown by hospital
+Fri Dec 13 12:30:33 2013::	TABLE
+
+
+Fri Dec 13 12:30:33 2013::	Y-X pairs set = {
+Fri Dec 13 12:30:33 2013::
+Fri Dec 13 12:30:33 2013::	Breakdown by hospital
+Fri Dec 13 12:30:33 2013::	TABLE
+
+
+Fri Dec 13 12:30:33 2013::	Running LOTTERY for UD=12, theta=0
+Fri Dec 13 12:30:33 2013::	Before J-ball process. Sum=0
+Fri Dec 13 12:30:33 2013::	J bin
+Fri Dec 13 12:30:33 2013::
+Fri Dec 13 12:30:33 2013::	AFTER lottery = 
+Fri Dec 13 12:30:33 2013::	X-Y pairs matched in lottery = {
+Fri Dec 13 12:30:33 2013::
+Fri Dec 13 12:30:33 2013::	Breakdown by hospital
+Fri Dec 13 12:30:33 2013::	TABLE
+
+
+Fri Dec 13 12:30:33 2013::	Performed OU-matching..Utilities:
+Fri Dec 13 12:30:33 2013::	0	0	0	0	0	0
+Fri Dec 13 12:30:34 2013::	######
+Fri Dec 13 12:30:34 2013::	New BONUS
+Fri Dec 13 12:30:34 2013::	Total 6 hospitals
+Fri Dec 13 12:30:34 2013::	Performed S-matching..Utilities:
+Fri Dec 13 12:30:34 2013::	2	4	2	2	4	4
+Fri Dec 13 12:30:34 2013::	Performed R-matching. R-constraints + Utilities
+Fri Dec 13 12:30:34 2013::	DATA FRAME
+		pc	hospital	internal.matches	desc	pair.type
+Fri Dec 13 12:30:34 2013::	 7	10	 7	10	5	5	6	6	3	3	1	1	B-A	A-B	B-A	A-B	R	R	R	R
+Fri Dec 13 12:30:34 2013::	0	0	0	0	6	2
+Fri Dec 13 12:30:34 2013::	Split into two sets
+Fri Dec 13 12:30:34 2013::	1	3	6
+Fri Dec 13 12:30:34 2013::	2	4	5
+Fri Dec 13 12:30:34 2013::	UD pair codes
+Fri Dec 13 12:30:34 2013::	2	3	4	8	12
+Fri Dec 13 12:30:34 2013::	Computing MAX internal matchings..
+Fri Dec 13 12:30:34 2013::	Hospital 1 is matching 0 internally of A-O
+Fri Dec 13 12:30:34 2013::	Hospital 1 is matching 0 internally of B-O
+Fri Dec 13 12:30:34 2013::	Hospital 1 is matching 0 internally of AB-O
+Fri Dec 13 12:30:34 2013::	Hospital 1 is matching 0 internally of AB-A
+Fri Dec 13 12:30:34 2013::	Hospital 1 is matching 0 internally of AB-B
+Fri Dec 13 12:30:34 2013::	Hospital 2 is matching 1 internally of A-O
+Fri Dec 13 12:30:34 2013::	Hospital 2 is matching 0 internally of B-O
+Fri Dec 13 12:30:34 2013::	Hospital 2 is matching 0 internally of AB-O
+Fri Dec 13 12:30:34 2013::	Hospital 2 is matching 0 internally of AB-A
+Fri Dec 13 12:30:34 2013::	Hospital 2 is matching 0 internally of AB-B
+Fri Dec 13 12:30:34 2013::	Hospital 3 is matching 0 internally of A-O
+Fri Dec 13 12:30:34 2013::	Hospital 3 is matching 0 internally of B-O
+Fri Dec 13 12:30:34 2013::	Hospital 3 is matching 0 internally of AB-O
+Fri Dec 13 12:30:34 2013::	Hospital 3 is matching 1 internally of AB-A
+Fri Dec 13 12:30:34 2013::	Hospital 3 is matching 0 internally of AB-B
+Fri Dec 13 12:30:34 2013::	Hospital 4 is matching 3 internally of A-O
+Fri Dec 13 12:30:34 2013::	Hospital 4 is matching 0 internally of B-O
+Fri Dec 13 12:30:34 2013::	Hospital 4 is matching 0 internally of AB-O
+Fri Dec 13 12:30:34 2013::	Hospital 4 is matching 0 internally of AB-A
+Fri Dec 13 12:30:34 2013::	Hospital 4 is matching 0 internally of AB-B
+Fri Dec 13 12:30:34 2013::	Hospital 5 is matching 0 internally of A-O
+Fri Dec 13 12:30:34 2013::	Hospital 5 is matching 0 internally of B-O
+Fri Dec 13 12:30:34 2013::	Hospital 5 is matching 0 internally of AB-O
+Fri Dec 13 12:30:34 2013::	Hospital 5 is matching 0 internally of AB-A
+Fri Dec 13 12:30:34 2013::	Hospital 5 is matching 0 internally of AB-B
+Fri Dec 13 12:30:34 2013::	Hospital 6 is matching 1 internally of A-O
+Fri Dec 13 12:30:34 2013::	Hospital 6 is matching 0 internally of B-O
+Fri Dec 13 12:30:34 2013::	Hospital 6 is matching 0 internally of AB-O
+Fri Dec 13 12:30:34 2013::	Hospital 6 is matching 0 internally of AB-A
+Fri Dec 13 12:30:34 2013::	Hospital 6 is matching 0 internally of AB-B
+Fri Dec 13 12:30:34 2013::	------------------
+Fri Dec 13 12:30:34 2013::	NEW XY pair
+Fri Dec 13 12:30:34 2013::	XY pairs from set=
+Fri Dec 13 12:30:34 2013::	1	3	6
+Fri Dec 13 12:30:34 2013::	X-Y pair=
+Fri Dec 13 12:30:34 2013::	A-O
+Fri Dec 13 12:30:34 2013::	Y-X pair=
+Fri Dec 13 12:30:34 2013::	O-A
+Fri Dec 13 12:30:34 2013::	Before lottery: Pairs in J ball: 
+Fri Dec 13 12:30:34 2013::	Printing (Q,S). Q=total #XY pairs,  S=total #XY that can be matched.
+Fri Dec 13 12:30:34 2013::	Q=
+Fri Dec 13 12:30:34 2013::	5	7	4
+Fri Dec 13 12:30:34 2013::	Some other way to get these numbers
+Fri Dec 13 12:30:34 2013::	5	7	4
+Fri Dec 13 12:30:34 2013::	S=
+Fri Dec 13 12:30:34 2013::	0	0	1
+Fri Dec 13 12:30:34 2013::	BEFORE lottery = 
+Fri Dec 13 12:30:34 2013::	X-Y pairs set = {
+Fri Dec 13 12:30:34 2013::	3	9	10	17	20	42	47	49	53	57	58	60	101	113	114	117
+Fri Dec 13 12:30:34 2013::	Breakdown by hospital
+Fri Dec 13 12:30:34 2013::	TABLE
+1	3	6
+5	7	4
+Fri Dec 13 12:30:34 2013::	Y-X pairs set = {
+Fri Dec 13 12:30:34 2013::	64	72	73
+Fri Dec 13 12:30:34 2013::	Breakdown by hospital
+Fri Dec 13 12:30:34 2013::	TABLE
+4
+3
+Fri Dec 13 12:30:34 2013::	Running LOTTERY for UD=2, theta=3
+Fri Dec 13 12:30:34 2013::	Before J-ball process. Sum=1
+Fri Dec 13 12:30:34 2013::	J bin
+Fri Dec 13 12:30:34 2013::	1	1	1	1	1	3	3	3	3	3	3	3	6	6	6	6
+Fri Dec 13 12:30:34 2013::	>> J ball: Hospital=3
+Fri Dec 13 12:30:34 2013::	>> J ball: Hospital=3 Adding pair 53 (A-O)
+Fri Dec 13 12:30:34 2013::	>> J ball: Hospital=3
+Fri Dec 13 12:30:34 2013::	>> J ball: Hospital=3 Adding pair 49 (A-O)
+Fri Dec 13 12:30:34 2013::	AFTER lottery = 
+Fri Dec 13 12:30:34 2013::	X-Y pairs matched in lottery = {
+Fri Dec 13 12:30:34 2013::	53	49	114
+Fri Dec 13 12:30:34 2013::	Breakdown by hospital
+Fri Dec 13 12:30:34 2013::	TABLE
+3	6
+2	1
+Fri Dec 13 12:30:34 2013::	Performed OU-matching..Utilities:
+Fri Dec 13 12:30:34 2013::	0	0	2	3	0	1
+Fri Dec 13 12:30:34 2013::	------------------
+Fri Dec 13 12:30:34 2013::	NEW XY pair
+Fri Dec 13 12:30:34 2013::	XY pairs from set=
+Fri Dec 13 12:30:34 2013::	2	4	5
+Fri Dec 13 12:30:34 2013::	X-Y pair=
+Fri Dec 13 12:30:34 2013::	A-O
+Fri Dec 13 12:30:34 2013::	Y-X pair=
+Fri Dec 13 12:30:34 2013::	O-A
+Fri Dec 13 12:30:34 2013::	Before lottery: Pairs in J ball: 
+Fri Dec 13 12:30:34 2013::	Printing (Q,S). Q=total #XY pairs,  S=total #XY that can be matched.
+Fri Dec 13 12:30:34 2013::	Q=
+Fri Dec 13 12:30:34 2013::	7	5	5
+Fri Dec 13 12:30:34 2013::	Some other way to get these numbers
+Fri Dec 13 12:30:34 2013::	7	5	5
+Fri Dec 13 12:30:34 2013::	S=
+Fri Dec 13 12:30:34 2013::	1	3	0
+Fri Dec 13 12:30:34 2013::	BEFORE lottery = 
+Fri Dec 13 12:30:34 2013::	X-Y pairs set = {
+Fri Dec 13 12:30:34 2013::	22	23	32	34	36	37	39	61	62	65	66	78	82	83	89	95	96
+Fri Dec 13 12:30:34 2013::	Breakdown by hospital
+Fri Dec 13 12:30:34 2013::	TABLE
+2	4	5
+7	5	5
+Fri Dec 13 12:30:34 2013::	Y-X pairs set = {
+Fri Dec 13 12:30:34 2013::	105	109
+Fri Dec 13 12:30:34 2013::	Breakdown by hospital
+Fri Dec 13 12:30:34 2013::	TABLE
+6
+2
+Fri Dec 13 12:30:34 2013::	Running LOTTERY for UD=2, theta=2
+Fri Dec 13 12:30:34 2013::	Before J-ball process. Sum=4
+Fri Dec 13 12:30:34 2013::	J bin
+Fri Dec 13 12:30:34 2013::	2	2	2	2	2	2	2	4	4	4	4	4	5	5	5	5	5
+Fri Dec 13 12:30:34 2013::	AFTER lottery = 
+Fri Dec 13 12:30:34 2013::	X-Y pairs matched in lottery = {
+Fri Dec 13 12:30:34 2013::	39	61	65	78
+Fri Dec 13 12:30:34 2013::	Breakdown by hospital
+Fri Dec 13 12:30:34 2013::	TABLE
+2	4
+1	3
+Fri Dec 13 12:30:34 2013::	Performed OU-matching..Utilities:
+Fri Dec 13 12:30:34 2013::	0	0	0	2	0	2
+Fri Dec 13 12:30:34 2013::	------------------
+Fri Dec 13 12:30:34 2013::	NEW XY pair
+Fri Dec 13 12:30:34 2013::	XY pairs from set=
+Fri Dec 13 12:30:34 2013::	1	3	6
+Fri Dec 13 12:30:34 2013::	X-Y pair=
+Fri Dec 13 12:30:34 2013::	B-O
+Fri Dec 13 12:30:34 2013::	Y-X pair=
+Fri Dec 13 12:30:34 2013::	O-B
+Fri Dec 13 12:30:34 2013::	Before lottery: Pairs in J ball: 
+Fri Dec 13 12:30:34 2013::	Printing (Q,S). Q=total #XY pairs,  S=total #XY that can be matched.
+Fri Dec 13 12:30:34 2013::	Q=
+Fri Dec 13 12:30:34 2013::	2	3	3
+Fri Dec 13 12:30:34 2013::	Some other way to get these numbers
+Fri Dec 13 12:30:34 2013::	2	3	3
+Fri Dec 13 12:30:34 2013::	S=
+Fri Dec 13 12:30:34 2013::	0	0	0
+Fri Dec 13 12:30:34 2013::	BEFORE lottery = 
+Fri Dec 13 12:30:34 2013::	X-Y pairs set = {
+Fri Dec 13 12:30:34 2013::	14	18	43	46	52	102	106	119
+Fri Dec 13 12:30:34 2013::	Breakdown by hospital
+Fri Dec 13 12:30:34 2013::	TABLE
+1	3	6
+2	3	3
+Fri Dec 13 12:30:34 2013::	Y-X pairs set = {
+Fri Dec 13 12:30:34 2013::	68	74	84
+Fri Dec 13 12:30:34 2013::	Breakdown by hospital
+Fri Dec 13 12:30:34 2013::	TABLE
+4	5
+2	1
+Fri Dec 13 12:30:34 2013::	Running LOTTERY for UD=3, theta=3
+Fri Dec 13 12:30:34 2013::	Before J-ball process. Sum=0
+Fri Dec 13 12:30:34 2013::	J bin
+Fri Dec 13 12:30:34 2013::	1	1	3	3	3	6	6	6
+Fri Dec 13 12:30:34 2013::	>> J ball: Hospital=3
+Fri Dec 13 12:30:34 2013::	>> J ball: Hospital=3 Adding pair 43 (B-O)
+Fri Dec 13 12:30:34 2013::	>> J ball: Hospital=6
+Fri Dec 13 12:30:34 2013::	>> J ball: Hospital=6 Adding pair 106 (B-O)
+Fri Dec 13 12:30:34 2013::	>> J ball: Hospital=1
+Fri Dec 13 12:30:34 2013::	>> J ball: Hospital=1 Adding pair 18 (B-O)
+Fri Dec 13 12:30:34 2013::	AFTER lottery = 
+Fri Dec 13 12:30:34 2013::	X-Y pairs matched in lottery = {
+Fri Dec 13 12:30:34 2013::	18	43	106
+Fri Dec 13 12:30:34 2013::	Breakdown by hospital
+Fri Dec 13 12:30:34 2013::	TABLE
+1	3	6
+1	1	1
+Fri Dec 13 12:30:34 2013::	Performed OU-matching..Utilities:
+Fri Dec 13 12:30:34 2013::	1	0	1	2	1	1
+Fri Dec 13 12:30:34 2013::	------------------
+Fri Dec 13 12:30:34 2013::	NEW XY pair
+Fri Dec 13 12:30:34 2013::	XY pairs from set=
+Fri Dec 13 12:30:34 2013::	2	4	5
+Fri Dec 13 12:30:34 2013::	X-Y pair=
+Fri Dec 13 12:30:34 2013::	B-O
+Fri Dec 13 12:30:34 2013::	Y-X pair=
+Fri Dec 13 12:30:34 2013::	O-B
+Fri Dec 13 12:30:34 2013::	Before lottery: Pairs in J ball: 
+Fri Dec 13 12:30:34 2013::	Printing (Q,S). Q=total #XY pairs,  S=total #XY that can be matched.
+Fri Dec 13 12:30:34 2013::	Q=
+Fri Dec 13 12:30:34 2013::	1	2	2
+Fri Dec 13 12:30:34 2013::	Some other way to get these numbers
+Fri Dec 13 12:30:34 2013::	1	2	2
+Fri Dec 13 12:30:34 2013::	S=
+Fri Dec 13 12:30:34 2013::	0	0	0
+Fri Dec 13 12:30:34 2013::	BEFORE lottery = 
+Fri Dec 13 12:30:34 2013::	X-Y pairs set = {
+Fri Dec 13 12:30:34 2013::	40	77	80	85	94
+Fri Dec 13 12:30:34 2013::	Breakdown by hospital
+Fri Dec 13 12:30:34 2013::	TABLE
+2	4	5
+1	2	2
+Fri Dec 13 12:30:34 2013::	Y-X pairs set = {
+Fri Dec 13 12:30:34 2013::	115
+Fri Dec 13 12:30:34 2013::	Breakdown by hospital
+Fri Dec 13 12:30:34 2013::	TABLE
+6
+1
+Fri Dec 13 12:30:34 2013::	Running LOTTERY for UD=3, theta=1
+Fri Dec 13 12:30:34 2013::	Before J-ball process. Sum=0
+Fri Dec 13 12:30:34 2013::	J bin
+Fri Dec 13 12:30:34 2013::	2	4	4	5	5
+Fri Dec 13 12:30:34 2013::	>> J ball: Hospital=5
+Fri Dec 13 12:30:34 2013::	>> J ball: Hospital=5 Adding pair 94 (B-O)
+Fri Dec 13 12:30:34 2013::	AFTER lottery = 
+Fri Dec 13 12:30:34 2013::	X-Y pairs matched in lottery = {
+Fri Dec 13 12:30:34 2013::	94
+Fri Dec 13 12:30:34 2013::	Breakdown by hospital
+Fri Dec 13 12:30:34 2013::	TABLE
+5
+1
+Fri Dec 13 12:30:34 2013::	Performed OU-matching..Utilities:
+Fri Dec 13 12:30:34 2013::	0	0	0	0	0	0
+Fri Dec 13 12:30:34 2013::	------------------
+Fri Dec 13 12:30:34 2013::	NEW XY pair
+Fri Dec 13 12:30:34 2013::	XY pairs from set=
+Fri Dec 13 12:30:34 2013::	1	3	6
+Fri Dec 13 12:30:34 2013::	X-Y pair=
+Fri Dec 13 12:30:34 2013::	AB-O
+Fri Dec 13 12:30:34 2013::	Y-X pair=
+Fri Dec 13 12:30:34 2013::	O-AB
+Fri Dec 13 12:30:34 2013::	Before lottery: Pairs in J ball: 
+Fri Dec 13 12:30:34 2013::	Printing (Q,S). Q=total #XY pairs,  S=total #XY that can be matched.
+Fri Dec 13 12:30:34 2013::	Q=
+Fri Dec 13 12:30:34 2013::	0	1	1
+Fri Dec 13 12:30:34 2013::	Some other way to get these numbers
+Fri Dec 13 12:30:34 2013::	0	1	1
+Fri Dec 13 12:30:34 2013::	S=
+Fri Dec 13 12:30:34 2013::	0	0	0
+Fri Dec 13 12:30:34 2013::	BEFORE lottery = 
+Fri Dec 13 12:30:34 2013::	X-Y pairs set = {
+Fri Dec 13 12:30:34 2013::	48	118
+Fri Dec 13 12:30:34 2013::	Breakdown by hospital
+Fri Dec 13 12:30:34 2013::	TABLE
+3	6
+1	1
+Fri Dec 13 12:30:34 2013::	Y-X pairs set = {
+Fri Dec 13 12:30:34 2013::	35
+Fri Dec 13 12:30:34 2013::	Breakdown by hospital
+Fri Dec 13 12:30:34 2013::	TABLE
+2
+1
+Fri Dec 13 12:30:34 2013::	Running LOTTERY for UD=4, theta=1
+Fri Dec 13 12:30:34 2013::	Before J-ball process. Sum=0
+Fri Dec 13 12:30:34 2013::	J bin
+Fri Dec 13 12:30:34 2013::	3	6
+Fri Dec 13 12:30:34 2013::	>> J ball: Hospital=6
+Fri Dec 13 12:30:34 2013::	>> J ball: Hospital=6 Adding pair 118 (AB-O)
+Fri Dec 13 12:30:34 2013::	AFTER lottery = 
+Fri Dec 13 12:30:34 2013::	X-Y pairs matched in lottery = {
+Fri Dec 13 12:30:34 2013::	118
+Fri Dec 13 12:30:34 2013::	Breakdown by hospital
+Fri Dec 13 12:30:34 2013::	TABLE
+6
+1
+Fri Dec 13 12:30:34 2013::	Performed OU-matching..Utilities:
+Fri Dec 13 12:30:34 2013::	0	0	0	0	0	0
+Fri Dec 13 12:30:34 2013::	------------------
+Fri Dec 13 12:30:34 2013::	NEW XY pair
+Fri Dec 13 12:30:34 2013::	XY pairs from set=
+Fri Dec 13 12:30:34 2013::	2	4	5
+Fri Dec 13 12:30:34 2013::	X-Y pair=
+Fri Dec 13 12:30:34 2013::	AB-O
+Fri Dec 13 12:30:34 2013::	Y-X pair=
+Fri Dec 13 12:30:34 2013::	O-AB
+Fri Dec 13 12:30:34 2013::	Before lottery: Pairs in J ball: 
+Fri Dec 13 12:30:34 2013::	Printing (Q,S). Q=total #XY pairs,  S=total #XY that can be matched.
+Fri Dec 13 12:30:34 2013::	Q=
+Fri Dec 13 12:30:34 2013::	2	2	1
+Fri Dec 13 12:30:34 2013::	Some other way to get these numbers
+Fri Dec 13 12:30:34 2013::	2	2	1
+Fri Dec 13 12:30:34 2013::	S=
+Fri Dec 13 12:30:34 2013::	0	0	0
+Fri Dec 13 12:30:34 2013::	BEFORE lottery = 
+Fri Dec 13 12:30:34 2013::	X-Y pairs set = {
+Fri Dec 13 12:30:34 2013::	27	30	70	79	98
+Fri Dec 13 12:30:34 2013::	Breakdown by hospital
+Fri Dec 13 12:30:34 2013::	TABLE
+2	4	5
+2	2	1
+Fri Dec 13 12:30:34 2013::	Y-X pairs set = {
+Fri Dec 13 12:30:34 2013::
+Fri Dec 13 12:30:34 2013::	Breakdown by hospital
+Fri Dec 13 12:30:34 2013::	TABLE
+
+
+Fri Dec 13 12:30:34 2013::	Running LOTTERY for UD=4, theta=0
+Fri Dec 13 12:30:34 2013::	Before J-ball process. Sum=0
+Fri Dec 13 12:30:34 2013::	J bin
+Fri Dec 13 12:30:34 2013::	2	2	4	4	5
+Fri Dec 13 12:30:34 2013::	AFTER lottery = 
+Fri Dec 13 12:30:34 2013::	X-Y pairs matched in lottery = {
+Fri Dec 13 12:30:34 2013::
+Fri Dec 13 12:30:34 2013::	Breakdown by hospital
+Fri Dec 13 12:30:34 2013::	TABLE
+
+
+Fri Dec 13 12:30:34 2013::	Performed OU-matching..Utilities:
+Fri Dec 13 12:30:34 2013::	0	0	0	0	0	0
+Fri Dec 13 12:30:34 2013::	------------------
+Fri Dec 13 12:30:34 2013::	NEW XY pair
+Fri Dec 13 12:30:34 2013::	XY pairs from set=
+Fri Dec 13 12:30:34 2013::	1	3	6
+Fri Dec 13 12:30:34 2013::	X-Y pair=
+Fri Dec 13 12:30:34 2013::	AB-A
+Fri Dec 13 12:30:34 2013::	Y-X pair=
+Fri Dec 13 12:30:34 2013::	A-AB
+Fri Dec 13 12:30:34 2013::	Before lottery: Pairs in J ball: 
+Fri Dec 13 12:30:34 2013::	Printing (Q,S). Q=total #XY pairs,  S=total #XY that can be matched.
+Fri Dec 13 12:30:34 2013::	Q=
+Fri Dec 13 12:30:34 2013::	1	1	1
+Fri Dec 13 12:30:34 2013::	Some other way to get these numbers
+Fri Dec 13 12:30:34 2013::	1	1	1
+Fri Dec 13 12:30:34 2013::	S=
+Fri Dec 13 12:30:34 2013::	0	1	0
+Fri Dec 13 12:30:34 2013::	BEFORE lottery = 
+Fri Dec 13 12:30:34 2013::	X-Y pairs set = {
+Fri Dec 13 12:30:34 2013::	15	55	110
+Fri Dec 13 12:30:34 2013::	Breakdown by hospital
+Fri Dec 13 12:30:34 2013::	TABLE
+1	3	6
+1	1	1
+Fri Dec 13 12:30:34 2013::	Y-X pairs set = {
+Fri Dec 13 12:30:34 2013::
+Fri Dec 13 12:30:34 2013::	Breakdown by hospital
+Fri Dec 13 12:30:34 2013::	TABLE
+
+
+Fri Dec 13 12:30:34 2013::	Running LOTTERY for UD=8, theta=0
+Fri Dec 13 12:30:34 2013::	Before J-ball process. Sum=1
+Fri Dec 13 12:30:34 2013::	J bin
+Fri Dec 13 12:30:34 2013::	1	3	6
+Fri Dec 13 12:30:34 2013::	AFTER lottery = 
+Fri Dec 13 12:30:34 2013::	X-Y pairs matched in lottery = {
+Fri Dec 13 12:30:34 2013::	55
+Fri Dec 13 12:30:34 2013::	Breakdown by hospital
+Fri Dec 13 12:30:34 2013::	TABLE
+3
+1
+Fri Dec 13 12:30:34 2013::	Performed OU-matching..Utilities:
+Fri Dec 13 12:30:34 2013::	0	0	0	0	0	0
+Fri Dec 13 12:30:34 2013::	------------------
+Fri Dec 13 12:30:34 2013::	NEW XY pair
+Fri Dec 13 12:30:34 2013::	XY pairs from set=
+Fri Dec 13 12:30:34 2013::	2	4	5
+Fri Dec 13 12:30:34 2013::	X-Y pair=
+Fri Dec 13 12:30:34 2013::	AB-A
+Fri Dec 13 12:30:34 2013::	Y-X pair=
+Fri Dec 13 12:30:34 2013::	A-AB
+Fri Dec 13 12:30:34 2013::	Before lottery: Pairs in J ball: 
+Fri Dec 13 12:30:34 2013::	Printing (Q,S). Q=total #XY pairs,  S=total #XY that can be matched.
+Fri Dec 13 12:30:34 2013::	Q=
+Fri Dec 13 12:30:34 2013::	1	1	0
+Fri Dec 13 12:30:34 2013::	Some other way to get these numbers
+Fri Dec 13 12:30:34 2013::	1	1	0
+Fri Dec 13 12:30:34 2013::	S=
+Fri Dec 13 12:30:34 2013::	0	0	0
+Fri Dec 13 12:30:34 2013::	BEFORE lottery = 
+Fri Dec 13 12:30:34 2013::	X-Y pairs set = {
+Fri Dec 13 12:30:34 2013::	31	71
+Fri Dec 13 12:30:34 2013::	Breakdown by hospital
+Fri Dec 13 12:30:34 2013::	TABLE
+2	4
+1	1
+Fri Dec 13 12:30:34 2013::	Y-X pairs set = {
+Fri Dec 13 12:30:34 2013::	41
+Fri Dec 13 12:30:34 2013::	Breakdown by hospital
+Fri Dec 13 12:30:34 2013::	TABLE
+3
+1
+Fri Dec 13 12:30:34 2013::	Running LOTTERY for UD=8, theta=1
+Fri Dec 13 12:30:34 2013::	Before J-ball process. Sum=0
+Fri Dec 13 12:30:34 2013::	J bin
+Fri Dec 13 12:30:34 2013::	2	4
+Fri Dec 13 12:30:34 2013::	>> J ball: Hospital=4
+Fri Dec 13 12:30:34 2013::	>> J ball: Hospital=4 Adding pair 71 (AB-A)
+Fri Dec 13 12:30:34 2013::	AFTER lottery = 
+Fri Dec 13 12:30:34 2013::	X-Y pairs matched in lottery = {
+Fri Dec 13 12:30:34 2013::	71
+Fri Dec 13 12:30:34 2013::	Breakdown by hospital
+Fri Dec 13 12:30:34 2013::	TABLE
+4
+1
+Fri Dec 13 12:30:34 2013::	Performed OU-matching..Utilities:
+Fri Dec 13 12:30:34 2013::	0	0	0	0	0	0
+Fri Dec 13 12:30:34 2013::	------------------
+Fri Dec 13 12:30:34 2013::	NEW XY pair
+Fri Dec 13 12:30:34 2013::	XY pairs from set=
+Fri Dec 13 12:30:34 2013::	1	3	6
+Fri Dec 13 12:30:34 2013::	X-Y pair=
+Fri Dec 13 12:30:34 2013::	AB-B
+Fri Dec 13 12:30:34 2013::	Y-X pair=
+Fri Dec 13 12:30:34 2013::	B-AB
+Fri Dec 13 12:30:34 2013::	Before lottery: Pairs in J ball: 
+Fri Dec 13 12:30:34 2013::	Printing (Q,S). Q=total #XY pairs,  S=total #XY that can be matched.
+Fri Dec 13 12:30:34 2013::	Q=
+Fri Dec 13 12:30:34 2013::	1	0	0
+Fri Dec 13 12:30:34 2013::	Some other way to get these numbers
+Fri Dec 13 12:30:34 2013::	1	0	0
+Fri Dec 13 12:30:34 2013::	S=
+Fri Dec 13 12:30:34 2013::	0	0	0
+Fri Dec 13 12:30:34 2013::	BEFORE lottery = 
+Fri Dec 13 12:30:34 2013::	X-Y pairs set = {
+Fri Dec 13 12:30:34 2013::	11
+Fri Dec 13 12:30:34 2013::	Breakdown by hospital
+Fri Dec 13 12:30:34 2013::	TABLE
+1
+1
+Fri Dec 13 12:30:34 2013::	Y-X pairs set = {
+Fri Dec 13 12:30:34 2013::
+Fri Dec 13 12:30:34 2013::	Breakdown by hospital
+Fri Dec 13 12:30:34 2013::	TABLE
+
+
+Fri Dec 13 12:30:34 2013::	Running LOTTERY for UD=12, theta=0
+Fri Dec 13 12:30:34 2013::	Before J-ball process. Sum=0
+Fri Dec 13 12:30:34 2013::	J bin
+Fri Dec 13 12:30:34 2013::	1
+Fri Dec 13 12:30:34 2013::	AFTER lottery = 
+Fri Dec 13 12:30:34 2013::	X-Y pairs matched in lottery = {
+Fri Dec 13 12:30:34 2013::
+Fri Dec 13 12:30:34 2013::	Breakdown by hospital
+Fri Dec 13 12:30:34 2013::	TABLE
+
+
+Fri Dec 13 12:30:34 2013::	Performed OU-matching..Utilities:
+Fri Dec 13 12:30:34 2013::	0	0	0	0	0	0
+Fri Dec 13 12:30:34 2013::	------------------
+Fri Dec 13 12:30:34 2013::	NEW XY pair
+Fri Dec 13 12:30:34 2013::	XY pairs from set=
+Fri Dec 13 12:30:34 2013::	2	4	5
+Fri Dec 13 12:30:34 2013::	X-Y pair=
+Fri Dec 13 12:30:34 2013::	AB-B
+Fri Dec 13 12:30:34 2013::	Y-X pair=
+Fri Dec 13 12:30:34 2013::	B-AB
+Fri Dec 13 12:30:34 2013::	Before lottery: Pairs in J ball: 
+Fri Dec 13 12:30:34 2013::	Printing (Q,S). Q=total #XY pairs,  S=total #XY that can be matched.
+Fri Dec 13 12:30:34 2013::	Q=
+Fri Dec 13 12:30:34 2013::	0	0	0
+Fri Dec 13 12:30:34 2013::	Some other way to get these numbers
+Fri Dec 13 12:30:34 2013::	0	0	0
+Fri Dec 13 12:30:34 2013::	S=
+Fri Dec 13 12:30:34 2013::	0	0	0
+Fri Dec 13 12:30:34 2013::	BEFORE lottery = 
+Fri Dec 13 12:30:34 2013::	X-Y pairs set = {
+Fri Dec 13 12:30:34 2013::
+Fri Dec 13 12:30:34 2013::	Breakdown by hospital
+Fri Dec 13 12:30:34 2013::	TABLE
+
+
+Fri Dec 13 12:30:34 2013::	Y-X pairs set = {
+Fri Dec 13 12:30:34 2013::
+Fri Dec 13 12:30:34 2013::	Breakdown by hospital
+Fri Dec 13 12:30:34 2013::	TABLE
+
+
+Fri Dec 13 12:30:34 2013::	Running LOTTERY for UD=12, theta=0
+Fri Dec 13 12:30:34 2013::	Before J-ball process. Sum=0
+Fri Dec 13 12:30:34 2013::	J bin
+Fri Dec 13 12:30:34 2013::
+Fri Dec 13 12:30:34 2013::	AFTER lottery = 
+Fri Dec 13 12:30:34 2013::	X-Y pairs matched in lottery = {
+Fri Dec 13 12:30:34 2013::
+Fri Dec 13 12:30:34 2013::	Breakdown by hospital
+Fri Dec 13 12:30:34 2013::	TABLE
+
+
+Fri Dec 13 12:30:34 2013::	Performed OU-matching..Utilities:
+Fri Dec 13 12:30:34 2013::	0	0	0	0	0	0
