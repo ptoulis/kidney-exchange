@@ -3,7 +3,7 @@
 library(plyr)
 library(stringr)
 
-
+kCurrentLogLevel = 5
 # Terminology:
 # *  A "blood-type" is in {"O", "A", "B", "AB"} and represents a blood-type
 #     A "blood-code" is an integer representation, in {1, 2, 3, 6} resp.
