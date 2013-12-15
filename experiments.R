@@ -147,6 +147,22 @@ compare.mechanisms <- function(comparison) {
   return(result)                       
 }
 
+summarize.coompare.output <- function(compare.mech.out) {
+  ## Gives a verbose summary of the outcome of the comparison
+  #
+  # Args:
+  #   compare.mech.out = output of compare.mechanisms()
+  for(strategy in names(compare.mech.out)) {
+    for(mech in names(compare.mech.out[[strategy]])) {
+      print(sprintf("Strategy %s mechanism %s..", strategy, mech))
+      print("Hospital utilities (avg.)")
+      print(rowMeans(compare.mech.out[[strategy]][[mech]]$utility))
+      print("Total welfare (sum)")
+      print(sum(compare.mech.out[[strategy]][[mech]]$utility))
+    }
+  }
+}
+
 mech.weakness <- function(mechanism, nHospitals=6, nSize=25, ntrials=10) {
   CHECK_EQ(nHospitals %% 2, 0)
   kCurrentLogLevel <<- 5
