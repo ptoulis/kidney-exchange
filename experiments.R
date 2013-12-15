@@ -287,7 +287,7 @@ table2.welfare.incentives.2way <- function(nsamples=100) {
   nhospitals = 6
   get.strategy <- function(no.truthful, no.deviating) {
     CHECK_EQ(no.truthful + no.deviating, nhospitals)
-    return(paste(c(rep("t", no.truthful), rep("c", no.deviating))), collapse="")
+    return(paste(c(rep("t", no.truthful), rep("c", no.deviating)), collapse=""))
   }
   
   baseline.strategy = get.strategy(nhospitals, 0)     # tttttt
