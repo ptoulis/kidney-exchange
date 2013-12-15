@@ -302,32 +302,41 @@ table1.theoretical.violations <- function(nsamples=100) {
 table2.welfare.incentives.2way <- function(nsamples=100) {
   # Table of 2way exchanges to compare Welfare and Incentives.
   #
+  results = list()
   nhospitals = 6
-  get.strategy <- function(no.truthful, no.deviating) {
-    CHECK_EQ(no.truthful + no.deviating, nhospitals)
+  get.strategy.profile <- function(no.truthful) {
+    CHECK_TRUE(no.truthful >= 0 & no.truthful <= nhospitals, msg="#truthful should be correct")
+    no.deviating = nhospitals - no.truthful
     return(paste(c(rep("t", no.truthful), rep("c", no.deviating)), collapse=""))
   }
   
-  baseline.strategy = get.strategy(nhospitals, 0)     # tttttt
-  deviation.strategy = get.strategy(nhospitals-1, 1)  # tttttc
+  run.experiment <- function(base.Nt, dev.Nt, pra) {
+    # Runs a single experiment.
+    # 
+    # Args:
+    #  base.Nt = no. of truthful agents in baseline strategy profile
+    #  dev.Nt = no. of truthful strategies in dev strategy profile
+    #  pra = T or F, whether we want uniform PRA or non-uniform PRA.
+    baseline.strategy = get.strategy.profile(base.Nt)
+    deviation.strategy = get.strategy.profile(dev.Nt)
+    print(sprintf("Comparing profiles  %s vs. %s", baseline.strategy, deviation.strategy))
+    comparison = create.comparison(mechanisms=c("rCM", "xCM", "Bonus"),
+                                   nHospitals=nhospitals, nSize=20,
+                                   uniform.pra=pra, 
+                                   include.3way=F,
+                                   baseline.strategy=baseline.strategy,
+                                   deviation.strategy=deviation.strategy,
+                                   nsamples=nsamples)
+    profile.name = sprintf("prof%d%d", base.Nt, dev.Nt)
+    result.name = sprintf("%s-%s", profile.name, ifelse(pra, "UPRA", "NonUPRA"))
+    results[[result.name]] <- compare.mechanisms(comparison)
+    save(results, file="out/table2-results.Rdata")
+  }
   
-  comparison = create.comparison(mechanisms=c("rCM", "xCM", "Bonus"),
-                                 nHospitals=6, nSize=20,
-                                 uniform.pra=T, 
-                                 include.3way=F,
-                                 baseline.strategy=baseline.strategy,
-                                 deviation.strategy=deviation.strategy,
-                                 nsamples=nsamples)
-  
-  
-  #  ttt...  vs   cttttt  +  Uniform pRA
-  table2.UniformPRA = compare.mechanisms(comparison)
-  save(table2.UniformPRA, file="out/table2-uniformPRA.Rdata")
-  
-  #    same  + Non-uniform PRa
-  comparison$uniform.pra = F
-  table2.NonUniformPRA = compare.mechanisms(comparison)
-  save(table2.NonUniformPRA, file="out/table2-NonUniformPRA.Rdata")
+  run.experiments(nhospitals, nhospitals-1, T)
+  run.experiments(nhospitals, nhospitals-1, F)
+  run.experiments(1, 0, T)
+  run.experiments(1, 0, F)  
 }
 
 
