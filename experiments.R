@@ -156,7 +156,7 @@ summarize.coompare.output <- function(compare.mech.out) {
   for(strategy in names(compare.mech.out)) {
     for(mech in intersect(names(compare.mech.out[[strategy]]), all.mechanisms)) {
       print(sprintf("Strategy type= %s, strategy profile= %s, mechanism= %s, ", 
-                    strategy, compare.mech.out[[strategy]]$strategy, compare.mech.outmech))
+                    strategy, compare.mech.out[[strategy]]$strategy, mech))
       print("Hospital utilities (avg.)")
       print(rowMeans(compare.mech.out[[strategy]][[mech]]$utility))
       print("Total welfare (sum)")
