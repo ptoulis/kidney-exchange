@@ -284,20 +284,32 @@ table1.theoretical.violations <- function(nsamples=100) {
 table2.welfare.incentives.2way <- function(nsamples=100) {
   # Table of 2way exchanges to compare Welfare and Incentives.
   #
+  nhospitals = 6
+  get.strategy <- function(no.truthful, no.deviating) {
+    CHECK_EQ(no.truthful + no.deviating, nhospitals)
+    return(paste(c(rep("t", no.truthful), rep("c", no.deviating))), collapse="")
+  }
+  
+  baseline.strategy = get.strategy(nhospitals, 0)     # tttttt
+  deviation.strategy = get.strategy(nhospitals-1, 1)  # tttttc
+  
   comparison = create.comparison(mechanisms=c("rCM", "xCM", "Bonus"),
                                  nHospitals=6, nSize=20,
                                  uniform.pra=T, 
                                  include.3way=F,
-                                 baseline.strategy="tttttt",
-                                 deviation.strategy="cttttt",
+                                 baseline.strategy=baseline.strategy,
+                                 deviation.strategy=deviation.strategy,
                                  nsamples=nsamples)
-  table2.part1 = compare.mechanisms(comparison)
-  save(table2.part1, file="out/table2-part1.Rdata")
   
-  comparison$baseline.strategy = "cccccc"
-  comparison$deviation.strategy= "tccccc"
-  table2.part2 = compare.mechanisms(comparison)
-  save(table2.part2, file="out/table2-part2.Rdata")
+  
+  #  ttt...  vs   cttttt  +  Uniform pRA
+  table2.UniformPRA = compare.mechanisms(comparison)
+  save(table2.UniformPRA, file="out/table2-uniformPRA.Rdata")
+  
+  #    same  + Non-uniform PRa
+  comparison$uniform.pra = F
+  table2.NonUniformPRA = compare.mechanisms(comparison)
+  save(table2.NonUniformPRA, file="out/table2-NonUniformPRA.Rdata")
 }
 
 
