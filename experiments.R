@@ -147,7 +147,7 @@ compare.mechanisms <- function(comparison) {
   return(result)                       
 }
 
-summarize.coompare.output <- function(compare.mech.out) {
+summarize.compare.output <- function(compare.mech.out) {
   ## Gives a verbose summary of the outcome of the comparison
   #
   # Args:
@@ -302,7 +302,7 @@ table1.theoretical.violations <- function(nsamples=100) {
 table2.welfare.incentives.2way <- function(nsamples=100) {
   # Table of 2way exchanges to compare Welfare and Incentives.
   #
-  results = list()
+  results <<- list()
   nhospitals = 6
   get.strategy.profile <- function(no.truthful) {
     CHECK_TRUE(no.truthful >= 0 & no.truthful <= nhospitals, msg="#truthful should be correct")
@@ -310,7 +310,7 @@ table2.welfare.incentives.2way <- function(nsamples=100) {
     return(paste(c(rep("t", no.truthful), rep("c", no.deviating)), collapse=""))
   }
   
-  run.experiment <- function(base.Nt, dev.Nt, pra) {
+  run.comparison <- function(base.Nt, dev.Nt, pra) {
     # Runs a single experiment.
     # 
     # Args:
@@ -319,7 +319,8 @@ table2.welfare.incentives.2way <- function(nsamples=100) {
     #  pra = T or F, whether we want uniform PRA or non-uniform PRA.
     baseline.strategy = get.strategy.profile(base.Nt)
     deviation.strategy = get.strategy.profile(dev.Nt)
-    print(sprintf("Comparing profiles  %s vs. %s", baseline.strategy, deviation.strategy))
+    print("")
+    print(sprintf("Comparing profiles  %s vs. %s, PRA=%s", baseline.strategy, deviation.strategy, pra))
     comparison = create.comparison(mechanisms=c("rCM", "xCM", "Bonus"),
                                    nHospitals=nhospitals, nSize=20,
                                    uniform.pra=pra, 
@@ -328,15 +329,15 @@ table2.welfare.incentives.2way <- function(nsamples=100) {
                                    deviation.strategy=deviation.strategy,
                                    nsamples=nsamples)
     profile.name = sprintf("prof%d%d", base.Nt, dev.Nt)
-    result.name = sprintf("%s-%s", profile.name, ifelse(pra, "UPRA", "NonUPRA"))
-    results[[result.name]] <- compare.mechanisms(comparison)
+    result.name = sprintf("%s.%s", profile.name, ifelse(pra, "UPRA", "NonUPRA"))
+    results[[result.name]] <<- compare.mechanisms(comparison)
     save(results, file="out/table2-results.Rdata")
   }
   
-  run.experiments(nhospitals, nhospitals-1, T)
-  run.experiments(nhospitals, nhospitals-1, F)
-  run.experiments(1, 0, T)
-  run.experiments(1, 0, F)  
+  run.comparison(nhospitals, nhospitals-1, T)
+  run.comparison(nhospitals, nhospitals-1, F)
+  run.comparison(1, 0, T)
+  run.comparison(1, 0, F)  
 }
 
 
