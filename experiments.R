@@ -56,10 +56,9 @@ create.comparison <- function(mechanisms,
 }
 
 CHECK_comparison <- function(comparison) {
-  CHECK_MEMBER(names(comparison), c("baseline.strategy",
-                                    "deviation.strategy",
-                                    "m", "n",
-                                    "uniform.pra", "include.3way"))
+  CHECK_MEMBER(c("baseline.strategy", "deviation.strategy", "m", "n", 
+                 "uniform.pra", "include.3way", "mechanisms"),
+               names(comparison))
   CHECK_MEMBER(comparison$include.3way, c(T, F))
   CHECK_MEMBER(comparison$uniform.pra, c(T, F))
   # Check whether tttt == tttc ... in length
