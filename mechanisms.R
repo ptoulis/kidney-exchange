@@ -73,7 +73,8 @@ play.strategy <- function(rke, strategy.str, include.3way=F) {
   } else if(strategy.str == "c") {
     # TODO(ptoulis): If the max matching is timed-out, this will return empty match
     # which is equivalent to being truthful. Needs a fix?
-    matching = max.matching(rke, include.3way=include.3way)
+    # Update (12/2013): Canonical should be also be regular.
+    matching = max.matching(rke, include.3way=include.3way, regular.matching=T)
     ret$hide = get.matching.ids(matching)
   }  else if(strategy.str == "r") {
     pairs.AB = rke.filter.pairs(rke, attr="desc", value="A-B")
