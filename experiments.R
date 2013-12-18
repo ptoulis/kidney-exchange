@@ -347,7 +347,7 @@ table.welfare.incentives <- function(nhospitals=6, nsize=15,
                           ifelse(pra, "UPRA", "NonUPRA"),
                           ifelse(include.3way, "3way", "2way"))
     results[[result.name]] <<- compare.mechanisms(comparison)
-    save(results, file="out/table2-results.Rdata")
+    save(results, file=sprintf("out/table%d-results.Rdata", ifelse(include.3way, 3, 2)))
   }
   
   run.comparison(nhospitals, nhospitals-1, T)
