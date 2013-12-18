@@ -55,6 +55,19 @@ create.comparison <- function(mechanisms,
               nsamples=nsamples))
 }
 
+CHECK_comparison <- function(comparison) {
+  CHECK_MEMBER(names(comparison), c("baseline.strategy",
+                                    "deviation.strategy",
+                                    "m", "n",
+                                    "uniform.pra", "include.3way"))
+  CHECK_MEMBER(comparison$include.3way, c(T, F))
+  CHECK_MEMBER(comparison$uniform.pra, c(T, F))
+  # Check whether tttt == tttc ... in length
+  CHECK_EQ(nchar(comparison$baseline.strategy), nchar(comparison$deviation.strategy))
+  # Check whether the strategy profile string has the correct length.
+  CHECK_EQ(nchar(comparison$baseline.strategy), comparison$m)
+}
+
 # An example COMPARISON object.
 example.comparison = create.comparison(mechanisms=c("rCM", "xCM", "Bonus"),
                                        nHospitals=4, nSize=35,
@@ -73,6 +86,7 @@ compare.mechanisms <- function(comparison) {
   #   result$baseline$rCM$utility = (m x samples) utility matrix
   #   result$baseline$rCM$internal.matchingInfo[[3]] = MATCHING_INFO for hospital 3
   #   result$baseline$rCM$mech.matchingInfo = MATCHING INFO for only the mechanism
+  CHECK_comparison(comparison)
   all.strategies <- c("baseline", "deviation")
   result = list(baseline=list(strategy=comparison$baseline.strategy),
                 deviation=list(strategy=comparison$deviation.strategy))
@@ -299,11 +313,11 @@ table1.theoretical.violations <- function(nsamples=100) {
   print("Simulation complete. File saved in out/table1.Rdata")
 }
 
-table2.welfare.incentives.2way <- function(nsamples=100) {
+table.welfare.incentives <- function(nhospitals=6, nsize=15, 
+                                     include.3way=F, nsamples=100) {
   # Table of 2way exchanges to compare Welfare and Incentives.
-  #
+  # or Table of 3way exchanges to compare welfare + incentives
   results <<- list()
-  nhospitals = 6
   get.strategy.profile <- function(no.truthful) {
     CHECK_TRUE(no.truthful >= 0 & no.truthful <= nhospitals, msg="#truthful should be correct")
     no.deviating = nhospitals - no.truthful
@@ -322,14 +336,17 @@ table2.welfare.incentives.2way <- function(nsamples=100) {
     print("")
     print(sprintf("Comparing profiles  %s vs. %s, PRA=%s", baseline.strategy, deviation.strategy, pra))
     comparison = create.comparison(mechanisms=c("rCM", "xCM", "Bonus"),
-                                   nHospitals=nhospitals, nSize=20,
+                                   nHospitals=nhospitals, nSize=nsize,
                                    uniform.pra=pra, 
-                                   include.3way=F,
+                                   include.3way=include.3way,
                                    baseline.strategy=baseline.strategy,
                                    deviation.strategy=deviation.strategy,
                                    nsamples=nsamples)
     profile.name = sprintf("prof%d%d", base.Nt, dev.Nt)
-    result.name = sprintf("%s.%s", profile.name, ifelse(pra, "UPRA", "NonUPRA"))
+    result.name = sprintf("%s.%s.%s", 
+                          profile.name,
+                          ifelse(pra, "UPRA", "NonUPRA"),
+                          ifelse(include.3way, "3way", "2way"))
     results[[result.name]] <<- compare.mechanisms(comparison)
     save(results, file="out/table2-results.Rdata")
   }
