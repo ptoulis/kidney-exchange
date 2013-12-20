@@ -139,7 +139,9 @@ get.matching.information <- function(rke, matched.cycles) {
     if (cycle.size == 3) m = m3
     sum(apply(m, 1, function(xchange.pair.ids) { 
       xchange.pairs = subset(rke$pairs, pair.id %in% xchange.pair.ids); 
-      setequal(xchange.pairs$pair.type, pair.types)
+      # Fixed BUG (12/2013): Was considering OUU as a OOU etc bc of set equality.
+      CHECK_EQ(length(xchange.pairs$pair.type), length(pair.types))
+      all(sort(xchange.pairs$pair.type)==sort(pair.types))
     }))
   }
   
