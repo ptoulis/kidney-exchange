@@ -344,7 +344,8 @@ xCM <- function(rke.pool, include.3way=F, verbose=F) {
   
   m = length(rke.list)  # no. of hospitals
   ##  1. Compute IR constraints
-  ir.constraints = compute.ir.constraints(rke.pool, pair.types=c("S", "R"), include.3way=include.3way)
+  ir.constraints = compute.ir.constraints(rke.pool, pair.types=c("S", "R"), 
+                                          include.3way=include.3way)
   
   # 2.  Match S internally
   s.subrke = rke.subgraph(rke.all, pair.type="S")
@@ -551,7 +552,7 @@ Bonus = function(rke.pool, include.3way=F) {
   
   ## 2. Match R pairs
   # Compute constraints.
-  R.constraints = compute.ir.constraints(rke.pool, pair.types=c("R"))
+  R.constraints = compute.ir.constraints(rke.pool, pair.types=c("R"), include.3way=include.3way)
   r.subrke = rke.subgraph(rke.all, pair.type="R")
   r.matching = max.matching(r.subrke, include.3way=include.3way, 
                             ir.constraints=R.constraints)
@@ -656,6 +657,10 @@ Bonus = function(rke.pool, include.3way=F) {
       XYYX.ids = union(S.XY, tau.BHother.YX)
       # Here you match   X-Y pairs from Hj   with   Y-X pairs from Hother
       subrke = rke.keep.pairs(rke.all, pair.ids=XYYX.ids)
+      ## This is an interesting point.
+      # Bonus does not insist on regularity at this step although
+      # it should be better to have regular matches here.
+      # Will keep the flag at regular.matching=F
       Mj = max.matching(subrke, include.3way=include.3way, regular.matching=F)
       
       logdebug("Performed OU-matching..Utilities:")
