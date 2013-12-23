@@ -259,7 +259,7 @@ mech.weakness.theoretical <- function(nHospitals=6, nSize=25, ntrials=10) {
   print(summary(util.c))
 }
 
-table1.theoretical.violations <- function(nsamples=100) {
+table1.regularity.assumption <- function(nsamples=100) {
   # This experiment explores two things
   # 1. The μ(n) formula = expected #matches in Gn
   # 2. The PM assumption, by checking on the matches of regular matching.
@@ -270,24 +270,29 @@ table1.theoretical.violations <- function(nsamples=100) {
   # Table 2 is of the form
   # n(size)  (OR OO OS....)  = MATCHING INFO
   
-  all.sizes <- round(seq(5, 200, by=5))
+  all.sizes <- round(seq(5, 200, by=25))
   sampled.sizes <- sample(all.sizes, size=nsamples, replace=T)
   print("Sampled sizes breakdown")
   print(table(sampled.sizes))
-  # stores #matches for each RKE
-  nmatches <- c()
-  # stores #R pairs in each RKE (this is useful for the theoretical #matches)
-  nRpairs <- c()
+
   # stores information about the matches e.g. OR, OO, OS, ...
-  match.information = matrix(NA, nrow=0, ncol=length(empty.match.result(empty.rke())$information))
+  regular.match.information = matrix(NA, nrow=0, ncol=length(empty.match.result(empty.rke())$information))
+  max.match.information = matrix(NA, nrow=0, ncol=length(empty.match.result(empty.rke())$information))
+  
+  viol.cols = c("O-A", "O-B", "O-AB", "A-AB", "B-AB", "O-O", "A-A", "B-B", "AB-AB", "R")
+  violations = matrix(NA, nrow=0, ncol=length(viol.cols))
+  colnames(violations) = viol.cols
+  
   # format of the output object.
   get.result.object <- function() {
-    CHECK_EQ(length(nRpairs), length(nmatches))
-    CHECK_EQ(length(nRpairs), nrow(match.information))
-    return(data.frame(nsize=head(sampled.sizes, length(nRpairs)), 
-               Rsize=nRpairs,
-               matched=nmatches, 
-               match=match.information))
+    rownames(violations) = NULL
+    nsize.vec = head(sampled.sizes, nrow(regular.match.information))
+    return(list(max=data.frame(nsize=nsize.vec,
+                               match=max.match.information),
+                regular=data.frame(nsize=nsize.vec,
+                               match=regular.match.information),
+                violations=data.frame(nsize=nsize.vec,
+                                      type=violations)))
   }
   pb = txtProgressBar(style=3)
   CHECK_EQ(length(sampled.sizes), nsamples)
@@ -297,11 +302,44 @@ table1.theoretical.violations <- function(nsamples=100) {
   
   for(i in 1:nsamples) {
     n = sampled.sizes[i]
-    rke = rrke(n)
-    m = max.matching(rke, include.3way=F, regular.matching=T)
-    nmatches <- c(nmatches, get.matching.utility(m))
-    nRpairs <- c(nRpairs, nrow(subset(rke$pairs, pair.type=="R")))
-    match.information <- rbind(match.information, m$information)
+    rke = rrke(n, uniform.pra=T)
+    m = max.matching(rke, include.3way=F, regular.matching=F)
+    max.match.information <- rbind(max.match.information, m$information)
+    ## compute the regular 
+    Rpair.ids = rke.filter.pairs(rke, attr="pair.type", value="R")
+    Spair.ids = rke.filter.pairs(rke, attr="pair.type", value="S")
+    OU.pair.ids = setdiff(rke.pair.ids(rke), union(Rpair.ids, Spair.ids))
+    OU.rke = rke.keep.pairs(rke, pair.ids=OU.pair.ids)
+    S.rke = rke.keep.pairs(rke, pair.ids=Spair.ids)
+    R.rke = rke.keep.pairs(rke, pair.ids=Rpair.ids)
+    mOU = max.matching(OU.rke)
+    mR = max.matching(R.rke)
+    mS = max.matching(S.rke)
+    regular.match.information <- rbind(regular.match.information, 
+                                       mOU$information + mS$information + mR$information)
+    
+    # 3. Set violations
+    violation.vector = rep(0, length(viol.cols))
+    rke.regular.remainder = rke.remove.pairs(rke, c(mOU$match$pair.id,
+                                                    mR$match$pair.id,
+                                                    mS$match$pair.id))
+    for(itype in 1:length(viol.cols)) {
+      type = viol.cols[itype]
+      ntype = 1000
+      if(type=="R") {
+        nAB = nrow(subset(rke$pairs, desc=="A-B"))
+        nBA = nrow(subset(rke$pairs, desc=="B-A"))
+        nAB.rem = nrow(subset(rke.regular.remainder$pairs, desc=="A-B"))
+        nBA.rem = nrow(subset(rke.regular.remainder$pairs, desc=="B-A"))
+        
+        ntype = abs(abs(nBA - nAB) - (nAB.rem + nBA.rem))
+      } else {
+        ntype = nrow(subset(rke.regular.remainder$pairs, desc==type))
+      }
+      violation.vector[itype] = ifelse(itype <= 5, ntype, ifelse(ntype > 0, ntype-1, 0))
+    }
+    violations = rbind(violations, violation.vector)
+    
     setTxtProgressBar(pb, value=i/nsamples)
     
     if(i %in% save.checkpoints) {
