@@ -227,9 +227,20 @@ regular.cycles <- function(rke, Cycles) {
   Cycles$type <- NULL
   are.regular <- apply(Cycles, 1, function(row) {
       types <- paste(subset(rke$pairs, pair.id %in% row)$pair.type, collapse="")
+      # Now types is ORS,    OUU, ... etc
       return(length(c(grep("OU", types), grep("UO", types))) > 0)
   })
   return(as.numeric(are.regular))
+}
+
+filter.cycles.pair.ids <- function(Cycles, pair.ids) {
+  # returns Cx1 vector of weights
+  # Ci = #how many pair.ids does cycle i contain.
+  Cycles$type <- NULL
+  cycle.weights <- apply(Cycles, 1, function(row) {
+    sum(match(row, pair.ids, nomatch=0) > 0)
+  })
+  return(cycle.weights)
 }
 
 max.matching <- function(rke,
@@ -237,6 +248,7 @@ max.matching <- function(rke,
                          ir.constraints=data.frame(),
                          randomize.matching=T,
                          regular.matching=F,
+                         promote.pair.ids=c(),
                          timeLimit=3600,
                          verbose=F) {
   # Performs some form of maximum matching on the specific RKE object.
@@ -266,6 +278,14 @@ max.matching <- function(rke,
   # i.e. cycles that have O-U pairs get a +1 bonus.
   if(regular.matching) {
     model.w <- model.w + regular.cycles(rke, Cycles)
+  }
+  #
+  # Gives a +n  to cycles that contain "n" of the specified pair ids
+  # 0 <= n <=3
+  #
+  if(length(promote.pair.ids) > 0) {
+    CHECK_MEMBER(promote.pair.ids, rke.pair.ids(rke))
+    model.w <- model.w + filter.cycles.pair.ids(Cycles, pair.ids=promote.pair.ids)
   }
   
   if (length(model.w) == 0 | (num.edges == 0)) {

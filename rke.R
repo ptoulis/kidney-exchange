@@ -104,6 +104,11 @@ rke.cycles <- function(rke, include.3way=F) {
   # Returns:
   #   A data-frame with (type, id1, id2, id3) indicating that
   #   this is a "type"-way exchange id1->id2->id3
+  #
+  #  Cycles = (type, id1, id2, id3)
+  #             2     10   11   0
+  #             3     20   24   50
+  #                       ... 
   #   If type=2 then id3=NA and if type=3 then it is assumed id3->id1 
   A2 = rke.2way.cycles(rke)
   A3 <- matrix(0, nrow=0, ncol=3)
