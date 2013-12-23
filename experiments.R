@@ -259,7 +259,12 @@ mech.weakness.theoretical <- function(nHospitals=6, nSize=25, ntrials=10) {
   print(summary(util.c))
 }
 
-table1.regularity.assumption <- function(nsamples=100) {
+table1.regularity.assumptions <- function(nsamples=100) {
+  table1.regularity.assumption.one(uniform.pra=T, nsamples=nsamples)
+  table1.regularity.assumption.one(uniform.pra=F, nsamples=nsamples)
+}
+
+table1.regularity.assumption.one <- function(uniform.pra, nsamples) {
   # This experiment explores two things
   # 1. The μ(n) formula = expected #matches in Gn
   # 2. The PM assumption, by checking on the matches of regular matching.
@@ -302,7 +307,7 @@ table1.regularity.assumption <- function(nsamples=100) {
   
   for(i in 1:nsamples) {
     n = sampled.sizes[i]
-    rke = rrke(n, uniform.pra=T)
+    rke = rrke(n, uniform.pra=uniform.pra)
     m = max.matching(rke, include.3way=F, regular.matching=F)
     max.match.information <- rbind(max.match.information, m$information)
     ## compute the regular 
@@ -341,13 +346,23 @@ table1.regularity.assumption <- function(nsamples=100) {
     violations = rbind(violations, violation.vector)
     
     setTxtProgressBar(pb, value=i/nsamples)
-    
+    filename = ""
     if(i %in% save.checkpoints) {
       table1 = get.result.object()
-      save(table1,file="out/table1.Rdata")
+      if(uniform.pra) {
+        table1.UPRA = table1
+        filename = "out/table1-UPRA.Rdata"
+        save(table1.UPRA, file=filename)
+      } else {
+        table1.NonUPRA = table1
+        filename = "out/table1-NonUPRA.Rdata"
+        save(table1.NonUPRA, file=filename)
+      }
     }
   }
-  print("Simulation complete. File saved in out/table1.Rdata")
+  print("")
+  print(sprintf("Simulation complete. File saved in %s", filename))
+
 }
 
 table.welfare.incentives <- function(nhospitals=6, nsize=15, 
