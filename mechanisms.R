@@ -527,7 +527,7 @@ Bonus.QS = function(rke.pool, include.3way=F)  {
 ## Bonus mechanism. Ashlagi & Roth (2013)
 Bonus = function(rke.pool, include.3way=F) {
   CHECK_rke.pool(rke.pool)
-  # unload
+  # unload reports.
   rke.list = rke.pool$rke.list
   rke.all = rke.pool$rke.all
   
@@ -547,22 +547,36 @@ Bonus = function(rke.pool, include.3way=F) {
   logdebug("Performed S-matching..Utilities:")
   logdebug(get.matching.hospital.utilities(s.matching, m))
   
-  ## 0.1 Add S-matching
+  ## 1b. Add S-matching
   total.matching <- add.matching(total.matching, s.matching)
+  # 1c. Remove matched pairs to make life easier
+  rke.all <- rke.remove.pairs(rke.all, rm.pair.ids=s.matching$match$pair.id)
   
-  ## 2. Match R pairs
-  # Compute constraints.
-  R.constraints = compute.ir.constraints(rke.pool, pair.types=c("R"), include.3way=include.3way)
+  ## 2. Match R pairs. First match internally, then maximize global,
+  #     promoting the internally-matched.
+  promoted.Rpairs <- c()
+  for(h in 1:length(rke.list)) {
+    rke.h = rke.list[[h]]
+    # Maximize the matches on the R subgraph.
+    h.Rpairs = subset(rke.h$pairs, pair.type=="R")$pair.id
+    r.match.h <- max.matching(rke.h, include.3way=include.3way,
+                              promote.pair.ids=h.Rpairs)
+    matched.h.Rpairs = intersect(get.matching.ids(r.match.h), h.Rpairs)
+    promoted.Rpairs <- c(promoted.Rpairs, matched.h.Rpairs)
+  }
   r.subrke = rke.subgraph(rke.all, pair.type="R")
   r.matching = max.matching(r.subrke, include.3way=include.3way, 
-                            ir.constraints=R.constraints)
+                            promote.pair.ids=promoted.Rpairs)
   
   logdebug("Performed R-matching. R-constraints + Utilities")
   logdebug(R.constraints)
   logdebug(get.matching.hospital.utilities(r.matching, m))
   
-  ## 0.1 Add R-matching
+  ## 2b. Add R-matching
   total.matching <- add.matching(total.matching, r.matching)
+  ## 2c. Remove matched R-pairs
+  rke.all <- rke.remove.pairs(rke.all, rm.pair.ids=r.matching$match$pair.id)
+  
   
   #  3. Match OD/UD pairs.
   #   3a. Split hospital in two sets
