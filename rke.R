@@ -41,8 +41,9 @@ rke.remove.pairs <- function(rke, rm.pair.ids) {
   if (length(rm.pair.ids) == 0)
     return (rke)
   rke$pairs = subset(rke$pairs, !is.element(pair.id, rm.pair.ids))
-  rke = rke.update.new.pairs(rke=rke, keep.edges=rke$edges)
-  rke$A = map.edges.adjacency(rke$edges, rke$pairs$pair.id)
+  remove.edges = subset(rke$edges, pair.id1 %in% rm.pair.ids | pair.id2 %in% rm.pair.ids)$edge.id
+  rke$edges =  subset(rke$edges, !is.element(edge.id, remove.edges))
+  rke$A = map.edges.adjacency(rke$edges, rke.pair.ids(rke))
   return (rke)
 }
 
@@ -130,6 +131,71 @@ rke.cycles <- function(rke, include.3way=F) {
     out$pair.id3 <- c(out$pair.id3, A3[,3])
   }
   return (as.data.frame(out))
+}
+
+rke.count.virtual.pairs <- function(xrke) {
+  # counts the number of virtual AB and BA pairs of the extended R subgraph.
+  xrkeBA <- rke.keep.pairs(xrke, subset(xrke$pairs, desc %in% c("O-B", "A-O"))$pair.id)
+  xrkeAB <- rke.keep.pairs(xrke, subset(xrke$pairs, desc %in% c("O-A", "B-O"))$pair.id)
+  
+  modify.xrke <- function(xrkeXY, Xdesc) {
+    pair.ids = subset(xrkeXY$pairs, desc==Xdesc)$pair.id
+    # Xdesc = over-demanded pair.
+    edgesXY = subset(xrkeXY$edges, can.donate==1 & pair.id1 %in% pair.ids)
+    newEdgesXY = edgesXY
+    # 1. Sample new edge ids for the symmetric edges.
+    newEdgesXY$edge.id <- as.integer(10^8 * runif(nrow(newEdgesXY)))
+    # 2. Make edges symmetric
+    newEdgesXY$pair.id1 <- edgesXY$pair.id2
+    newEdgesXY$pair.id2 <- edgesXY$pair.id1
+    xrkeXY$edges = rbind(edgesXY, newEdgesXY)
+    xrkeXY$A = map.edges.adjacency(xrkeXY$edges, rke.pair.ids(xrkeXY))
+    return(xrkeXY)
+  }
+  
+  newBA = modify.xrke(xrkeBA, "O-B")
+  newAB = modify.xrke(xrkeAB, "O-A")
+  nBA = get.matching.utility(max.matching(newBA)) / 2
+  nAB = get.matching.utility(max.matching(newAB)) / 2
+  return(list(AB=nAB, BA=nBA))
+}
+
+rke.extended.Rsubgraph <- function(rke) {
+  # Returns the extended R subgraph
+  # This includes R pairs and "virtual" pairs.
+  #
+  # TODO(ptoulis): Have a unit-test for this.
+  pair.ids = subset(rke$pairs, desc %in% c("A-B", "B-A", "O-B", "B-O", "O-A", "A-O"))$pair.id
+  xRke <- rke.keep.pairs(rke, pair.ids=pair.ids)
+  xRke$edges <- subset(xRke$edges, can.donate==1)
+  
+  desc1 = sapply(xRke$edges$pair.id1, function(i) subset(rke$pairs, pair.id==i)$desc)
+  H1 = sapply(xRke$edges$pair.id1, function(i) subset(rke$pairs, pair.id==i)$hospital)
+  desc2 =  sapply(xRke$edges$pair.id2, function(i) subset(rke$pairs, pair.id==i)$desc)
+  H2 = sapply(xRke$edges$pair.id2, function(i) subset(rke$pairs, pair.id==i)$hospital)
+  
+  rm(rke)
+  
+  same.hospital = (H1==H2)
+  legit.edges <- sapply(1:length(desc1), function(i) {
+    d1 = desc1[i]
+    d2 = desc2[i]
+    
+    is.legit = T
+    if(d1=="O-B") is.legit = (d2=="A-O" & same.hospital[i])
+    if(d1=="O-A") is.legit = (d2=="B-O" & same.hospital[i])
+    if(d1=="B-O") is.legit = (d2=="A-B")
+    if(d1=="A-O") is.legit = (d2=="B-A")
+    if(d1=="A-B") is.legit = (d2=="B-A" | d2=="O-A")
+    if(d1=="B-A") is.legit = (d2=="A-B" | d2=="O-B")
+    
+    # print(sprintf("i=%d d1=%s  d2=%s  id1->id2 (%d->%d) is-legit=%s", i, d1, d2, xRke$edges$pair.id1[i],  xRke$edges$pair.id2[i], is.legit))
+    return(is.legit)
+  })
+  
+  xRke$edges <- xRke$edges[which(legit.edges), ]
+  xRke$A = map.edges.adjacency(xRke$edges, rke.pair.ids(xRke))
+  return(xRke)
 }
 
 rke.cycles.membership <- function(rke, rke.cycles) {
