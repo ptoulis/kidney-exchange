@@ -168,6 +168,7 @@ rke.extended.Rsubgraph <- function(rke) {
   pair.ids = subset(rke$pairs, desc %in% c("A-B", "B-A", "O-B", "B-O", "O-A", "A-O"))$pair.id
   xRke <- rke.keep.pairs(rke, pair.ids=pair.ids)
   xRke$edges <- subset(xRke$edges, can.donate==1)
+  if(nrow(xRke$edges)==0) return(xRke)
   
   desc1 = sapply(xRke$edges$pair.id1, function(i) subset(rke$pairs, pair.id==i)$desc)
   H1 = sapply(xRke$edges$pair.id1, function(i) subset(rke$pairs, pair.id==i)$hospital)
