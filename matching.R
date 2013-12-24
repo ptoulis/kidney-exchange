@@ -286,7 +286,7 @@ max.matching <- function(rke,
   if(length(promote.pair.ids) > 0) {
     CHECK_MEMBER(promote.pair.ids, rke.pair.ids(rke))
     CHECK_TRUE(all(promote.pair.ids > 0))
-    model.w <- model.w + filter.cycles.pair.ids(Cycles, pair.ids=promote.pair.ids)
+    model.w <- model.w + 2 * filter.cycles.pair.ids(Cycles, pair.ids=promote.pair.ids)
   }
   
   if (length(model.w) == 0 | (num.edges == 0)) {
