@@ -259,7 +259,7 @@ mech.weakness.theoretical <- function(nHospitals=6, nSize=25, ntrials=10) {
   print(summary(util.c))
 }
 
-table1.regularity <- function(nsamples, include.3way) {
+table.regularity <- function(nsamples, include.3way, verbose=F) {
   # Explore regularity assumptions for 2-way or 3-way exchanges
   #
   # Regularity has "aspects" which are basically things we check to see
@@ -281,7 +281,7 @@ table1.regularity <- function(nsamples, include.3way) {
   #
   all.sizes <- round(seq(5, 200, by=25))
   if(include.3way)
-    all.sizes = round(seq(10, 80, by=15))  # smaller sizes for 3-way
+    all.sizes = round(seq(10, 140, by=20))  # smaller sizes for 3-way
   
   sampled.sizes <- sample(all.sizes, size=nsamples, replace=T)
   print("Sampled sizes breakdown")
@@ -348,8 +348,40 @@ table1.regularity <- function(nsamples, include.3way) {
       
       update <- NA  # this will be the row to be added to results
       if(include.3way) {
-        xRKE = rke.extended.Rsubgraph(rke)
-        m3way = max.matching(rke, include.3way=T, promote.pair.ids=Rpair.ids)
+        xRKE = rke.extended.Rsubgraph(rke)      
+        m3way = max.matching(xRKE, include.3way=T, promote.pair.ids=Rpair.ids)
+        # computes unmatched AB + BA
+        unmatched.R = count.aspect(rke.remove.pairs(xRKE, get.matching.ids(m3way)), "R")
+        aspect.R = 0
+        nAB = nrow(subset(xRKE$pairs, desc=="A-B"))
+        nBA = nrow(subset(xRKE$pairs, desc=="B-A"))
+        CHECK_EQ(nAB + nBA, length(Rpair.ids))
+        nmatches.real = nAB + nBA - unmatched.R  # matches realized
+        excess = abs(nBA-nAB)
+        short.side = min(nAB, nBA)
+        virtualR = rke.count.virtual.pairs(xRKE)
+        
+        nmatches.under.regularity = 0
+        
+        if(nAB > nBA) {
+          nmatches.under.regularity = 2 * short.side + min(excess, virtualR$BA)
+        } else {
+          nmatches.under.regularity = 2 * short.side + min(excess, virtualR$AB)
+        }
+        # This will ne included in the violations row update.
+        aspect.R = nmatches.under.regularity - nmatches.real
+        if(verbose) {
+          print("")
+          plot(xRKE)
+          print("Max matching on extended R subgraph")
+          print(m3way$matched.cycles)
+
+          print(sprintf("Total AB=%d BA=%d Virtual AB=%d, BA=%d, unmatched R pairs=%d  Violations=%d",
+                        nAB, nBA, virtualR$AB, virtualR$BA, unmatched.R, aspect.R))
+          readline("Press ENTER")
+        }
+        
+        # S-subgraph violations.
         sRKE = rke.keep.pairs(rke, pair.ids=Spair.ids)
         mS = max.matching(sRKE, include.3way=T)
         update = c(n, 
@@ -357,7 +389,7 @@ table1.regularity <- function(nsamples, include.3way) {
                    count.aspect(rke, "R"),
                    count.aspect(rke, "S"),
                    0,
-                   count.aspect(rke.remove.pairs(rke, get.matching.ids(m3way)), "R"),
+                   aspect.R,
                    count.aspect(rke.remove.pairs(rke, get.matching.ids(mS)), "S"))
       } else {
         OU.rke = rke.keep.pairs(rke, pair.ids=OU.pair.ids)
@@ -424,7 +456,9 @@ table.welfare.incentives <- function(nhospitals=6, nsize=15,
     baseline.strategy = get.strategy.profile(base.Nt)
     deviation.strategy = get.strategy.profile(dev.Nt)
     print("")
-    print(sprintf("Comparing profiles  %s vs. %s, PRA=%s", baseline.strategy, deviation.strategy, pra))
+    print(sprintf("Comparing profiles  %s vs. %s, PRA=%s, 3way=%d", 
+                  baseline.strategy, deviation.strategy, pra,
+                  include.3way))
     comparison = create.comparison(mechanisms=c("rCM", "xCM", "Bonus"),
                                    nHospitals=nhospitals, nSize=nsize,
                                    uniform.pra=pra, 
