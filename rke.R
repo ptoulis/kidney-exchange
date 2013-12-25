@@ -135,8 +135,8 @@ rke.cycles <- function(rke, include.3way=F) {
 
 rke.count.virtual.pairs <- function(xrke) {
   # counts the number of virtual AB and BA pairs of the extended R subgraph.
-  xrkeBA <- rke.keep.pairs(xrke, subset(xrke$pairs, desc %in% c("O-B", "A-O"))$pair.id)
-  xrkeAB <- rke.keep.pairs(xrke, subset(xrke$pairs, desc %in% c("O-A", "B-O"))$pair.id)
+  xrkeVirtualAB <- rke.keep.pairs(xrke, subset(xrke$pairs, desc %in% c("O-B", "A-O"))$pair.id)
+  xrkeVirtualBA <- rke.keep.pairs(xrke, subset(xrke$pairs, desc %in% c("O-A", "B-O"))$pair.id)
   
   modify.xrke <- function(xrkeXY, Xdesc) {
     pair.ids = subset(xrkeXY$pairs, desc==Xdesc)$pair.id
@@ -153,8 +153,8 @@ rke.count.virtual.pairs <- function(xrke) {
     return(xrkeXY)
   }
   
-  newBA = modify.xrke(xrkeBA, "O-B")
-  newAB = modify.xrke(xrkeAB, "O-A")
+  newAB = modify.xrke(xrkeVirtualAB, "O-B")
+  newBA = modify.xrke(xrkeVirtualBA, "O-A")
   nBA = get.matching.utility(max.matching(newBA)) / 2
   nAB = get.matching.utility(max.matching(newAB)) / 2
   return(list(AB=nAB, BA=nBA))
@@ -169,30 +169,25 @@ rke.extended.Rsubgraph <- function(rke) {
   xRke <- rke.keep.pairs(rke, pair.ids=pair.ids)
   xRke$edges <- subset(xRke$edges, can.donate==1)
   if(nrow(xRke$edges)==0) return(xRke)
-  
-  desc1 = sapply(xRke$edges$pair.id1, function(i) subset(rke$pairs, pair.id==i)$desc)
-  H1 = sapply(xRke$edges$pair.id1, function(i) subset(rke$pairs, pair.id==i)$hospital)
-  desc2 =  sapply(xRke$edges$pair.id2, function(i) subset(rke$pairs, pair.id==i)$desc)
-  H2 = sapply(xRke$edges$pair.id2, function(i) subset(rke$pairs, pair.id==i)$hospital)
+  m1 = match(xRke$edges$pair.id1, xRke$pairs$pair.id)
+  m2 = match(xRke$edges$pair.id2, xRke$pairs$pair.id)
+  desc1 = xRke$pairs$desc[m1]
+  H1 = xRke$pairs$hospital[m1]
+  desc2 = xRke$pairs$desc[m2]
+  H2 = xRke$pairs$hospital[m2]
   
   rm(rke)
   
   same.hospital = (H1==H2)
-  legit.edges <- sapply(1:length(desc1), function(i) {
-    d1 = desc1[i]
-    d2 = desc2[i]
-    
-    is.legit = T
-    if(d1=="O-B") is.legit = (d2=="A-O" & same.hospital[i])
-    if(d1=="O-A") is.legit = (d2=="B-O" & same.hospital[i])
-    if(d1=="B-O") is.legit = (d2=="A-B")
-    if(d1=="A-O") is.legit = (d2=="B-A")
-    if(d1=="A-B") is.legit = (d2=="B-A" | d2=="O-A")
-    if(d1=="B-A") is.legit = (d2=="A-B" | d2=="O-B")
-    
-    # print(sprintf("i=%d d1=%s  d2=%s  id1->id2 (%d->%d) is-legit=%s", i, d1, d2, xRke$edges$pair.id1[i],  xRke$edges$pair.id2[i], is.legit))
-    return(is.legit)
-  })
+  
+  vAB = (desc1=="O-B") & (desc2=="A-O") & same.hospital
+  vBA = (desc1=="O-A") & (desc2=="B-O") & same.hospital
+  u1 =  (desc1=="B-O")  &  (desc2=="A-B")
+  u2 = (desc1=="A-O") & (desc2=="B-A")
+  ab = (desc1=="A-B") & (desc2=="B-A" | desc2=="O-A")
+  ba = (desc1=="B-A") & (desc2=="A-B" | desc2=="O-B")
+  
+  legit.edges = vAB | vBA | u1 | u2 | ab | ba
   
   xRke$edges <- xRke$edges[which(legit.edges), ]
   xRke$A = map.edges.adjacency(xRke$edges, rke.pair.ids(xRke))
