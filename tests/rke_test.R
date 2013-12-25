@@ -9,7 +9,6 @@ test.rke.extended.Rsubgraph <- function() {
   rke = pool$rke.all
   xRKE = rke.extended.Rsubgraph(rke)
   CHECK_MEMBER(xRKE$pairs$desc, legit.pairs)
-  print(sprintf("Total edges %d", nrow(xRKE$edges)))
   # Check all OU pairs -> UD pairs of the same hospital
   for(ou in c("O-A", "O-B")) {
     pairs = subset(xRKE$pairs, desc==ou)
@@ -46,6 +45,22 @@ test.rke.extended.Rsubgraph <- function() {
       CHECK_MEMBER(to.pair.ids, to.pair.ids.original)
     }
   }
+}
+
+test.rke.subgraph <- function() {
+  rke = rrke(50)
+  random.type = sample(c("S", "R", "O", "U"), size=1)
+  subrke = rke.subgraph(rke, pair.type=random.type)
+  pair.ids = subset(rke$pairs, pair.type==random.type)$pair.id
+  # 1: Same # of pairs
+  CHECK_EQ(nrow(subrke$pairs), nrow(subset(rke$pairs, pair.type==random.type)))
+  # 2: Pair ids should be the same.
+  CHECK_SETEQ(subrke$pairs$pair.id, pair.ids)
+  # 3: Total # edges is correct.
+  CHECK_EQ(sum(subrke$edges$can.donate), 
+           sum(subset(rke$edges, pair.id1 %in% pair.ids & pair.id2 %in% pair.ids)$can.donate))
+  # 4: All types correct.
+  CHECK_SETEQ(subrke$pairs$pair.type, c(random.type))
 }
 
 get.RKE0 <- function(ntriangles) {

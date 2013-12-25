@@ -412,18 +412,19 @@ xCM <- function(rke.pool, include.3way=F, verbose=F) {
 xCM3 <- function(rke.pool, verbose=F) {
   # Runs xCM with 3-way exchanges.
   CHECK_rke.pool(rke.pool)
-  # unload
-  rke.list = rke.pool$rke.list
-  rke.all = rke.pool$rke.all
+  # unload the RKE pool.
+  rke.list = rke.pool$rke.list  # LIST of individual RKE objects
+  rke.all = rke.pool$rke.all  # global RKE (pooled graph)
   
-  # Total matching computed by the mechanism.
+  # Total matching computed by the mechanism. This will be returned
   total.matching = empty.match.result(empty.rke())
   
   m = length(rke.list)  # no. of hospitals
-  ##  0. Compute IR constraints for S-subgraph. R-subgraph will be separate.
+  
+  ##  0. Compute IR constraints for S-subgraph.
   ir.constraints = compute.ir.constraints(rke.pool, pair.types=c("S"), include.3way=T)
   
-  # 1.  Match S internally
+  # 1.  Match S internally -- Respect IR.
   s.subrke = rke.subgraph(rke.all, pair.type="S")
   s.constraints = subset(ir.constraints, pair.type=="S")
   s.matching = max.matching(s.subrke, ir.constraints=s.constraints,
@@ -431,8 +432,6 @@ xCM3 <- function(rke.pool, verbose=F) {
   
   # 1a. Add matching information from S
   total.matching <- add.matching(total.matching, s.matching)
-  # 1b. Remove matches from graph.
-  # rke.all <- rke.remove.pairs(rke.all, rm.pair.ids=get.matching.ids(s.matching))
   ## remove some stuff that are not needed anymore
   rm(ir.constraints)
   
@@ -455,7 +454,9 @@ xCM3 <- function(rke.pool, verbose=F) {
   pcAB = subset(kPairs, desc=="A-B")$pc
   pcBA = subset(kPairs, desc=="B-A")$pc
   
-  for(h in 1:m) {
+  # iterate over hospitals
+  for(h in rke.list.hospital.ids(rke.list)) {
+    # hospital pair ids.
     h.pair.ids =  rke.hospital.pair.ids(rke.all, hospital.id=h)
     # get the extended R subgraph of hospital h
     xR.rke.list[[h]] = rke.keep.pairs(xR.rke.all, pair.ids=h.pair.ids)
@@ -478,9 +479,10 @@ xCM3 <- function(rke.pool, verbose=F) {
                            list(pc=pcBA, pair.type="R", hospital=h, 
                                 internal.matches=nBA.matched))
     
+    # unmatched R pairs.
     zAB[h] = nrow(subset(xR.remainder$pairs, desc=="A-B"))
     zBA[h] = nrow(subset(xR.remainder$pairs, desc=="B-A"))
-    
+    # unmatched virtual R pairs
     nVirtual = rke.count.virtual.pairs(xR.remainder)
     uAB[h] = nVirtual$AB
     uBA[h] = nVirtual$BA
@@ -506,22 +508,23 @@ xCM3 <- function(rke.pool, verbose=F) {
   q = 0    
   loop.ended = F
   r.matching = empty.match.result(empty.rke())
-  
   while(!loop.ended) {
     loop.r.constraints = xR.constraints
+    # in each loop (indexed by q) we get softer constraints.
     loop.r.constraints$internal.matches = 
       sapply(1:nrow(xR.constraints), 
              function(i) {
-               hid = xR.constraints$hospital[i]
-               if(xR.constraints$pc==pcAB) {
-                 return(xR.constraints$internal.matches[i] + max(0, yAB[hid] - q))
+               hid = with(xR.constraints, hospital[i])
+               pc = with(xR.constraints, pc[i])
+               internal =  with(xR.constraints, internal.matches[i])
+               if(pc==pcAB) {
+                 return(internal + max(0, yAB[hid] - q))
                } else {
-                 return(xR.constraints$internal.matches[i] + max(0, yBA[hid] - q))
+                 return(internal + max(0, yBA[hid] - q))
                }
              })
-    
     r.matching = max.matching(xR.rke.all, include.3way=T,
-                              ir.constraints=xR.constraints,
+                              ir.constraints=loop.r.constraints,
                               promote.pair.ids=c(all.AB.pair.ids, all.BA.pair.ids))
     loop.ended = get.matching.status(r.matching) == "OK"
     q = q + 1
@@ -541,8 +544,10 @@ xCM3 <- function(rke.pool, verbose=F) {
                                       rke.hospital.pair.ids(rke.all, hid))
     rke.h <- rke.remove.pairs(rke=rke.list[[hid]],
                               rm.pair.ids=matched.hospital.ids)
-    internal.matching = max.matching(rke.h, include.3way=T, regular.matching=T)
-    # 0.3 Add matching information from internal matching.
+    UD.pair.ids = subset(rke.h$pairs, pair.type=="U")$pair.id
+    # promote UD pairs in this run.
+    internal.matching = max.matching(rke.h, include.3way=T, promote.pair.ids=UD.pair.ids)
+    # Add matching information from internal matching.
     total.matching <- add.matching(total.matching, internal.matching)
   }
   
@@ -550,9 +555,11 @@ xCM3 <- function(rke.pool, verbose=F) {
   remainder.hospital.ids <- setdiff(rke.pair.ids(rke.all), get.matching.ids(total.matching))
   if(length(remainder.hospital.ids) > 0) {
     rke.remainder = rke.keep.pairs(rke.all, pair.ids=remainder.hospital.ids)
+    # full matching, constraint-free.
     m.remainder = max.matching(rke.remainder, include.3way=T)
     total.matching <- add.matching(total.matching, m.remainder)
   }
+  # Check consistency.
   CHECK_UNIQUE(total.matching$match$pair.id)
   return(matching=total.matching)
 }
@@ -718,7 +725,7 @@ Bonus = function(rke.pool, include.3way=F) {
   ## 2b. Add R-matching
   total.matching <- add.matching(total.matching, r.matching)
    
-  #  3. Match OD/UD pairs.
+  #  3. Match OD/UD pairs. 
   #   3a. Split hospital in two sets
   k = as.integer(m/2)
   H.sets = list()
