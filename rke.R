@@ -139,6 +139,12 @@ rke.count.virtual.pairs <- function(xrke) {
   xrkeVirtualBA <- rke.keep.pairs(xrke, subset(xrke$pairs, desc %in% c("O-A", "B-O"))$pair.id)
   
   modify.xrke <- function(xrkeXY, Xdesc) {
+    # This makes the extended-R-subgraph to be symmetric 
+    # i.e. if OD->UD then UD->OD
+    # We need this to decide how many virtual pairs are in this graph
+    # through maximum matching.
+    #
+    # should be the over-demanded pair ids.
     pair.ids = subset(xrkeXY$pairs, desc==Xdesc)$pair.id
     # Xdesc = over-demanded pair.
     edgesXY = subset(xrkeXY$edges, can.donate==1 & pair.id1 %in% pair.ids)
