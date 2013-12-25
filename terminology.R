@@ -227,8 +227,7 @@ CHECK_rke <- function(rke) {
     CHECK_SETEQ(diag(rke$A), c(0))  # no self-loops
   if(rke.size(rke) > 0) {
     CHECK_EQ(rownames(rke$A), rke$pairs$pair.id, msg="rownames A == pair.id?")
-    warning("Muted test in CHECK_rke().")
-    # CHECK_EQ(sum(rke$A), sum(rke$edges$can.donate), "Equal #edges in A and EDGES structs.")
+    CHECK_EQ(sum(rke$A), sum(rke$edges$can.donate), "Equal #edges in A and EDGES structs.")
     CHECK_pairs(rke$pairs)
     CHECK_edges(rke$edges, rke$pairs)
   }
