@@ -1,5 +1,53 @@
 ##   Testing for rke.* functions.
 
+test.rke.extended.Rsubgraph <- function() {
+  #
+  # Tests for the extended R subgraph function.
+  #
+  pool = rrke.pool(m=3, n=30, uniform.pra=T)
+  legit.pairs = c("O-A", "A-O", "O-B", "B-O", "A-B", "B-A")
+  rke = pool$rke.all
+  xRKE = rke.extended.Rsubgraph(rke)
+  CHECK_MEMBER(xRKE$pairs$desc, legit.pairs)
+  print(sprintf("Total edges %d", nrow(xRKE$edges)))
+  # Check all OU pairs -> UD pairs of the same hospital
+  for(ou in c("O-A", "O-B")) {
+    pairs = subset(xRKE$pairs, desc==ou)
+    for(id in pairs$pair.id) {
+      h1 = subset(xRKE$pairs, pair.id==id)$hospital
+      to.pair.ids = subset(xRKE$edges, pair.id1==id & can.donate==1)$pair.id2
+      to.pairs.desc = subset(xRKE$pairs, pair.id %in% to.pair.ids)$desc
+      # 1: O-A -> B-O  only so that a virtual pair is created.
+      if(ou=="O-A") CHECK_TRUE(all(to.pairs.desc=="B-O"))
+      else CHECK_TRUE(all(to.pairs.desc=="A-O"))
+      h2 = subset(xRKE$pairs, pair.id %in% to.pair.ids)$hospital
+      
+      # 2: OD -> UD should only be within hospital
+      CHECK_SETEQ(h2, h1)
+      # 3: Outlinks in the extended graph is subset of the outlinks in the original graph
+      #    (i.e make sure we don't introduce new links)
+      to.pair.ids.original = subset(rke$edges, pair.id1==id & can.donate==1)$pair.id2
+      CHECK_MEMBER(to.pair.ids, to.pair.ids.original)
+    }
+  }
+  # CHECK that UD pairs  -> (A-B or B-A) 
+  for(ud in c("A-O", "B-O")) {
+    pairs = subset(xRKE$pairs, desc==ud)
+    for(id in pairs$pair.id) {
+      to.pair.ids = subset(xRKE$edges, pair.id1==id & can.donate==1)$pair.id2
+      to.pairs.desc = subset(xRKE$pairs, pair.id %in% to.pair.ids)$desc
+      # 2 : A-O -> B-A  only (any hospital).
+      if(ud=="A-O") CHECK_TRUE(all(to.pairs.desc=="B-A"))
+      else CHECK_TRUE(all(to.pairs.desc=="A-B"))
+      
+      # 3: Outlinks in the extended graph is subset of the outlinks in the original graph
+      #    (i.e make sure we don't introduce new links)
+      to.pair.ids.original = subset(rke$edges, pair.id1==id & can.donate==1)$pair.id2
+      CHECK_MEMBER(to.pair.ids, to.pair.ids.original)
+    }
+  }
+}
+
 get.RKE0 <- function(ntriangles) {
   # Creates an RKE with a random #triangles
   # If N = #triangles then we know max matching = 3 * N
