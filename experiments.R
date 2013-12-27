@@ -398,6 +398,14 @@ table.regularity <- function(nsamples, include.3way, verbose=F) {
         mOU = max.matching(OU.rke)
         mR = max.matching(R.rke)
         mS = max.matching(S.rke)
+        if(verbose) {
+          print("")
+          print(sprintf("There are %d AB %d BA, Matched %d AB and %d BA", 
+                        nrow(subset(rke$pairs, desc=="A-B")),
+                        nrow(subset(rke$pairs, desc=="B-A")),
+                        nrow(subset(mR$match, desc=="A-B")),
+                        nrow(subset(mR$match, desc=="B-A"))))
+        }
         # Update regularity matrix
         update = c(n, 
                    count.aspect(rke, "O"),
