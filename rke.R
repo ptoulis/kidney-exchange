@@ -150,7 +150,7 @@ rke.count.virtual.pairs <- function(xrke) {
     edgesXY = subset(xrkeXY$edges, can.donate==1 & pair.id1 %in% pair.ids)
     newEdgesXY = edgesXY
     # 1. Sample new edge ids for the symmetric edges.
-    newEdgesXY$edge.id <- max(edgesXY$edge.id) + 1 + as.integer(10^6 * runif(nrow(newEdgesXY)))
+    newEdgesXY$edge.id <- max(edgesXY$edge.id) + 100 + 1:nrow(newEdgesXY)
     # 2. Make edges symmetric
     newEdgesXY$pair.id1 <- edgesXY$pair.id2
     newEdgesXY$pair.id2 <- edgesXY$pair.id1
