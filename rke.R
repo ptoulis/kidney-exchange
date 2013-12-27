@@ -145,12 +145,16 @@ rke.count.virtual.pairs <- function(xrke) {
     # through maximum matching.
     #
     # should be the over-demanded pair ids.
+    #
+    # check if no edges.
+    if(sum(xrkeXY$edges$can.donate)==0)
+      return(xrkeXY)
     pair.ids = subset(xrkeXY$pairs, desc==Xdesc)$pair.id
     # Xdesc = over-demanded pair.
     edgesXY = subset(xrkeXY$edges, can.donate==1 & pair.id1 %in% pair.ids)
     newEdgesXY = edgesXY
     # 1. Sample new edge ids for the symmetric edges.
-    newEdgesXY$edge.id <- max(edgesXY$edge.id) + 100 + 1:nrow(newEdgesXY)
+    newEdgesXY$edge.id <- max(edgesXY$edge.id) + 100 + 1:nrow(newEdgesXY$edges)
     # 2. Make edges symmetric
     newEdgesXY$pair.id1 <- edgesXY$pair.id2
     newEdgesXY$pair.id2 <- edgesXY$pair.id1
