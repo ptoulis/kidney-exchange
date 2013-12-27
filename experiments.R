@@ -259,7 +259,8 @@ mech.weakness.theoretical <- function(nHospitals=6, nSize=25, ntrials=10) {
   print(summary(util.c))
 }
 
-table.regularity <- function(nsamples, include.3way, verbose=F) {
+table.regularity <- function(nsamples, max.hospitalSize=500,
+                             include.3way, verbose=F) {
   # Explore regularity assumptions for 2-way or 3-way exchanges
   #
   # Regularity has "aspects" which are basically things we check to see
@@ -279,9 +280,9 @@ table.regularity <- function(nsamples, include.3way, verbose=F) {
   #   aspect S= sum of S pairs (b.c. S pairs =0 after 3way matching)
   #   aspect O = 0
   #
-  all.sizes <- round(seq(5, 200, by=25))
+  all.sizes <- round(seq(10, max.hospitalSize, by=50))
   if(include.3way)
-    all.sizes = round(seq(10, 140, by=20))  # smaller sizes for 3-way
+    all.sizes = round(seq(10, max.hospitalSize, by=50))  # smaller sizes for 3-way
   
   sampled.sizes <- sample(all.sizes, size=nsamples, replace=T)
   print("Sampled sizes breakdown")
