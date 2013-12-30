@@ -259,6 +259,39 @@ mech.weakness.theoretical <- function(nHospitals=6, nSize=25, ntrials=10) {
   print(summary(util.c))
 }
 
+safe.sample <- function(from, size) {
+  CHECK_TRUE(length(from) >= size)
+  ind = sample(c(rep(1, size), rep(0, length(from)-size)))
+  return(from[which(ind==1)])
+}
+
+OAB.matched.in.OUU <- function(rke) {
+  OUpair.ids = subset(rke$pairs, pair.type %in% c("O", "U"))$pair.id
+  OU.rke = rke.keep.pairs(rke, pair.ids=OUpair.ids)
+  # we are using the old notation
+  OABpair.ids = subset(rke$pairs, desc=="O-AB")$pair.id
+  Upair.ids = subset(rke$pairs, pair.type=="U")$pair.id
+  m = max.matching(OU.rke, include.3way=T, promote.pair.ids=Upair.ids)
+  # take only the 2-way exchanges.
+  if(m$utility==0)
+    return(list(OAB=c(), U=c()))
+  m3 = subset(m$matched.cycles, select=-type)
+  # iterate all 3-way exchanges, count #OAB pairs matched.
+  OAB.matched = as.numeric(apply(m3, 1, function(x) length(intersect(OABpair.ids, x))))
+  totalU.matched = as.numeric(apply(m3, 1, function(x) length(intersect(Upair.ids, x))))
+  ind = intersect(which(OAB.matched==1), which(totalU.matched==2))
+  # ind = index of 3-way cycles in m3, that match O-AB in OUU
+  # need to take the pair ids.
+  all.OAB.matched = c()
+  all.U.matched = c()
+  for(i in ind) {
+    x = as.numeric(m3[i, ])
+    all.OAB.matched <- c(all.OAB.matched, intersect(OABpair.ids, x))
+    all.U.matched <- c(all.U.matched, intersect(Upair.ids, x))
+  }
+  return(list(OAB=all.OAB.matched, U=all.U.matched))         
+}
+
 table.regularity <- function(nsamples, max.hospitalSize=500,
                              include.3way, verbose=F) {
   # Explore regularity assumptions for 2-way or 3-way exchanges
@@ -289,45 +322,39 @@ table.regularity <- function(nsamples, max.hospitalSize=500,
   print(table(sampled.sizes))
   
   # stores information about the matches e.g. OR, OO, OS, ...
-  regularity.aspects = c("nsize", "O", "R", "S", "O.unmatched", "R.unmatched", "S.unmatched")
+  # regularity.aspects = c("nsize", "O", "R", "S", "O.unmatched", "R.unmatched", "S.unmatched")
+  S.aspects = c("A-A", "B-B", "O-O", "AB-AB")
+  R.aspects = c("R")
+  OU.aspects = c("O")
+  if(include.3way) OU.aspects = c("O", "O-AB")
+  
+  unmatched.aspects <- function(x) {
+    as.vector(sapply(x, function(s) sprintf("%s.unmatched", s)))  
+  }
+
+  regularity.aspects = c("nsize",
+                         S.aspects, unmatched.aspects(S.aspects),
+                         R.aspects, unmatched.aspects(R.aspects),
+                         OU.aspects, unmatched.aspects(OU.aspects))
   regularity = list(UPRA=matrix(NA, nrow=0, ncol=length(regularity.aspects)),
                     NonUPRA=matrix(NA, nrow=0, ncol=length(regularity.aspects)))
   colnames(regularity$UPRA) = regularity.aspects
   colnames(regularity$NonUPRA) = regularity.aspects
+
+  print(regularity.aspects)
   
-  count.aspect <- function(rke, aspect) {
-    # Counts the aspect of the regularity assumption 
-    # we are interested in.
-    # If aspect=R then count the size of the short R side
-    # If aspect=O count #O
-    # If aspect=S count S's (actually max(0, n-1)
-    CHECK_MEMBER(aspect, c("O", "R", "S"))
-    if(aspect=="R") {
-      nAB = nrow(subset(rke$pairs, desc=="A-B"))
-      nBA = nrow(subset(rke$pairs, desc=="B-A"))
-      if(include.3way) {
-        # for 3-way we need to check whether all R pairs were matched
-        return(nAB+nBA)
+  count.aspects <- function(rke, aspects) {
+    sapply(aspects, function(what) {
+      if(what %in% kPairs$pair.type) {
+        # if count a specific pair type, e.g. S or R
+        return(nrow(subset(rke$pairs, pair.type==what)))
+      } else if(what %in% kPairs$desc) {
+        # if count a specific donor-patient type (e.g. A-B)
+        return(nrow(subset(rke$pairs, desc==what)))
       } else {
-        # for 2-way we need to check whether the short side is matched.
-        return(min(nAB, nBA))
+        stop(sprintf("Could not find aspect %s", what))
       }
-    } else if(aspect=="O") {
-      # for 3-way we don't care about O pairs.
-      if(include.3way) return(0)
-      # for 2-way we check the #O pairs unmatched.
-      # same story for S pairs.
-      return(nrow(subset(rke$pairs, pair.type=="O")))
-    } else {
-      if(include.3way) {
-        return(nrow(subset(rke$pairs, pair.type=="S")))
-      }
-      stypes = c("O-O", "A-A", "B-B", "AB-AB")
-      return(sum(sapply(stypes, function(t) {
-        ns = nrow(subset(rke$pairs, desc==t))
-        return(max(0, ns-1))
-      })))
-    }
+    })
   }
   
   pb = txtProgressBar(style=3)
@@ -339,82 +366,118 @@ table.regularity <- function(nsamples, max.hospitalSize=500,
     print("")
     print(sprintf("PRA=%s, nsamples=%d, 3way=%s", uniform.pra, nsamples, include.3way))
     for(i in 1:nsamples) {
-      n = sampled.sizes[i]
-      rke = rrke(n, uniform.pra=uniform.pra)
-      ## compute the regular 
+      # size of the RKE object
+      nsize = sampled.sizes[i]
+      rke = rrke(nsize, uniform.pra=uniform.pra)
+      ## Pair ids (common to both 2-way and 3-way loops)
       Rpair.ids = rke.filter.pairs(rke, attr="pair.type", value="R")
+      ABpair.ids = subset(rke$pairs, desc=="A-B")$pair.id
+      BApair.ids = subset(rke$pairs, desc=="B-A")$pair.id
       Spair.ids = rke.filter.pairs(rke, attr="pair.type", value="S")
+      OUpair.ids = setdiff(rke.pair.ids(rke), union(Rpair.ids, Spair.ids))
       CHECK_DISJOINT(Rpair.ids, Spair.ids)
-      OU.pair.ids = setdiff(rke.pair.ids(rke), union(Rpair.ids, Spair.ids))
       
       update <- NA  # this will be the row to be added to results
-      if(include.3way) {
-        xRKE = rke.extended.Rsubgraph(rke)      
-        m3way = max.matching(xRKE, include.3way=T, promote.pair.ids=Rpair.ids)
-        # computes unmatched AB + BA
-        unmatched.R = count.aspect(rke.remove.pairs(xRKE, get.matching.ids(m3way)), "R")
-        aspect.R = 0
-        nAB = nrow(subset(xRKE$pairs, desc=="A-B"))
-        nBA = nrow(subset(xRKE$pairs, desc=="B-A"))
-        CHECK_EQ(nAB + nBA, length(Rpair.ids))
-        nmatches.real = nAB + nBA - unmatched.R  # matches realized
-        excess = abs(nBA-nAB)
-        short.side = min(nAB, nBA)
-        virtualR = rke.count.virtual.pairs(xRKE)
-        
-        nmatches.under.regularity = 0
-        
-        if(nAB > nBA) {
-          nmatches.under.regularity = 2 * short.side + min(excess, virtualR$BA)
+      only.2way = 1-include.3way
+      
+      if(only.2way) {
+        # 2-way exchanges
+        # Preprocess S-rke (updates Spair.ids)
+        # For all T-T remove one pair at random if it is odd.
+        for(aspect in S.aspects) {
+          TTpair.ids = subset(rke$pairs, desc==aspect)$pair.id
+          if(length(TTpair.ids) > 0 && length(TTpair.ids) %% 2 == 1) {
+            rm.id = safe.sample(TTpair.ids, size=1)
+            if(verbose) {
+              print(sprintf("Graph %s had %d pairs. Removing one.",
+                            aspect, length(TTpair.ids)))
+            }
+            Spair.ids = setdiff(Spair.ids, rm.id)
+          }
+        }
+        #
+        # Pre-process R subgraph (updates Rpair.ids)
+        # First balance-then match.
+        excess = abs(length(ABpair.ids) - length(BApair.ids))
+        # remove excess.
+        if(length(ABpair.ids)  > length(BApair.ids)) {
+          Rpair.ids = setdiff(Rpair.ids, safe.sample(ABpair.ids, size=excess))
         } else {
-          nmatches.under.regularity = 2 * short.side + min(excess, virtualR$AB)
+          Rpair.ids = setdiff(Rpair.ids, safe.sample(BApair.ids, size=excess))
         }
-        # This will ne included in the violations row update.
-        aspect.R = nmatches.under.regularity - nmatches.real
-        if(verbose) {
-          print("")
-          plot(xRKE)
-          print("Max matching on extended R subgraph")
-          print(m3way$matched.cycles)
-
-          print(sprintf("Total AB=%d BA=%d Virtual AB=%d, BA=%d, unmatched R pairs=%d  Violations=%d",
-                        nAB, nBA, virtualR$AB, virtualR$BA, unmatched.R, aspect.R))
-          readline("Press ENTER")
-        }
-        
-        # S-subgraph violations.
-        sRKE = rke.keep.pairs(rke, pair.ids=Spair.ids)
-        mS = max.matching(sRKE, include.3way=T)
-        update = c(n, 
-                   0,
-                   count.aspect(rke, "R"),
-                   count.aspect(rke, "S"),
-                   0,
-                   aspect.R,
-                   count.aspect(rke.remove.pairs(rke, get.matching.ids(mS)), "S"))
-      } else {
-        OU.rke = rke.keep.pairs(rke, pair.ids=OU.pair.ids)
+        # No pre-process for OU matches.
+        OU.rke = rke.keep.pairs(rke, pair.ids=OUpair.ids)
         S.rke = rke.keep.pairs(rke, pair.ids=Spair.ids)
         R.rke = rke.keep.pairs(rke, pair.ids=Rpair.ids)
-        mOU = max.matching(OU.rke)
-        mR = max.matching(R.rke)
+        
         mS = max.matching(S.rke)
-        if(verbose) {
-          print("")
-          print(sprintf("There are %d AB %d BA, Matched %d AB and %d BA", 
-                        nrow(subset(rke$pairs, desc=="A-B")),
-                        nrow(subset(rke$pairs, desc=="B-A")),
-                        nrow(subset(mR$match, desc=="A-B")),
-                        nrow(subset(mR$match, desc=="B-A"))))
-        }
+        S.rke.remainder = rke.remove.pairs(S.rke, get.matching.ids(mS))
+        mR = max.matching(R.rke)
+        R.rke.remainder = rke.remove.pairs(R.rke, get.matching.ids(mR))
+        mOU = max.matching(OU.rke)
+        OU.rke.remainder = rke.remove.pairs(OU.rke, get.matching.ids(mOU))
+              
         # Update regularity matrix
-        update = c(n, 
-                   count.aspect(rke, "O"),
-                   count.aspect(rke, "R"),
-                   count.aspect(rke, "S"),
-                   count.aspect(rke.remove.pairs(OU.rke, get.matching.ids(mOU)), "O"),
-                   count.aspect(rke.remove.pairs(R.rke, get.matching.ids(mR)), "R"),
-                   count.aspect(rke.remove.pairs(S.rke, get.matching.ids(mS)), "S"))
+        update = as.vector(c(nsize, 
+                   count.aspects(S.rke, S.aspects),
+                   count.aspects(S.rke.remainder, S.aspects), 
+                   count.aspects(R.rke, R.aspects),
+                   count.aspects(R.rke.remainder, R.aspects),
+                   count.aspects(OU.rke, OU.aspects),
+                   count.aspects(OU.rke.remainder, OU.aspects)))
+      }
+      else if(include.3way) {
+        ## No pre-processing for S-subgraph
+        
+        # Preprocess for R-subgraph
+        xRKE = rke.extended.Rsubgraph(rke)   
+        virtualR = rke.count.virtual.pairs(xRKE)
+        if(length(ABpair.ids) < length(BApair.ids)) {
+          if(length(ABpair.ids) + virtualR$AB < length(BApair.ids)) {
+            rm.ids = safe.sample(from=BApair.ids,
+                                 size=length(BApair.ids) - length(ABpair.ids) - virtualR$AB)
+            Rpair.ids = setdiff(Rpair.ids, rm.ids)
+          }
+        } else {
+          if(length(BApair.ids) + virtualR$BA < length(ABpair.ids)) {
+            rm.ids = safe.sample(from=ABpair.ids,
+                                 size=length(ABpair.ids) - length(BApair.ids) - virtualR$BA)
+            Rpair.ids = setdiff(Rpair.ids, rm.ids)
+          }
+        }
+        # Pre-process for OU graph
+        # See if OUU match all O-AB (i.e. AB-O with new notation)
+        mOUU = OAB.matched.in.OUU(rke)
+        virtualR = rke.count.virtual.pairs(xRKE, return.bipartite=T)
+        virtual.pair.ids = c(virtualR$AB, virtualR$BA)
+        select.rm.pair.ids = rbinom(length(virtual.pair.ids), size=1, prob=0.5)
+        rm.pair.ids = virtual.pair.ids[which(select.rm.pair.ids==1)]
+        # Remove the OUU matches and the random virtual pairs.
+        OUpair.ids = setdiff(OUpair.ids, c(rm.pair.ids, mOUU$U, mOUU$OAB))
+        
+        # Compute the RKE after the transformations.
+        S.rke = rke.keep.pairs(rke, Spair.ids)
+        R.rke = rke.keep.pairs(xRKE, Rpair.ids)
+        OU.rke = rke.keep.pairs(rke, OUpair.ids)
+        
+        mS = max.matching(S.rke, include.3way=T)
+        S.rke.remainder = rke.remove.pairs(S.rke, get.matching.ids(mS))
+        mR = max.matching(R.rke, include.3way=T)
+        R.rke.remainder = rke.remove.pairs(R.rke, get.matching.ids(mR))
+        mOU = max.matching(OU.rke)  # should be 2-way
+        OU.rke.remainder = rke.remove.pairs(OU.rke, get.matching.ids(mOU))
+        
+        # Update regularity matrix
+        update = as.vector(c(nsize, 
+                             count.aspects(S.rke, S.aspects),
+                             count.aspects(S.rke.remainder, S.aspects), 
+                             count.aspects(R.rke, R.aspects),
+                             count.aspects(R.rke.remainder, R.aspects),
+                             count.aspects(OU.rke, OU.aspects),
+                             count.aspects(OU.rke.remainder, OU.aspects)))
+      } else {
+        # this is a 2-way exchange
+        stop("No include.3way?")
       }
       
       if(uniform.pra) {
@@ -443,6 +506,7 @@ table.regularity <- function(nsamples, max.hospitalSize=500,
   print("")
   print(sprintf("Simulation complete. File saved in %s", filename))
 }
+
 
 table.welfare.incentives <- function(nhospitals=6, nsize=15, 
                                      include.3way=F, nsamples=100) {
