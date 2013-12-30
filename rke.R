@@ -133,7 +133,7 @@ rke.cycles <- function(rke, include.3way=F) {
   return (as.data.frame(out))
 }
 
-rke.count.virtual.pairs <- function(xrke) {
+rke.count.virtual.pairs <- function(xrke, return.bipartite=F) {
   # counts the number of virtual AB and BA pairs of the extended R subgraph.
   xrkeVirtualAB <- rke.keep.pairs(xrke, subset(xrke$pairs, desc %in% c("O-B", "A-O"))$pair.id)
   xrkeVirtualBA <- rke.keep.pairs(xrke, subset(xrke$pairs, desc %in% c("O-A", "B-O"))$pair.id)
@@ -165,6 +165,9 @@ rke.count.virtual.pairs <- function(xrke) {
   
   newAB = modify.xrke(xrkeVirtualAB, "O-B")
   newBA = modify.xrke(xrkeVirtualBA, "O-A")
+  if(return.bipartite) {
+    return(list(AB=newAB$pairs$pair.id, BA=newBA$pairs$pair.id))
+  }
   nBA = get.matching.utility(max.matching(newBA)) / 2
   nAB = get.matching.utility(max.matching(newAB)) / 2
   return(list(AB=nAB, BA=nBA))
