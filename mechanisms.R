@@ -273,13 +273,14 @@ g.share = function(demand, supply) {
 compute.Rsubgraph.constraints <- function(ir.constraints, rke.pool) {
   # Constraints for the R subgraph
   # Returns:
-  #   pc  hospital  internal.matches  pair.type  y
+  #   pc  hospital  internal.matches  pair.type  unmatched y
   #
   # pc = pair code, hospital = hospital id
   # internal.matches = #matched in R subgraph
   # Should be pair.type == R
   # y = Allocation after running the lottery for the unmatched R pairs.
   m = length(rke.pool$rke.list)
+  all.hids = rke.list.hospital.ids(rke.pool$rke.list)
   empty.cons <- function() {
     x <- expand.grid(hospital=c(1:m), pc=c(7,10))
     x$pair.type <- "R"
@@ -294,31 +295,69 @@ compute.Rsubgraph.constraints <- function(ir.constraints, rke.pool) {
   } else {
     cons <- subset(ir.constraints, pair.type=="R")
   }
-  tmp.frame <- expand.grid(hospital=c(1:m), pc=c(7,10))
+  tmp.frame <- expand.grid(hospital=all.hids,
+                           pc=subset(kPairs, pair.type=="R")$pc)
   cons = join(cons, tmp.frame, type="right", by=c("pc", "hospital"))
   cons$internal.matches[is.na(cons$internal.matches)] <- 0
   cons$pair.type <- "R"
   cons$desc <- pc.to.desc(pcs=cons$pc)
-  count.h.pairs <- function(hid, pc) {
-    length(rke.filter.pairs(rke.pool$rke.all, attrs=c("hospital", "pc"), values=c(hid, pc)))
-  }
   CHECK_EQ(nrow(cons), 2 * m, msg="Correct no. of AB/BA #constraints")
-  cons$unmatched <- sapply(1:nrow(cons), function(i) with(cons[i, ], count.h.pairs(hospital, pc)))
-  cons$unmatched <- cons$unmatched - cons$internal.matches
+  # count total R pairs for each hospital
+  # Vector of size (m x 1)
+  totalR <- sapply(1:nrow(cons), 
+                   function(i) {
+                     hid = cons[i, ]$hospital
+                     hid.pc = cons[i, ]$pc
+                     nrow(subset(rke.pool$rke.all$pairs, hospital==hid & pc==hid.pc))
+                   })
+
+  cons$unmatched <- totalR - cons$internal.matches
   CHECK_GE(cons$unmatched, 0, msg="Non-negative #matches")
+  # consAB = zAB and consBA = zBA (but data-frames!)
   consAB <- subset(cons, desc=="A-B")
   consBA <- subset(cons, desc=="B-A")
+  zAB = consAB$unmatched
+  zBA = consBA$unmatched
   
-  xAB <- sum(consAB$unmatched)
-  xBA <- sum(consBA$unmatched)
+  # New tweaks (30/12)
+  # nAB = counts of AB pairs (over hospitals)
+  nAB = sapply(all.hids, function(hid) {
+    rke.h = rke.pool$rke.list[[hid]]
+    nrow(subset(rke.h$pairs, desc=="A-B"))
+  })
+  nBA = sapply(all.hids, 
+               function(hid) {
+                 rke.h = rke.pool$rke.list[[hid]]
+                 nrow(subset(rke.h$pairs, desc=="B-A"))
+               })
+  CHECK_TRUE(all(nAB + nBA) >= cons$unmatched)
+  # Ideal-matches: Assume perfect-matching short to long side.
+  mh.ideal = sapply(1:length(all.hids), function(h) min(nAB[h], nBA[h]))
+  # Real-matches: Just take the info from the constraints.
+  m.real = sapply(all.hids, 
+                  function(hid) {
+                    tmp = subset(cons, hospital==hid & desc=="A-B")
+                    if(nrow(tmp)==0) return(0)
+                    return(tmp$internal.matches)
+                  })
+  zAB = nAB - mh.ideal
+  zBA = nBA - mh.ideal
+  delta = mh.ideal - m.real
+  CHECK_TRUE(all(delta >= 0))
+  CHECK_TRUE(all(zAB >= 0))
+  CHECK_TRUE(all(zBA >= 0))
+  ##  New tweaks end here.
+  
+  xAB <- sum(zAB)
+  xBA <- sum(zBA)
   yAB <- rep(0, m)
   yBA <- rep(0, m)
-  if (xAB >= xBA)
-    yAB <- g.share(demand=consAB$unmatched, supply=xBA)
+  if (sum(nAB) >= sum(nBA))
+    yAB <- g.share(demand=zAB, supply=xBA)
   else
-    yBA <- g.share(demand=consBA$unmatched, supply=xAB)
-  consAB$y <- yAB
-  consBA$y <- yBA
+    yBA <- g.share(demand=zBA supply=xAB)
+  consAB$y <- yAB + delta
+  consBA$y <- yBA + delta
   cons <- rbind(consAB, consBA) 
   
   return(cons)
@@ -370,7 +409,8 @@ xCM <- function(rke.pool, include.3way=F, verbose=F) {
   while(!loop.ended) {
     loop.r.constraints = r.constraints
     # loop.r.constraints$unmatched <- r.constraints$unmatched + max(0, r.constraints$y - q)
-    loop.r.constraints$internal.matches = sapply(1:nrow(r.constraints), function(i) {
+    loop.r.constraints$internal.matches = 
+      sapply(1:nrow(r.constraints), function(i) {
         r.constraints$internal.matches[i] + max(0, r.constraints$y[i] - q)
       })
 
