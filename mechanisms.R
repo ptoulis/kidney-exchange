@@ -449,8 +449,52 @@ xCM <- function(rke.pool, include.3way=F, verbose=F) {
   return(matching=total.matching)
 }
 
+OAB.matched.in.OUU <- function(rke) {
+  # Computes the matches of O-AB to U-U pairs.
+  # In new notation i.e. (patient, donor) this would be AB-O pairs to U, U
+  #
+  # Returns LIST(OAB=(pair ids of OAB pairs that can be matched), ,
+  #              U = pair ids that can be matched in OUU
+  #              matching = the MATCHING object (see terminology.R)
+  OUpair.ids = subset(rke$pairs, pair.type %in% c("O", "U"))$pair.id
+  # get the OU RKE object
+  OU.rke = rke.keep.pairs(rke, pair.ids=OUpair.ids)
+  # we are using the old notation
+  OABpair.ids = subset(rke$pairs, desc=="O-AB")$pair.id
+  Upair.ids = subset(rke$pairs, pair.type=="U")$pair.id
+  #
+  # Compute a max-matching (w/ 3cycles) where U pairs take 2x weight.
+  # This will get as many OUU exchanges as possible.
+  m = max.matching(OU.rke, include.3way=T, promote.pair.ids=Upair.ids)
+  if(m$utility==0) return(list(OAB=c(), U=c()))
+  # take the matched cycles and remove the "type" field.
+  m3 = subset(m$matched.cycles, select=-type)
+  # iterate all 3-way exchanges, count #OAB pairs matched.
+  OAB.matched = as.numeric(apply(m3, 1, function(x) length(intersect(OABpair.ids, x))))
+  # iterate all exchanes
+  totalU.matched = as.numeric(apply(m3, 1, function(x) length(intersect(Upair.ids, x))))
+  ind = intersect(which(OAB.matched==1), which(totalU.matched==2))
+  # ind = index of 3-way cycles in m3, that match O-AB in OUU
+  # need to take the pair ids.
+  all.OAB.matched = c()
+  all.U.matched = c()
+  for(i in ind) {
+    x = as.numeric(m3[i, ])
+    all.OAB.matched <- c(all.OAB.matched, intersect(OABpair.ids, x))
+    all.U.matched <- c(all.U.matched, intersect(Upair.ids, x))
+  }
+  return(list(matching=matching.keep.pair.ids(OU.rke, m, c(all.OAB.matched, all.U.matched)),
+              OAB=all.OAB.matched,
+              U=all.U.matched))         
+}
+
+
 xCM3 <- function(rke.pool, verbose=F) {
   # Runs xCM with 3-way exchanges.
+  #
+  # The most important object is "total.matching" for every mechanism
+  # In each step this is updated with all matches performed so far.
+  # This is a MATCHING object (se terminology)
   CHECK_rke.pool(rke.pool)
   # unload the RKE pool.
   rke.list = rke.pool$rke.list  # LIST of individual RKE objects
@@ -460,6 +504,19 @@ xCM3 <- function(rke.pool, verbose=F) {
   total.matching = empty.match.result(empty.rke())
   
   m = length(rke.list)  # no. of hospitals
+  all.hids = rke.list.hospital.ids(rke.list)
+  CHECK_EQ(all.hids, 1:m) # hospital ids should be 1, 2, 3...
+  
+  ## -1. New step: Match O-AB pairs first (i.e. ABO pairs)
+  for(h in all.hids) {
+    rke.h = rke.list[[h]]
+    mOOU.h = OAB.matched.in.OUU(rke.h)
+    # matchings are 3-way-only and of type OUU
+    # make some sanity CHECKs here.
+    CHECK_TRUE(mOOU.h$matching$utility %% 3 == 0)  # only OUU matches (3way)
+    CHECK_MEMBER(mOOU.h$matching$match$pair.type, c("O", "U"))
+    total.matching = add.matching(total.matching, mOOU.h$matching)
+  }
   
   ##  0. Compute IR constraints for S-subgraph.
   ir.constraints = compute.ir.constraints(rke.pool, pair.types=c("S"), include.3way=T)
@@ -478,78 +535,83 @@ xCM3 <- function(rke.pool, verbose=F) {
   ## 2. Matching R subgraph.
   ## 2a. Compute the overall and individual extended R-subgraphs
   #      and find 3-way max-matching internally.
-  m = length(rke.list) # no. of hospitals
-  xR.rke.all = rke.extended.Rsubgraph(rke.all)  # rke.all of the extended R subgraph
-  xR.rke.list = list()  # list of individual extended R subgraphs.
-  xR.Mh = list()  # list of internal matchings of the extended R subgraph
   
-  # Unmatched R pairs
-  zAB = rep(0, m)
-  zBA = rep(0, m)
-  # Unmatched virtual pairs
-  uAB = rep(0, m)
-  uBA = rep(0, m)
+  # AB, BA pairs (real and virtual)
+  nAB = sapply(all.hids, function(h) nrow(subset(rke.all$pairs, desc=="A-B" & hospital==h)))
+  nBA =  sapply(all.hids, function(h) nrow(subset(rke.all$pairs, desc=="B-A" & hospital==h)))
+  virtual.nAB = rep(0, m)
+  virtual.nBA = rep(0, m)
+  # Compute the virtual AB/BA pairs.
+  for(h in all.hids) {
+    xRKE.h = rke.extended.Rsubgraph(rke.list[[h]])
+    virtual.h = rke.count.virtual.pairs(xRKE.h)
+    virtual.nAB[h] = virtual.h$AB
+    virtual.nBA[h] = virtual.h$BA
+  }
+  # matches (ideal and real)
+  mh.AB.ideal = sapply(all.hids, function(h) min(nAB[h], nBA[h] + virtual.nBA[h]))
+  mh.BA.ideal = sapply(all.hids, function(h) min(nBA[h], nAB[h] + virtual.nAB[h]))
+
+  # Unmatched R pairs (demand)
+  zAB = nAB - mh.AB.ideal
+  zBA = nBA - mh.BA.ideal
+  # z_u (unmatched virtual pairs, kind of)
+  uAB = sapply(all.hids, function(h) virtual.nAB[h] - max(0, mh.BA.ideal[h] - mh.AB.ideal[h]))
+  uBA =sapply(all.hids, function(h) virtual.nBA[h] - max(0, mh.AB.ideal[h] - mh.BA.ideal[h]))
+  
+  # x_* = supply
+  xAB = sum(zAB + uAB)
+  xBA = sum(zBA + uBA)
+  
+  # y = allocation through the uniform share mechanism.
+  yAB = rep(0, m)
+  yBA = rep(0, m)
+  if(sum(nAB) >= sum(nBA)) {
+    yAB = g.share(zAB, xBA)
+  } else {
+    yBA = g.share(zBA, xAB)
+  }
   # IR constraints
   xR.constraints = data.frame(pc=c(), pair.type=c(), hospital=c(), internal.matches=c())
   pcAB = subset(kPairs, desc=="A-B")$pc
   pcBA = subset(kPairs, desc=="B-A")$pc
+  xRKE.all = rke.extended.Rsubgraph(rke.all)  # rke.all of the extended R subgraph
   
-  # iterate over hospitals
-  # Compute zAB, zBA (unmatched pairs-- supply of one size)
-  # Compute uAB, uBA (virtual pairs)
-  for(h in rke.list.hospital.ids(rke.list)) {
-    # hospital pair ids.
-    h.pair.ids =  rke.hospital.pair.ids(rke.all, hospital.id=h)
+  # Iterate over hospitals
+  # Calculates the mh.real  i.e. 
+  # the internal matches of AB/BA pairs for each hospital h
+  mh.AB.real = rep(0, m)  # real internal matches, m_h in text.
+  mh.BA.real = rep(0, m)
+  for(h in all.hids) {
     # get the extended R subgraph of hospital h
-    xR.rke.list[[h]] = rke.keep.pairs(xR.rke.all, pair.ids=h.pair.ids)
+    xRKE.h = rke.extended.Rsubgraph(rke.list[[h]])
     # AB and BA pairs of hospital h
     real.R.pair.ids = subset(rke.all$pairs, hospital==h & pair.type=="R")$pair.id
     # compute max matching on the extended R subgraph of h
-    xR.Mh[[h]] = max.matching(xR.rke.list[[h]],
-                              promote.pair.ids=real.R.pair.ids, 
-                              include.3way=T)
-    matched.ids = get.matching.ids(xR.Mh[[h]])
-    # find the remainder from the extended subgraph
-    xR.remainder = rke.remove.pairs(xR.rke.list[[h]], rm.pair.ids=matched.ids)
+    m = max.matching(xRKE.h, promote.pair.ids=real.R.pair.ids, include.3way=T)
     
-    nAB.matched = nrow(subset(xR.Mh[[h]]$match, desc=="A-B"))
+    mh.AB.real[h] = nrow(subset(m$match, desc=="A-B"))
+    mh.BA.real[h] = nrow(subset(m$match, desc=="B-A"))
     xR.constraints = rbind(xR.constraints, 
                            list(pc=pcAB, pair.type="R", hospital=h, 
-                                internal.matches=nAB.matched))
-    nBA.matched = nrow(subset(xR.Mh[[h]]$match, desc=="B-A"))
+                                internal.matches=mh.AB.real[h]))
     xR.constraints = rbind(xR.constraints, 
                            list(pc=pcBA, pair.type="R", hospital=h, 
-                                internal.matches=nBA.matched))
-    
-    # unmatched R pairs.
-    zAB[h] = nrow(subset(xR.remainder$pairs, desc=="A-B"))
-    zBA[h] = nrow(subset(xR.remainder$pairs, desc=="B-A"))
-    # unmatched virtual R pairs
-    nVirtual = rke.count.virtual.pairs(xR.remainder)
-    uAB[h] = nVirtual$AB
-    uBA[h] = nVirtual$BA
+                                internal.matches=mh.BA.real[h]))
   }
   
-  # 2c. G-share -> compute allocations yAB, yBA
-  xAB = sum(uAB + zAB)
-  xBA = sum(uBA + zBA)
-  all.AB.pair.ids = subset(rke.all$pairs, desc=="A-B")$pair.id
-  all.BA.pair.ids = subset(rke.all$pairs, desc=="B-A")$pair.id
   
-  nAB.total = length(all.AB.pair.ids)
-  nBA.total = length(all.BA.pair.ids)
-  
-  yAB = g.share(zAB, xBA)
-  yBA = rep(0, m)
-  if(nAB.total < nBA.total) {
-    yAB = rep(0, m)
-    yBA = g.share(zBA, xAB)
-  }
+  # deltas (difference between ideal and real)
+  delta.AB = mh.AB.ideal - mh.AB.real
+  delta.BA = mh.BA.ideal - mh.BA.real
+  CHECK_TRUE(all(delta.AB >=0))
+  CHECK_TRUE(all(delta.BA >=0))
   
   # 2d. Run the loop
   q = 0    
   loop.ended = F
   r.matching = empty.match.result(empty.rke())
+  all.Rpair.ids = subset(rke.all$pairs, pair.type=="R")$pair.id
   while(!loop.ended) {
     loop.r.constraints = xR.constraints
     # in each loop (indexed by q) we get softer constraints.
@@ -560,14 +622,14 @@ xCM3 <- function(rke.pool, verbose=F) {
                pc = with(xR.constraints, pc[i])
                internal =  with(xR.constraints, internal.matches[i])
                if(pc==pcAB) {
-                 return(internal + max(0, yAB[hid] - q))
+                 return(internal + max(0, yAB[hid] + delta.AB[hid] - q))
                } else {
-                 return(internal + max(0, yBA[hid] - q))
+                 return(internal + max(0, yBA[hid] + delta.BA[hid] - q))
                }
              })
-    r.matching = max.matching(xR.rke.all, include.3way=T,
+    r.matching = max.matching(xRKE.all, include.3way=T,
                               ir.constraints=loop.r.constraints,
-                              promote.pair.ids=c(all.AB.pair.ids, all.BA.pair.ids))
+                              promote.pair.ids=all.Rpair.ids)
     loop.ended = get.matching.status(r.matching) == "OK"
     q = q + 1
   }
