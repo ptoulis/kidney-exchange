@@ -265,33 +265,6 @@ safe.sample <- function(from, size) {
   return(from[which(ind==1)])
 }
 
-OAB.matched.in.OUU <- function(rke) {
-  OUpair.ids = subset(rke$pairs, pair.type %in% c("O", "U"))$pair.id
-  OU.rke = rke.keep.pairs(rke, pair.ids=OUpair.ids)
-  # we are using the old notation
-  OABpair.ids = subset(rke$pairs, desc=="O-AB")$pair.id
-  Upair.ids = subset(rke$pairs, pair.type=="U")$pair.id
-  m = max.matching(OU.rke, include.3way=T, promote.pair.ids=Upair.ids)
-  # take only the 2-way exchanges.
-  if(m$utility==0)
-    return(list(OAB=c(), U=c()))
-  m3 = subset(m$matched.cycles, select=-type)
-  # iterate all 3-way exchanges, count #OAB pairs matched.
-  OAB.matched = as.numeric(apply(m3, 1, function(x) length(intersect(OABpair.ids, x))))
-  totalU.matched = as.numeric(apply(m3, 1, function(x) length(intersect(Upair.ids, x))))
-  ind = intersect(which(OAB.matched==1), which(totalU.matched==2))
-  # ind = index of 3-way cycles in m3, that match O-AB in OUU
-  # need to take the pair ids.
-  all.OAB.matched = c()
-  all.U.matched = c()
-  for(i in ind) {
-    x = as.numeric(m3[i, ])
-    all.OAB.matched <- c(all.OAB.matched, intersect(OABpair.ids, x))
-    all.U.matched <- c(all.U.matched, intersect(Upair.ids, x))
-  }
-  return(list(OAB=all.OAB.matched, U=all.U.matched))         
-}
-
 table.regularity <- function(nsamples, max.hospitalSize=500,
                              include.3way, verbose=F) {
   # Explore regularity assumptions for 2-way or 3-way exchanges
