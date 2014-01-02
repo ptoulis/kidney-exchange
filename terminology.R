@@ -163,17 +163,25 @@ rpairs <- function(n, pair.ids,
   while(nrow(sample.pairs) < n) {
     no.samples =  n + 100
     ## Sample the pair codes.
-    pair.codes = sample(kPairs$pc, size=no.samples, replace=T, prob=kPairs$prob)
+    pair.codes = c()
+    if(length(kPairs$pc) > 1) {
+      pair.codes = sample(kPairs$pc, size=no.samples, replace=T, prob=kPairs$prob)
+    } else {
+      warning("kPairs has only on pair code.")
+      pair.codes = rep(kPairs$pc, no.samples)
+    }
     ## Sample their PRAs
     pras =  rpra(no.samples, is.uniform=uniform.pra)
     ## Pair-internal PRA compatibilities.
     pra.compatible = rbinom(no.samples, size=1, prob=1-pras)
     ##  Pair-internal blood-type compatibility.
-    blood.compatible = kPairs[pair.codes, ]$blood.compatible
+    ind = match(pair.codes, kPairs$pc)
+    blood.compatible = kPairs[ind, ]$blood.compatible
     # enter the pool only if blood incompatible, or pra incompatible.
+
     enter.pool = which(blood.compatible * pra.compatible == 0)
     if(length(enter.pool) > 0) {
-      sample.pairs = rbind(sample.pairs, kPairs[pair.codes[enter.pool], ])
+      sample.pairs = rbind(sample.pairs, kPairs[ind[enter.pool], ])
       sample.pras = c(sample.pras, pras[enter.pool])
     }
   }
