@@ -648,11 +648,10 @@ xCM3 <- function(rke.pool, verbose=F) {
   ## Match OD's individually.
   hospital.ids <- rke.list.hospital.ids(rke.list)
   for(hid in hospital.ids) {
-    CHECK_SETEQ(rke.hospital.pair.ids(rke.all, hid),
-                rke.pair.ids(rke.list[[hid]]))
+    rke.h = rke.list[[hid]]
     matched.hospital.ids <- intersect(get.matching.ids(total.matching),
-                                      rke.hospital.pair.ids(rke.all, hid))
-    rke.h <- rke.remove.pairs(rke=rke.list[[hid]],
+                                      rke.pair.ids(rke.h))
+    rke.h <- rke.remove.pairs(rke=rke.h,
                               rm.pair.ids=matched.hospital.ids)
     UD.pair.ids = subset(rke.h$pairs, pair.type=="U")$pair.id
     # promote UD pairs in this run.
