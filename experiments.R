@@ -407,8 +407,7 @@ table.regularity <- function(nsamples, max.hospitalSize=500,
         virtualR = rke.count.virtual.pairs(xRKE)
         if(length(ABpair.ids) < length(BApair.ids)) {
           if(length(ABpair.ids) + virtualR$AB < length(BApair.ids)) {
-            rm.ids = safe.sample(from=BApair.ids,
-                                 size=length(BApair.ids) - length(ABpair.ids) - virtualR$AB)
+            rm.ids = safe.sample(from=BApair.ids, size=length(BApair.ids) - length(ABpair.ids) - virtualR$AB)
             Rpair.ids = setdiff(Rpair.ids, rm.ids)
           }
         } else {
@@ -430,14 +429,14 @@ table.regularity <- function(nsamples, max.hospitalSize=500,
         
         # Compute the RKE after the transformations.
         S.rke = rke.keep.pairs(rke, Spair.ids)
-        R.rke = rke.keep.pairs(xRKE, Rpair.ids)
+        R.rke = xRKE
         OU.rke = rke.keep.pairs(rke, OUpair.ids)
         
         mS = max.matching(S.rke, include.3way=T)
         S.rke.remainder = rke.remove.pairs(S.rke, get.matching.ids(mS))
-        mR = max.matching(R.rke, include.3way=T)
+        mR = max.matching(R.rke, include.3way=T, promote.pair.ids=Rpair.ids)
         R.rke.remainder = rke.remove.pairs(R.rke, get.matching.ids(mR))
-        mOU = max.matching(OU.rke)  # should be 2-way
+        mOU = max.matching(OU.rke, regular.matching=T)  # should be 2-way
         OU.rke.remainder = rke.remove.pairs(OU.rke, get.matching.ids(mOU))
         
         # Update regularity matrix
