@@ -441,8 +441,7 @@ xCM <- function(rke.pool, include.3way=F, verbose=F) {
         r.constraints$internal.matches[i] + max(0, r.constraints$y[i] - q)
       })
 
-    r.matching = max.matching(r.subrke, ir.constraints = loop.r.constraints,
-                              include.3way=F)
+    r.matching = max.matching(r.subrke, ir.constraints = loop.r.constraints, include.3way=F)
     loop.ended = get.matching.status(r.matching) == "OK"
     q = q + 1
   }
@@ -455,8 +454,6 @@ xCM <- function(rke.pool, include.3way=F, verbose=F) {
   ## Match OD's individually.
   hospital.ids <- rke.list.hospital.ids(rke.list)
   for(hid in hospital.ids) {
-    CHECK_SETEQ(rke.hospital.pair.ids(rke.all, hid),
-             rke.pair.ids(rke.list[[hid]]))
     matched.hospital.ids <- intersect(get.matching.ids(total.matching),
                                       rke.hospital.pair.ids(rke.all, hid))
     rke.h <- rke.remove.pairs(rke=rke.list[[hid]],
@@ -466,14 +463,7 @@ xCM <- function(rke.pool, include.3way=F, verbose=F) {
     total.matching <- add.matching(total.matching, internal.matching)
   }
   
-  ## Final matching.
-  remainder.hospital.ids <- setdiff(rke.pair.ids(rke.all), get.matching.ids(total.matching))
-  if(length(remainder.hospital.ids) > 0) {
-    rke.remainder = rke.keep.pairs(rke.all, pair.ids=remainder.hospital.ids)
-    m.remainder = max.matching(rke.remainder, include.3way=F)
-    total.matching <- add.matching(total.matching, m.remainder)
-  }
-  return(matching=total.matching)
+  return(total.matching)
 }
 
 OAB.matched.in.OUU <- function(rke) {
@@ -685,18 +675,9 @@ xCM3 <- function(rke.pool, verbose=F) {
     # Add matching information from internal matching.
     total.matching <- add.matching(total.matching, internal.matching)
   }
-  
-  ## Final matching.
-  remainder.hospital.ids <- setdiff(rke.pair.ids(rke.all), get.matching.ids(total.matching))
-  if(length(remainder.hospital.ids) > 0) {
-    rke.remainder = rke.keep.pairs(rke.all, pair.ids=remainder.hospital.ids)
-    # full matching, constraint-free.
-    m.remainder = max.matching(rke.remainder, include.3way=T)
-    total.matching <- add.matching(total.matching, m.remainder)
-  }
-  # Check consistency.
+
   CHECK_UNIQUE(total.matching$match$pair.id)
-  return(matching=total.matching)
+  return(total.matching)
 }
 
 
