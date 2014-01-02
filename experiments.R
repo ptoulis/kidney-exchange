@@ -37,7 +37,7 @@ create.comparison <- function(mechanisms,
   #  3) Compatibility/matching setup, i.e. uniform PRA, and include or not 3way
   #  4) Strategies to compare, i.e. baseline="tttt...", deviation="ctttt..."
   #  5) #trials to take
-  CHECK_MEMBER(mechanisms, c("rCM", "xCM", "Bonus"))
+  CHECK_MEMBER(mechanisms, kImplementedKPDMechanisms)
   CHECK_GE(nHospitals, 1)
   CHECK_GE(nSize, 1)
   CHECK_GE(nsamples, 1)

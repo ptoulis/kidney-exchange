@@ -9,6 +9,8 @@
 # source("rke.R")
 # source("matching.R")
 
+kImplementedKPDMechanisms = c("rCM", "selfCM", "xCM", "Bonus")
+
 kpd.create <- function(rke.pool, strategy.str, verbose=F) {
   # Creates a KPD from the specific pool.
   # Proceeds as follows:
