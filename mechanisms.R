@@ -827,6 +827,7 @@ Bonus = function(rke.pool, include.3way=F) {
     
   ## 0. Initialize mechanism
   m = length(rke.list)  # no. of hospitals.
+  CHECK_EQ(m %% 2, 0, msg="Run Bonus with even # of hospitals.")
   logdebug("######")
   logdebug("New BONUS")
   logdebug(sprintf("Total %d hospitals", m))
