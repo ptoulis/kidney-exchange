@@ -247,13 +247,15 @@ gurobi.matched.pairs <- function(gurobi.result, rke, cycles) {
 }
 
 regular.cycles <- function(rke, Cycles) {
+  is.two.way = Cycles$type==2
   Cycles$type <- NULL
   are.regular <- apply(Cycles, 1, function(row) {
-      types <- paste(subset(rke$pairs, pair.id %in% row)$pair.type, collapse="")
+    # types in the exchange e.g. (O, R, S)
+      exchange.types <- subset(rke$pairs, pair.id %in% row)$pair.type
       # Now types is ORS,    OUU, ... etc
-      return(length(c(grep("OU", types), grep("UO", types))) > 0)
+      return(setequal(exchange.types, c("O", "U")))
   })
-  return(as.numeric(are.regular))
+  return(is.two.way * as.numeric(are.regular))
 }
 
 filter.cycles.pair.ids <- function(Cycles, pair.ids) {
@@ -300,7 +302,7 @@ max.matching <- function(rke,
   #   Regular matching gives some bonus to O-U pairs.
   # i.e. cycles that have O-U pairs get a +1 bonus.
   if(regular.matching) {
-    model.w <- model.w + regular.cycles(rke, Cycles)
+    model.w <- model.w + 0.2 * regular.cycles(rke, Cycles)
   }
   #
   # Gives a +n  to cycles that contain "n" of the specified pair ids

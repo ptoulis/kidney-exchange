@@ -179,7 +179,7 @@ rCM <- function(rke.pool, include.3way=F) {
   rke.all <- rke.pool$rke.all
   
   ## 1. Simply calculate a maximum-matching (this will shuffle the edges by default)
-  m =  max.matching(rke.all, include.3way=include.3way)
+  m =  max.matching(rke.all, include.3way=include.3way, regular.matching=T)
   
   return(m)
 }
