@@ -64,6 +64,29 @@ get.matching.3cycles.notAllS <- function(matching) {
   return(matching$count.3cycles.notallS)
 }
 
+matching.keep.pair.ids <- function(rke, matching, pair.ids) {
+  # Returns the subset matching for this given pair ids
+  CHECK_matching(matching)
+  CHECK_MEMBER(pair.ids, rke.pair.ids(rke))
+  new.matching = empty.match.result(rke)
+  new.matching$match = subset(matching$match, pair.id %in% pair.ids)
+  new.matching$utility = nrow(new.matching$match)
+  CHECK_GE(length(pair.ids), new.matching$utility)
+  new.matching$status = matching$status
+  keep.cycles = apply(matching$matched.cycles, 1, function(s) {
+    type = s[1]
+    CHECK_MEMBER(type, c(2, 3))
+    exchange.pair.ids = s[2:4]
+    pairs.included = length(which(exchange.pair.ids %in% pair.ids))
+    # check if all pairs are in the cycle.
+    type==pairs.included
+  })
+  new.matching$matched.cycles = matching$matched.cycles[keep.cycles, ]
+  new.matching$information = get.matching.information(rke, new.matching$matched.cycles)
+  
+  return(new.matching)
+}
+
 empty.match.result <- function(rke) {
   # Empty "matching" object.
   x = subset(rke$pairs, pair.id < 0)
