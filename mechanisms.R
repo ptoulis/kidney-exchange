@@ -473,16 +473,18 @@ OAB.matched.in.OUU <- function(rke) {
   # Returns LIST(OAB=(pair ids of OAB pairs that can be matched), ,
   #              U = pair ids that can be matched in OUU
   #              matching = the MATCHING object (see terminology.R)
-  OUpair.ids = subset(rke$pairs, pair.type %in% c("O", "U"))$pair.id
-  # get the OU RKE object
-  OU.rke = rke.keep.pairs(rke, pair.ids=OUpair.ids)
   # we are using the old notation
   OABpair.ids = subset(rke$pairs, desc=="O-AB")$pair.id
   Upair.ids = subset(rke$pairs, pair.type=="U")$pair.id
+  # get the OU RKE object
+  OU.rke = rke.keep.pairs(rke, pair.ids=c(OABpair.ids, Upair.ids))
+  empty.result = list(matching=empty.match.result(empty.rke()),
+                      OAB=c(), U=c())
+  if(length(OABpair.ids) == 0) return(empty.result)
   #
   # Compute a max-matching (w/ 3cycles) where U pairs take 2x weight.
   # This will get as many OUU exchanges as possible.
-  m = max.matching(OU.rke, include.3way=T, promote.pair.ids=Upair.ids)
+  m = max.matching(OU.rke, include.3way=T)
   if(m$utility==0) {
     return(list(matching=empty.match.result(empty.rke()),
                 OAB=c(), U=c()))
@@ -507,7 +509,6 @@ OAB.matched.in.OUU <- function(rke) {
               OAB=all.OAB.matched,
               U=all.U.matched))         
 }
-
 
 xCM3 <- function(rke.pool, verbose=F) {
   # Runs xCM with 3-way exchanges.
@@ -622,7 +623,6 @@ xCM3 <- function(rke.pool, verbose=F) {
                            list(pc=pcBA, pair.type="R", hospital=h, 
                                 internal.matches=mh.BA.real[h]))
   }
-  
   
   # deltas (difference between ideal and real)
   delta.AB = mh.AB.ideal - mh.AB.real
