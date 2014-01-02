@@ -486,6 +486,7 @@ table.welfare.incentives <- function(nhospitals=6, nsize=15,
   # Table of 2way exchanges to compare Welfare and Incentives.
   # or Table of 3way exchanges to compare welfare + incentives
   results <<- list()
+  kExperimentMechanisms = c("rCM", "selfCM", "xCM", "Bonus")
   get.strategy.profile <- function(no.truthful) {
     CHECK_TRUE(no.truthful >= 0 & no.truthful <= nhospitals, msg="#truthful should be correct")
     no.deviating = nhospitals - no.truthful
@@ -505,7 +506,7 @@ table.welfare.incentives <- function(nhospitals=6, nsize=15,
     print(sprintf("Comparing profiles  %s vs. %s, PRA=%s, 3way=%d", 
                   baseline.strategy, deviation.strategy, pra,
                   include.3way))
-    comparison = create.comparison(mechanisms=c("rCM", "xCM", "Bonus"),
+    comparison = create.comparison(mechanisms=kExperimentMechanisms,
                                    nHospitals=nhospitals, nSize=nsize,
                                    uniform.pra=pra, 
                                    include.3way=include.3way,
