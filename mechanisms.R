@@ -162,7 +162,9 @@ Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
     # 2. Remove from hidden part
     rke.remainder = rke.remove.pairs(rke.h, hosp.matched.ids)
     # 3. Perform maximum matching on hidden part
-     matching = max.matching(rke.remainder, include.3way=include.3way)
+     matching = max.matching(rke.remainder,
+                             include.3way=include.3way,
+                             regular.matching=T)
     internal.matchings[[h]] <- matching
     # 0.2 Add this matching to the total
     total.matching <- add.matching(total.matching, matching)
@@ -653,9 +655,8 @@ xCM3 <- function(rke.pool, verbose=F) {
                                       rke.pair.ids(rke.h))
     rke.h <- rke.remove.pairs(rke=rke.h,
                               rm.pair.ids=matched.hospital.ids)
-    UD.pair.ids = subset(rke.h$pairs, pair.type=="U")$pair.id
     # promote UD pairs in this run.
-    internal.matching = max.matching(rke.h, include.3way=T, promote.pair.ids=UD.pair.ids)
+    internal.matching = max.matching(rke.h, include.3way=T, regular.matching=T)
     # Add matching information from internal matching.
     total.matching <- add.matching(total.matching, internal.matching)
   }
@@ -928,9 +929,6 @@ Bonus = function(rke.pool, include.3way=F) {
       # Here you match   X-Y pairs from Hj   with   Y-X pairs from Hother
       subrke = rke.keep.pairs(rke.all, pair.ids=XYYX.ids)
       ## This is an interesting point.
-      # Bonus does not insist on regularity at this step although
-      # it should be better to have regular matches here.
-      # Will keep the flag at regular.matching=F
       Mj = max.matching(subrke, include.3way=include.3way, regular.matching=F)
       
       logdebug("Performed OU-matching..Utilities:")
