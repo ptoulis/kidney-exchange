@@ -175,15 +175,38 @@ Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
 }
 
 rCM <- function(rke.pool, include.3way=F) {
-  # Implementation of rCM. Returns an array of matched pair ids.
-  # loginfo(sprintf("Running xCM 3-chain=%s", include.3way))
+  # Implementation of rCM. 
+  # Returns a MATCHING object. (all mechanisms should return a matching object)
   CHECK_rke.pool(rke.pool)
   rke.all <- rke.pool$rke.all
   
+  # total.matching = MATCHING object to be returned.
+  total.matching = empty.match.result(empty.rke())
   ## 1. Simply calculate a maximum-matching (this will shuffle the edges by default)
   m =  max.matching(rke.all, include.3way=include.3way, regular.matching=T)
   
-  return(m)
+  total.matching = m  # a bit bogus, but good to have structure.
+  return(total.matching)
+}
+
+selfCM <- function(rke.pool, include.3way=F) {
+  # Implementation of selfish-Centralized mechanism.
+  #
+  # Matches all hospitals internally (no pooling)
+  CHECK_rke.pool(rke.pool)
+  rke.all <- rke.pool$rke.all
+  rke.list <- rke.pool$rke.list
+  # total.matching = MATCHING object to be returned.
+  total.matching = empty.match.result(empty.rke())
+  
+  ## 1. Simply calculate a maximum-matching for each hospital internally.
+  for(h in rke.list.hospital.ids(rke.list)) {
+    rke.h = rke.list[[h]]
+    m.h = max.matching(rke.h, include.3way=include.3way, regular.matching=T)
+    total.matching <- add.matching(total.matching, m.h)
+  }
+  
+  return(total.matching)
 }
 
 
