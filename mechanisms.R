@@ -466,7 +466,10 @@ OAB.matched.in.OUU <- function(rke) {
   # Compute a max-matching (w/ 3cycles) where U pairs take 2x weight.
   # This will get as many OUU exchanges as possible.
   m = max.matching(OU.rke, include.3way=T, promote.pair.ids=Upair.ids)
-  if(m$utility==0) return(list(OAB=c(), U=c()))
+  if(m$utility==0) {
+    return(list(matching=empty.match.result(empty.rke()),
+                OAB=c(), U=c()))
+  }
   # take the matched cycles and remove the "type" field.
   m3 = subset(m$matched.cycles, select=-type)
   # iterate all 3-way exchanges, count #OAB pairs matched.
