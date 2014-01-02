@@ -330,7 +330,7 @@ compute.Rsubgraph.constraints <- function(ir.constraints, rke.pool) {
                  rke.h = rke.pool$rke.list[[hid]]
                  nrow(subset(rke.h$pairs, desc=="B-A"))
                })
-  CHECK_TRUE(all(nAB + nBA) >= cons$unmatched)
+  CHECK_TRUE(all(nAB + nBA >= cons$unmatched))
   # Ideal-matches: Assume perfect-matching short to long side.
   mh.ideal = sapply(1:length(all.hids), function(h) min(nAB[h], nBA[h]))
   # Real-matches: Just take the info from the constraints.
@@ -355,7 +355,7 @@ compute.Rsubgraph.constraints <- function(ir.constraints, rke.pool) {
   if (sum(nAB) >= sum(nBA))
     yAB <- g.share(demand=zAB, supply=xBA)
   else
-    yBA <- g.share(demand=zBA supply=xAB)
+    yBA <- g.share(demand=zBA, supply=xAB)
   consAB$y <- yAB + delta
   consBA$y <- yBA + delta
   cons <- rbind(consAB, consBA) 
