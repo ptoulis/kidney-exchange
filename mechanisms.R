@@ -217,8 +217,8 @@ compute.ir.constraints = function(rke.pool, pair.types=c(), include.3way=F) {
     rke.h = rke.list[[hid]]
     for (type in intersect(pair.types, c("O", "U", "S", "R"))) {
       # Take the pairs the belong to this group
-      sub.pair.ids = rke.filter.pairs(rke.h, attr="pair.type", value=type)
-      subrke = rke.keep.pairs(rke.h, pair.ids=sub.pair.ids)
+      type.pair.ids = subset(rke.h$pairs, pair.type==type)$pair.id
+      subrke = rke.keep.pairs(rke.h, pair.ids=type.pair.ids)
       matching = max.matching(subrke, include.3way=include.3way)
       CHECK_TRUE(get.matching.status(matching) == "OK", msg="Matching OK?")
       match = matching$match
@@ -495,6 +495,8 @@ xCM3 <- function(rke.pool, verbose=F) {
   pcBA = subset(kPairs, desc=="B-A")$pc
   
   # iterate over hospitals
+  # Compute zAB, zBA (unmatched pairs-- supply of one size)
+  # Compute uAB, uBA (virtual pairs)
   for(h in rke.list.hospital.ids(rke.list)) {
     # hospital pair ids.
     h.pair.ids =  rke.hospital.pair.ids(rke.all, hospital.id=h)
