@@ -518,7 +518,10 @@ xCM3 <- function(rke.pool, verbose=F) {
     # make some sanity CHECKs here.
     CHECK_TRUE(mOOU.h$matching$utility %% 3 == 0)  # only OUU matches (3way)
     CHECK_MEMBER(mOOU.h$matching$match$pair.type, c("O", "U"))
-    total.matching = add.matching(total.matching, mOOU.h$matching)
+    if(length(mOOU.h$OAB) > 0) {
+      total.matching = add.matching(total.matching, mOOU.h$matching)
+      rke.all <- rke.remove.pairs(rke.all, rm.pair.ids=c(mOOU.h$OAB, mOOU.h$U))
+    }
   }
   
   ##  0. Compute IR constraints for S-subgraph.
