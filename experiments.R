@@ -539,6 +539,9 @@ table.welfare.incentives <- function(nhospitals=6, nsize=15,
 run.all.sample.experiments <- function() {
   Simple1 <- simple.experiments(1, nsamples=1000, max.hospitalSize=150)
   Simple2 <- simple.experiments(2, nsamples=1000, max.hospitalSize=150)
+  results = list(simple1=Simple1,
+                 simple2=Simple2)
+  save(results, file="out/SimpleExperiments.Rdata")
 }
 
 simple.experiments <- function(experiment.no, nsamples=100, max.hospitalSize=140) {
