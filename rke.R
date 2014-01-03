@@ -25,6 +25,7 @@ rrke.pool <- function(m=3, n=60, uniform.pra, verbose=F) {
 }
 
 rke.equal <- function(rke1, rke2) {
+ # "almost-equality" Check that the pair types have the same frequency table.
   all(table(rke1$pairs$desc) == table(rke2$pairs$desc))
 }
 

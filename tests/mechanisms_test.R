@@ -1,4 +1,25 @@
 ## mechanisms_test.R
+
+test.kpd.create <- function() {
+  pool = rrke.pool(m=6, n=15, uniform.pra=T)
+  
+  kpd.t = kpd.create(pool, "tttttt", include.3way=F)
+  kpd.c = kpd.create(pool, "cccccc", include.3way=T)
+  test.rke.equal <- function(rke1, rke2) {
+    CHECK_EQ(rke.size(rke1), rke.size(rke2))
+    CHECK_SETEQ(rke1$pairs$pair.id, rke2$pairs$pair.id)
+    CHECK_EQ(sum(rke1$edges$can.donate), sum(rke2$edges$can.donate))
+    CHECK_SETEQ(rke1$pairs$pc, rke2$pairs$pc)
+  }
+  
+  hid = sample(1:6, size=1)
+  test.rke.equal(kpd.t$reported.pool$rke.list[[hid]], pool$rke.list[[hid]])
+  
+  m = max.matching(pool$rke.list[[hid]], include.3way=T)
+  rke.remainder = rke.remove.pairs(pool$rke.list[[hid]], rm.pair.ids=m$match$pair.id)
+  CHECK_EQ(rke.size(rke.remainder), rke.size(kpd.c$reported.pool$rke.list[[hid]]))
+}
+
 test.compute.ir.constraints <- function() {
   # tests the IR constraints.
   # This is a data-frame
