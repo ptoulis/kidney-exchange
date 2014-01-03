@@ -536,11 +536,12 @@ table.welfare.incentives <- function(nhospitals=6, nsize=15,
   run.comparison(1, 0, F)  
 }
 
-simple.experiments <- function(experiment.no) {
+simple.experiments <- function(experiment.no, nsamples=100, max.hospitalSize=140) {
   ## Last suite of simpler experiments
   results = list(UPRA=matrix(0, nrow=0, ncol=3), 
                  NonUPRA=matrix(0, nrow=0, ncol=3))
-  
+  print(sprintf("Experiment id=%d Samples=%d Max.Hospitalsize=%d",
+                experiment.no, nsamples, max.hospitalSize))
   add.result <- function(pra.value, results, update) {
     key = ifelse(pra.value, "UPRA", "NonUPRA")
     CHECK_EQ(length(update), ncol(results$UPRA))
@@ -551,8 +552,7 @@ simple.experiments <- function(experiment.no) {
   }
   
   if(experiment.no == 1) {
-    nsize.list = as.integer(seq(20, 140, by=40))
-    nsamples = 10  # samples per pra
+    nsize.list = as.integer(seq(20, max.hospitalSize, by=40))
     pra.list = c(T, F)
   
     add.result <- function(pra.value, results, update) {
@@ -576,15 +576,14 @@ simple.experiments <- function(experiment.no) {
         m = max.matching(xRKE, include.3way=T, promote.pair.ids=Rpair.ids)
         Rpair.ids.matched = subset(m$match, pair.type=="R")$pair.id
         results <- add.result(pra, results, c(nsize, length(Rpair.ids), length(Rpair.ids.matched)))
-        setTxtProgressBar(pb, value = i / (2 * length(nsize.list)))
+        setTxtProgressBar(pb, value = nsamples * (1-pra) + i / ( nsamples))
       }
     }
     
     return(results)
   } else if(experiment.no==2) {
     nHospitals = 3  # total no. of hospitals
-    nsize.list = as.integer(seq(20, 140, by=40))
-    nsamples = 10  # samples per pra
+    nsize.list = as.integer(seq(20, max.hospitalSize, by=40))
     pb = txtProgressBar(style=3)
     for(i in 1:nsamples) {
       nsize = sample(nsize.list, size=1, replace=T)
@@ -603,7 +602,7 @@ simple.experiments <- function(experiment.no) {
       } else {
         results <- add.result(T, results, c(nsize, length(nBA), length(nBA.matched)))
       }
-      setTxtProgressBar(pb, value = i / nsamples)
+      setTxtProgressBar(pb, value = i / ( nsamples))
     }
     return(results)
   } else {
