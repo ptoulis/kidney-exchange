@@ -486,7 +486,7 @@ table.welfare.incentives <- function(nhospitals=6, nsize=15,
                                      include.3way=F, nsamples=100) {
   # Table of 2way exchanges to compare Welfare and Incentives.
   # or Table of 3way exchanges to compare welfare + incentives
-  results <<- list()
+
   kExperimentMechanisms = c("rCM", "selfCM", "xCM", "Bonus")
   get.strategy.profile <- function(no.truthful) {
     CHECK_TRUE(no.truthful >= 0 & no.truthful <= nhospitals, msg="#truthful should be correct")
@@ -494,7 +494,7 @@ table.welfare.incentives <- function(nhospitals=6, nsize=15,
     return(paste(c(rep("t", no.truthful), rep("c", no.deviating)), collapse=""))
   }
   
-  run.comparison <- function(base.Nt, dev.Nt, pra) {
+  run.comparison <- function(arg.results, base.Nt, dev.Nt, pra) {
     # Runs a single experiment.
     # 
     # Args:
@@ -524,19 +524,20 @@ table.welfare.incentives <- function(nhospitals=6, nsize=15,
                           profile.name,
                           ifelse(pra, "UPRA", "NonUPRA"),
                           ifelse(include.3way, "3way", "2way"))
-    results[[result.name]] <<- compare.mechanisms(comparison)
-    save(results, file=sprintf("out/table%d-m%dn%d-results.Rdata", 
+    arg.results[[result.name]] <- compare.mechanisms(comparison)
+    save(arg.results, file=sprintf("out/table%d-m%dn%d-results.Rdata", 
                                ifelse(include.3way, 3, 2),
                                nhospitals, nsize))
+    return(arg.results)
   }
-  
-  run.comparison(nhospitals, nhospitals-1, T)
-  run.comparison(nhospitals, nhospitals-1, F)
-  run.comparison(1, 0, T)
-  run.comparison(1, 0, F)  
+  results <- list()
+  results = run.comparison(results, nhospitals, nhospitals-1, T)
+  results = run.comparison(results, nhospitals, nhospitals-1, F)
+  results = run.comparison(results, 1, 0, T)
+  results = run.comparison(results, 1, 0, F)  
 }
 
-run.all.sample.experiments <- function(nsamples=1000) {
+run.all.simple.experiments <- function(nsamples=1000) {
   Simple1 <- simple.experiments(1, nsamples=nsamples, max.hospitalSize=150)
   Simple2 <- simple.experiments(2, nsamples=nsamples, max.hospitalSize=150)
   results = list(simple1=Simple1,
