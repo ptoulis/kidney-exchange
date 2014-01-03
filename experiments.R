@@ -536,6 +536,11 @@ table.welfare.incentives <- function(nhospitals=6, nsize=15,
   run.comparison(1, 0, F)  
 }
 
+run.all.sample.experiments <- function() {
+  Simple1 <- simple.experiments(1, nsamples=1000, max.hospitalSize=150)
+  Simple2 <- simple.experiments(2, nsamples=1000, max.hospitalSize=150)
+}
+
 simple.experiments <- function(experiment.no, nsamples=100, max.hospitalSize=140) {
   ## Last suite of simpler experiments
   results = list(UPRA=matrix(0, nrow=0, ncol=3), 
@@ -552,7 +557,7 @@ simple.experiments <- function(experiment.no, nsamples=100, max.hospitalSize=140
   }
   
   if(experiment.no == 1) {
-    nsize.list = as.integer(seq(20, max.hospitalSize, by=40))
+    nsize.list = as.integer(seq(20, max.hospitalSize, by=25))
     pra.list = c(T, F)
   
     add.result <- function(pra.value, results, update) {
@@ -583,7 +588,7 @@ simple.experiments <- function(experiment.no, nsamples=100, max.hospitalSize=140
     return(results)
   } else if(experiment.no==2) {
     nHospitals = 3  # total no. of hospitals
-    nsize.list = as.integer(seq(20, max.hospitalSize, by=40))
+    nsize.list = as.integer(seq(20, max.hospitalSize, by=25))
     pb = txtProgressBar(style=3)
     for(i in 1:nsamples) {
       nsize = sample(nsize.list, size=1, replace=T)
