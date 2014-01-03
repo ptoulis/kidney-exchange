@@ -577,15 +577,30 @@ simple.experiments <- function(experiment.no) {
     
     return(results)
   } else if(experiment.no==2) {
-    m = 3  # total no. of hospitals
+    nHospitals = 3  # total no. of hospitals
     nsize.list = as.integer(seq(20, 140, by=40))
     nsamples = 10  # samples per pra
+    pb = txtProgressBar(style=3)
     for(i in 1:nsamples) {
       nsize = sample(nsize.list, size=1, replace=T)
-      pool = rrke.pool(m=m, n=nsize, uniform.pra=T)
-      kpd = kpd.create(pool, strategy.str="ccc")
+      pool = rrke.pool(m=nHospitals, n=nsize, uniform.pra=T)
+      all.c = paste(rep("c", nHospitals), collapse="")
+      kpd = kpd.create(pool, strategy.str=all.c, include.3way=F)
+      rke.reported = kpd$reported.pool$rke.all
+      nAB = subset(rke.reported$pairs, desc=="A-B")$pair.id
+      nBA = subset(rke.reported$pairs, desc=="B-A")$pair.id
       
+      m = max.matching(rke.reported, promote.pair.ids=c(nAB, nBA))
+      nAB.matched = subset(m$match, desc=="A-B")$pair.id
+      nBA.matched = subset(m$match, desc=="B-A")$pair.id
+      if(length(nAB) < length(nBA)) {
+        results <- add.result(T, results, c(nsize, length(nAB), length(nAB.matched)))
+      } else {
+        results <- add.result(T, results, c(nsize, length(nBA), length(nBA.matched)))
+      }
+      setTxtProgressBar(pb, value = i / nsamples)
     }
+    return(results)
   } else {
     stop(sprintf("Simple Experiment id=%d not valid", experiment.no))
   }
