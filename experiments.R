@@ -120,9 +120,11 @@ compare.mechanisms <- function(comparison) {
     # 2. Create the KPD markets
     kpds = list()
     kpds$baseline = kpd.create(rke.pool=rke.pool,
-                               strategy.str=comparison$baseline.strategy)
+                               strategy.str=comparison$baseline.strategy,
+                               include.3way=comparison$include.3way)
     kpds$deviation = kpd.create(rke.pool=rke.pool,
-                                strategy.str=comparison$deviation.strategy)
+                                strategy.str=comparison$deviation.strategy,
+                                include.3way=comparison$include.3way)
     
     infoMap = list(total.matchingInfo="total.matching",
                    mech.matchingInfo="mech.matching")
@@ -527,4 +529,65 @@ table.welfare.incentives <- function(nhospitals=6, nsize=15,
   run.comparison(nhospitals, nhospitals-1, F)
   run.comparison(1, 0, T)
   run.comparison(1, 0, F)  
+}
+
+simple.experiments <- function(experiment.no) {
+  ## Last suite of simpler experiments
+  results = list(UPRA=matrix(0, nrow=0, ncol=3), 
+                 NonUPRA=matrix(0, nrow=0, ncol=3))
+  
+  add.result <- function(pra.value, results, update) {
+    key = ifelse(pra.value, "UPRA", "NonUPRA")
+    CHECK_EQ(length(update), ncol(results$UPRA))
+    results[[key]] <- rbind(results[[key]], update)
+    colnames(results[[key]]) <- c("nsize", "total", "matched")
+    rownames(results[[key]]) <- NULL
+    return(results)
+  }
+  
+  if(experiment.no == 1) {
+    nsize.list = as.integer(seq(20, 140, by=40))
+    nsamples = 10  # samples per pra
+    pra.list = c(T, F)
+  
+    add.result <- function(pra.value, results, update) {
+      key = ifelse(pra.value, "UPRA", "NonUPRA")
+      CHECK_EQ(length(update), ncol(results$UPRA))
+      results[[key]] <- rbind(results[[key]], update)
+      colnames(results[[key]]) <- c("nsize", "total", "matched")
+      rownames(results[[key]]) <- NULL
+      return(results)
+    }
+    
+    pb = txtProgressBar(style=3)
+    
+    for(pra in pra.list) {
+      for(i in 1:nsamples) {
+        nsize = sample(nsize.list, size=1, replace=T)
+        # print(sprintf("pra=%s n=%d", pra, nsize))
+        rke = rrke(nsize, uniform.pra=pra)
+        xRKE = rke.extended.Rsubgraph(rke)
+        Rpair.ids = subset(xRKE$pairs, pair.type=="R")$pair.id
+        m = max.matching(xRKE, include.3way=T, promote.pair.ids=Rpair.ids)
+        Rpair.ids.matched = subset(m$match, pair.type=="R")$pair.id
+        results <- add.result(pra, results, c(nsize, length(Rpair.ids), length(Rpair.ids.matched)))
+        setTxtProgressBar(pb, value = i / (2 * length(nsize.list)))
+      }
+    }
+    
+    return(results)
+  } else if(experiment.no==2) {
+    m = 3  # total no. of hospitals
+    nsize.list = as.integer(seq(20, 140, by=40))
+    nsamples = 10  # samples per pra
+    for(i in 1:nsamples) {
+      nsize = sample(nsize.list, size=1, replace=T)
+      pool = rrke.pool(m=m, n=nsize, uniform.pra=T)
+      kpd = kpd.create(pool, strategy.str="ccc")
+      
+    }
+  } else {
+    stop(sprintf("Simple Experiment id=%d not valid", experiment.no))
+  }
+  
 }

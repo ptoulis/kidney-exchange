@@ -11,7 +11,7 @@
 
 kImplementedKPDMechanisms = c("rCM", "selfCM", "xCM", "Bonus")
 
-kpd.create <- function(rke.pool, strategy.str, verbose=F) {
+kpd.create <- function(rke.pool, strategy.str, include.3way, verbose=F) {
   # Creates a KPD from the specific pool.
   # Proceeds as follows:
   # (1) Plays the strategy for every hospital
@@ -33,7 +33,9 @@ kpd.create <- function(rke.pool, strategy.str, verbose=F) {
   CHECK_SETEQ(1:m, hospital.ids)
   logfine("Playing strategies")
   
-  hospital.action = play.strategies(rke.list, strategy.str)
+  hospital.action = play.strategies(rke.list=rke.list, 
+                                    strategy.str=strategy.str, 
+                                    include.3way=include.3way)
   
   reported.rke.list = list()
   ## hidden.pairs = ids in terms of rke.all  that were hidden
@@ -42,8 +44,7 @@ kpd.create <- function(rke.pool, strategy.str, verbose=F) {
   for(hid in hospital.ids) {
     hospitalAction = hospital.action[[hid]]
     logfine(sprintf("Hospital %d is hiding %d pairs", hid, length(hospitalAction$hide)))
-    reported.rke.list[[hid]] = rke.remove.pairs(rke.list[[hid]],
-                                                hospitalAction$hide)
+    reported.rke.list[[hid]] = rke.remove.pairs(rke.list[[hid]], hospitalAction$hide)
     CHECK_DISJOINT(all.hidden.pairs, hospitalAction$hide)
     all.hidden.pairs = c(all.hidden.pairs, hospitalAction$hide)
   }
@@ -58,7 +59,7 @@ kpd.create <- function(rke.pool, strategy.str, verbose=F) {
   return(kpd)
 }
 
-play.strategy <- function(rke, strategy.str, include.3way=F) {
+play.strategy <- function(rke, strategy.str, include.3way) {
   # For the RKE, play the strategy and say which pairs will be hidden
   # and which ones will be reported to the mechanism.
   # 
@@ -93,9 +94,7 @@ play.strategy <- function(rke, strategy.str, include.3way=F) {
   return(ret)
 }
 
-play.strategies = function(rke.list, strategy.str,
-                           include.3way=F,
-                           verbose=F) {
+play.strategies = function(rke.list, strategy.str, include.3way, verbose=F) {
   # Initializes the RKE lists before the mechanism is run.
   # Reads the strategies and then plays them on each element of rke.list.
   # Calls play.strategy()
@@ -107,9 +106,11 @@ play.strategies = function(rke.list, strategy.str,
   CHECK_MEMBER(strategies, c("t", "c", "r"), msg="Correct strategy spec")
   CHECK_EQ(length(strategies), length(rke.list))
   hids <- rke.list.hospital.ids(rke.list)
-  strategy.list = llply(hids, function(h) play.strategy(rke.list[[h]],
-                                                    strategy.str=strategies[h],
-                                                    include.3way=include.3way))
+  strategy.list = llply(hids, function(h) {
+    play.strategy(rke.list[[h]],
+                  strategy.str=strategies[h],
+                  include.3way=include.3way)
+  })
   return(strategy.list)
 }
 
