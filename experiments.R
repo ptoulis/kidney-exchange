@@ -504,9 +504,7 @@ table.welfare.incentives <- function(nhospitals=6, nsize=15,
     baseline.strategy = get.strategy.profile(base.Nt)
     deviation.strategy = get.strategy.profile(dev.Nt)
     print("")
-    print(sprintf("Comparing profiles  %s vs. %s, PRA=%s, 3way=%d", 
-                  baseline.strategy, deviation.strategy, pra,
-                  include.3way))
+
     comparison = create.comparison(mechanisms=kExperimentMechanisms,
                                    nHospitals=nhospitals, nSize=nsize,
                                    uniform.pra=pra, 
@@ -514,6 +512,13 @@ table.welfare.incentives <- function(nhospitals=6, nsize=15,
                                    baseline.strategy=baseline.strategy,
                                    deviation.strategy=deviation.strategy,
                                    nsamples=nsamples)
+    
+    print(sprintf("Comparing profiles  %s vs. %s, PRA=%s, 3way=%d, m=%d, n=%d", 
+                  baseline.strategy, deviation.strategy, pra,
+                  include.3way,
+                  comparison$nHospitals,
+                  comparison$nSize))
+    
     profile.name = sprintf("prof%d%d", base.Nt, dev.Nt)
     result.name = sprintf("%s.%s.%s", 
                           profile.name,
