@@ -516,8 +516,8 @@ table.welfare.incentives <- function(nhospitals=6, nsize=15,
     print(sprintf("Comparing profiles  %s vs. %s, PRA=%s, 3way=%d, m=%d, n=%d", 
                   baseline.strategy, deviation.strategy, pra,
                   include.3way,
-                  comparison$nHospitals,
-                  comparison$nSize))
+                  comparison$m,
+                  comparison$n))
     
     profile.name = sprintf("prof%d%d", base.Nt, dev.Nt)
     result.name = sprintf("%s.%s.%s", 
