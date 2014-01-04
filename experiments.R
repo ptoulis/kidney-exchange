@@ -483,7 +483,8 @@ table.regularity <- function(nsamples, max.hospitalSize=500,
 
 table.welfare.incentives <- function(mechanisms=kImplementedKPDMechanisms,
                                      nhospitals=6, nsize=15, 
-                                     include.3way=F, nsamples=100) {
+                                     include.3way=F, nsamples=100,
+                                     filename.prefix="table") {
   # Table of 2way exchanges to compare Welfare and Incentives.
   # or Table of 3way exchanges to compare welfare + incentives
 
@@ -524,7 +525,8 @@ table.welfare.incentives <- function(mechanisms=kImplementedKPDMechanisms,
                           ifelse(pra, "UPRA", "NonUPRA"),
                           ifelse(include.3way, "3way", "2way"))
     results[[result.name]] <- compare.mechanisms(comparison)
-    filename = sprintf("out/table%d-m%dn%d-results.Rdata",
+    filename = sprintf("out/%s%d-m%dn%d-results.Rdata",
+                       filename.prefix,
                        ifelse(include.3way, 3, 2), nhospitals, nsize)
     cat(sprintf("\nSaving to filename %s", filename))
     save(results, file=filename)
@@ -619,3 +621,12 @@ simple.experiments <- function(experiment.no, nsamples=100, max.hospitalSize=140
   }
   
 }
+
+run.sweetSpot.experiments <- function(nsamples) {
+  table.welfare.incentives(mechanisms=c("xCM"), nhospitals=3, nsize=160, 
+                           include.3way=F, nsamples=nsamples, filename.prefix="SweetSpot")
+  
+  table.welfare.incentives(mechanisms=c("xCM"), nhospitals=2, nsize=80, 
+                           include.3way=T, nsamples=nsamples, filename.prefix="SweetSpot")
+}
+
