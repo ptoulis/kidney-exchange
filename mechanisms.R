@@ -525,10 +525,10 @@ xCM3 <- function(pool, verbose=F) {
   # The most important object is "total.matching" for every mechanism
   # In each step this is updated with all matches performed so far.
   # This is a MATCHING object (se terminology)
-  CHECK_rke.pool(rke.pool)
+  CHECK_rke.pool(pool)
   # unload the RKE pool.
-  rke.list = rke.pool$rke.list  # LIST of individual RKE objects
-  rke.all = rke.pool$rke.all  # global RKE (pooled graph)
+  rke.list = pool$rke.list  # LIST of individual RKE objects
+  rke.all = pool$rke.all  # global RKE (pooled graph)
   
   # Total matching computed by the mechanism. This will be returned
   total.matching = empty.match.result(empty.rke())
@@ -552,7 +552,7 @@ xCM3 <- function(pool, verbose=F) {
   }
   
   ##  0. Compute IR constraints for S-subgraph.
-  ir.constraints = compute.ir.constraints(rke.pool, pair.types=c("S"), include.3way=T)
+  ir.constraints = compute.ir.constraints(pool, pair.types=c("S"), include.3way=T)
   
   # 1.  Match S internally -- Respect IR.
   s.subrke = rke.subgraph(rke.all, pair.type="S")
@@ -686,7 +686,10 @@ xCM3 <- function(pool, verbose=F) {
   }
   
   # match remainder.
-  rke.remainder = rke.remove.pairs(rke.all, rm.pair.ids=total.matching$match$pair.id)
+  # We have to take the intersection because some matches (OUU) have been removed
+  # from the entire graph (rke.all) -- see the top of xCM3
+  rke.remainder = rke.remove.pairs(rke.all, rm.pair.ids=intersect(get.matching.ids(total.matching),
+                                                                  rke.pair.ids(rke.all)))
   remainder.m = max.matching(rke.remainder, include.3way=T, regular.matching=T)
   total.matching <- add.matching(total.matching, remainder.m)
   
