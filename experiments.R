@@ -69,11 +69,11 @@ CHECK_comparison <- function(comparison) {
 
 # An example COMPARISON object.
 example.comparison = create.comparison(mechanisms=c("rCM", "xCM", "Bonus"),
-                                       nHospitals=4, nSize=35,
+                                       nHospitals=4, nSize=18,
                                        uniform.pra=T, include.3way=F,
                                        baseline.strategy="tttt",
                                        deviation.strategy="cccc",
-                                       nsamples=100)
+                                       nsamples=10)
 
 compare.mechanisms <- function(comparison) {
   # Compares two mechanisms.
@@ -112,6 +112,7 @@ compare.mechanisms <- function(comparison) {
   }  # done with initialization
   
   pb = txtProgressBar(style=3)
+  # main loop
   for(i in 1:comparison$nsamples) {
     # 1. Sample the RKE pool
     rke.pool = rrke.pool(m=comparison$m, 
@@ -126,31 +127,29 @@ compare.mechanisms <- function(comparison) {
                                 strategy.str=comparison$deviation.strategy,
                                 include.3way=comparison$include.3way)
     
-    infoMap = list(total.matchingInfo="total.matching",
-                   mech.matchingInfo="mech.matching")
     # 3. Main loop starts here.
     for (mech in comparison$mechanisms) {
       for(s in all.strategies) {
         # 3.1 Run mechanism -> matching output for a specific strategy profile
-        match =  Run.Mechanism(kpd=kpds[[s]], mech=mech, include.3way=comparison$include.3way) 
+        run.output =  Run.Mechanism(kpd=kpds[[s]], mech=mech, include.3way=comparison$include.3way) 
         # this object has (total.matching, mech.matching, internal.matchings)
         
         # 3.2 Update utility matrix.
-        result[[s]][[mech]]$utility[, i] <- get.matching.hospital.utilities(match$total.matching,
+        result[[s]][[mech]]$utility[, i] <- get.matching.hospital.utilities(run.output$total.matching,
                                                                             comparison$m)
         # 3.3 Update total + mech information
-        for(info in names(infoMap)) {
-          mappedTo = infoMap[[info]]
-          result[[s]][[mech]][[info]] = result[[s]][[mech]][[info]] + match[[mappedTo]]$information
-        }  # for info types
+        for(m in c("total.matching", "mech.matching")) {
+          key = sprintf("%sInfo", m)
+          result[[s]][[mech]][[key]] = result[[s]][[mech]][[key]] + run.output[[m]]$information
+        }
         # 3.4 Update hospital internal matching info
         for (hid in 1:comparison$m) {
           result[[s]][[mech]]$internal.matchingInfo[[hid]] =  
-            result[[s]][[mech]]$internal.matchingInfo[[hid]] + match$internal.matchings[[hid]]$information
+            result[[s]][[mech]]$internal.matchingInfo[[hid]] + run.output$internal.matchings[[hid]]$information
           ## pairs breakdown
           result[[s]][[mech]]$hospital.pairsBreakdown[[hid]] = 
             result[[s]][[mech]]$hospital.pairsBreakdown[[hid]] + 
-            table(subset(match$total.matching$match, hospital==hid)$pair.type)
+            table(subset(run.output$total.matching$match, hospital==hid)$pair.type)
         }  # for all hospitals, matching info
       } # all strategies (baseline, deviation)
       
@@ -482,19 +481,19 @@ table.regularity <- function(nsamples, max.hospitalSize=500,
 }
 
 
-table.welfare.incentives <- function(nhospitals=6, nsize=15, 
+table.welfare.incentives <- function(mechanisms=kImplementedKPDMechanisms,
+                                     nhospitals=6, nsize=15, 
                                      include.3way=F, nsamples=100) {
   # Table of 2way exchanges to compare Welfare and Incentives.
   # or Table of 3way exchanges to compare welfare + incentives
 
-  kExperimentMechanisms = c("rCM", "selfCM", "xCM", "Bonus")
   get.strategy.profile <- function(no.truthful) {
     CHECK_TRUE(no.truthful >= 0 & no.truthful <= nhospitals, msg="#truthful should be correct")
     no.deviating = nhospitals - no.truthful
     return(paste(c(rep("t", no.truthful), rep("c", no.deviating)), collapse=""))
   }
   
-  run.comparison <- function(arg.results, base.Nt, dev.Nt, pra) {
+  run.comparison <- function(results, base.Nt, dev.Nt, pra) {
     # Runs a single experiment.
     # 
     # Args:
@@ -505,7 +504,7 @@ table.welfare.incentives <- function(nhospitals=6, nsize=15,
     deviation.strategy = get.strategy.profile(dev.Nt)
     print("")
 
-    comparison = create.comparison(mechanisms=kExperimentMechanisms,
+    comparison = create.comparison(mechanisms=mechanisms,
                                    nHospitals=nhospitals, nSize=nsize,
                                    uniform.pra=pra, 
                                    include.3way=include.3way,
@@ -524,17 +523,18 @@ table.welfare.incentives <- function(nhospitals=6, nsize=15,
                           profile.name,
                           ifelse(pra, "UPRA", "NonUPRA"),
                           ifelse(include.3way, "3way", "2way"))
-    arg.results[[result.name]] <- compare.mechanisms(comparison)
-    save(arg.results, file=sprintf("out/table%d-m%dn%d-results.Rdata", 
-                               ifelse(include.3way, 3, 2),
-                               nhospitals, nsize))
-    return(arg.results)
+    results[[result.name]] <- compare.mechanisms(comparison)
+    filename = sprintf("out/table%d-m%dn%d-results.Rdata",
+                       ifelse(include.3way, 3, 2), nhospitals, nsize)
+    cat(sprintf("\nSaving to filename %s", filename))
+    save(results, file=filename)
+    return(results)
   }
-  results <- list()
-  results = run.comparison(results, nhospitals, nhospitals-1, T)
-  results = run.comparison(results, nhospitals, nhospitals-1, F)
-  results = run.comparison(results, 1, 0, T)
-  results = run.comparison(results, 1, 0, F)  
+  exp.results <- list()
+  exp.results = run.comparison(exp.results, nhospitals, nhospitals-1, T)
+  exp.results = run.comparison(exp.results, nhospitals, nhospitals-1, F)
+  exp.results = run.comparison(exp.results, 1, 0, T)
+  exp.results = run.comparison(exp.results, 1, 0, F)  
 }
 
 run.all.simple.experiments <- function(nsamples=1000) {
@@ -607,11 +607,10 @@ simple.experiments <- function(experiment.no, nsamples=100, max.hospitalSize=140
       m = max.matching(rke.reported, promote.pair.ids=c(nAB, nBA))
       nAB.matched = subset(m$match, desc=="A-B")$pair.id
       nBA.matched = subset(m$match, desc=="B-A")$pair.id
-      if(length(nAB) < length(nBA)) {
-        results <- add.result(T, results, c(nsize, length(nAB), length(nAB.matched)))
-      } else {
-        results <- add.result(T, results, c(nsize, length(nBA), length(nBA.matched)))
-      }
+      total.R = length(nAB) + length(nBA)
+      total.matched = length(nAB.matched) + length(nBA.matched)
+      ## add result
+      results <- add.result(T, results, c(nsize, total.R, total.matched))
       setTxtProgressBar(pb, value = i / ( nsamples))
     }
     return(results)
