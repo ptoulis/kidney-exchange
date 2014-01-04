@@ -88,9 +88,9 @@ play.strategy <- function(rke, strategy.str, include.3way) {
       hide.R = pairs.BA
     ret$hide = c(hide.R)
   } 
-  all.pairs = rke.pair.ids(rke)
-  ret$report = setdiff(all.pairs, ret$hide)
-  CHECK_strategy(ret, all.pairs)
+  all.pair.ids = rke.pair.ids(rke)
+  ret$report = setdiff(all.pair.ids, ret$hide)
+  CHECK_strategy(ret, all.pair.ids)
   return(ret)
 }
 
@@ -104,12 +104,12 @@ play.strategies = function(rke.list, strategy.str, include.3way, verbose=F) {
   CHECK_rke.list(rke.list)
   strategies = strsplit(strategy.str,split="")[[1]]
   CHECK_MEMBER(strategies, c("t", "c", "r"), msg="Correct strategy spec")
-  CHECK_EQ(length(strategies), length(rke.list))
+  CHECK_EQ(length(strategies), length(rke.list), msg="#strategies = #hospitals")
   hids <- rke.list.hospital.ids(rke.list)
   strategy.list = llply(hids, function(h) {
     play.strategy(rke.list[[h]],
                   strategy.str=strategies[h],
-                  include.3way=include.3way)
+                  include.3way=T)
   })
   return(strategy.list)
 }
@@ -137,7 +137,7 @@ Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
   rke.all = kpd$real.pool$rke.all
   
   ## 3. Run the mechanism. Get the matching
-  mech.matching = do.call(mech, args=list(rke.pool=kpd$reported.pool,
+  mech.matching = do.call(mech, args=list(pool=kpd$reported.pool,
                                      include.3way=include.3way))
   
   total.matching = add.matching(total.matching, mech.matching)
@@ -149,39 +149,48 @@ Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
     stop("Quitting.")
   }
   
-  matched.pairs = get.matching.ids(mech.matching)
-  ## Sometimes we get a list instead of a vector.
-  mech.out.ids = matched.pairs
-  
   ## 4. Compute utility from mechanism
   hids <- rke.list.hospital.ids(rke.list)
+  matched.pair.ids = get.matching.ids(total.matching)
   
-  ## 5.  Utility from final internal matches.   
+  ## 5.  Utility from final internal matches. Recourse step
   for(h in hids) {
     rke.h = rke.list[[h]]
     # 1. For hospital h, find which pairs were matched
-    hosp.matched.ids = intersect(rke.hospital.pair.ids(reported.rke.all, h),
-                                 mech.out.ids)
+    hosp.matched.ids = intersect(rke.pair.ids(rke.h), matched.pair.ids)
     # 2. Remove from hidden part
-    rke.remainder = rke.remove.pairs(rke.h, hosp.matched.ids)
+    rke.remainder = rke.remove.pairs(rke.h, rm.pair.ids=hosp.matched.ids)
     # 3. Perform maximum matching on hidden part
-     matching = max.matching(rke.remainder,
-                             include.3way=include.3way,
-                             regular.matching=T)
+    matching = max.matching(rke.remainder,
+                            include.3way=include.3way,
+                            regular.matching=T)
     internal.matchings[[h]] <- matching
     # 0.2 Add this matching to the total
     total.matching <- add.matching(total.matching, matching)
   }
+  
+  if(verbose) {
+    print("Mech matching information")
+    print(mech.matching$information)
+    print("Total matching information")
+    print(total.matching$information)
+    print("Breakdown by hospital")
+    for(h in hids) {
+      print(sprintf("Hospital %d", h))
+      print(internal.matching[[h]]$information)
+    }
+  }
+  
   return(list(total.matching=total.matching,
               mech.matching=mech.matching,
               internal.matchings=internal.matchings))
 }
 
-rCM <- function(rke.pool, include.3way=F) {
+rCM <- function(pool, include.3way=F) {
   # Implementation of rCM. 
   # Returns a MATCHING object. (all mechanisms should return a matching object)
-  CHECK_rke.pool(rke.pool)
-  rke.all <- rke.pool$rke.all
+  CHECK_rke.pool(pool)
+  rke.all <- pool$rke.all
   
   # total.matching = MATCHING object to be returned.
   total.matching = empty.match.result(empty.rke())
@@ -192,21 +201,21 @@ rCM <- function(rke.pool, include.3way=F) {
   return(total.matching)
 }
 
-selfCM <- function(rke.pool, include.3way=F) {
+selfCM <- function(pool, include.3way=F) {
   # Implementation of selfish-Centralized mechanism.
   #
   # Matches all hospitals internally (no pooling)
-  CHECK_rke.pool(rke.pool)
-  rke.all <- rke.pool$rke.all
-  rke.list <- rke.pool$rke.list
+  CHECK_rke.pool(pool)
+  rke.all <- pool$rke.all
+  rke.list <- pool$rke.list
   # total.matching = MATCHING object to be returned.
   total.matching = empty.match.result(empty.rke())
   
   ## 1. Simply calculate a maximum-matching for each hospital internally.
   for(h in rke.list.hospital.ids(rke.list)) {
     rke.h = rke.list[[h]]
-    m.h = max.matching(rke.h, include.3way=include.3way, regular.matching=T)
-    total.matching <- add.matching(total.matching, m.h)
+    m = max.matching(rke.h, include.3way=include.3way, regular.matching=T)
+    total.matching <- add.matching(total.matching, m)
   }
   
   return(total.matching)
@@ -393,27 +402,21 @@ compute.Rsubgraph.constraints <- function(ir.constraints, rke.pool) {
 
 # Implements xCM mechanism (Toulis & Parkes, 2013)
 # Returns: LIST(matching=total.matching)
-xCM <- function(rke.pool, include.3way=F, verbose=F) {
-  CHECK_rke.pool(rke.pool)
-  if(include.3way==T) {
-    return(xCM3(rke.pool, verbose=verbose))
+xCM <- function(pool, include.3way=F, verbose=F) {
+  CHECK_rke.pool(pool)
+  if(include.3way) {
+    return(xCM3(pool, verbose=verbose))
   }
   # unload
-  rke.list = rke.pool$rke.list
-  rke.all = rke.pool$rke.all
+  rke.list = pool$rke.list
+  rke.all = pool$rke.all
   
-  debug.matching <- function(matching) {
-    x = subset(matching$match, select=c("hospital", "desc", "pair.type"))
-    print("    DEBUG    ")
-    print(table(x$hospital))
-  }
   # Total matching computed by the mechanism.
   total.matching = empty.match.result(empty.rke())
   
   m = length(rke.list)  # no. of hospitals
   ##  1. Compute IR constraints
-  ir.constraints = compute.ir.constraints(rke.pool, pair.types=c("S", "R"), 
-                                          include.3way=F)
+  ir.constraints = compute.ir.constraints(pool, pair.types=c("S", "R"), include.3way=F)
   
   # 2.  Match S internally
   s.subrke = rke.subgraph(rke.all, pair.type="S")
@@ -427,7 +430,7 @@ xCM <- function(rke.pool, include.3way=F, verbose=F) {
   
   ## 3.   Match R internally
   r.subrke = rke.subgraph(rke.all, pair.type="R")
-  r.constraints = compute.Rsubgraph.constraints(ir.constraints, rke.pool=rke.pool)
+  r.constraints = compute.Rsubgraph.constraints(ir.constraints, rke.pool=pool)
   # R-constraints have additionally the "y" lottery allocation (see notes)
   CHECK_EQ(nrow(r.constraints), 2 * m, msg="AB and BA pairs for each hospital")
   
@@ -456,13 +459,18 @@ xCM <- function(rke.pool, include.3way=F, verbose=F) {
   hospital.ids <- rke.list.hospital.ids(rke.list)
   for(hid in hospital.ids) {
     matched.hospital.ids <- intersect(get.matching.ids(total.matching),
-                                      rke.hospital.pair.ids(rke.all, hid))
+                                      rke.pair.ids(rke.list[[hid]]))
     rke.h <- rke.remove.pairs(rke=rke.list[[hid]],
                               rm.pair.ids=matched.hospital.ids)
     internal.matching = max.matching(rke.h, include.3way=F, regular.matching=T)
     # 0.3 Add matching information from internal matching.
     total.matching <- add.matching(total.matching, internal.matching)
   }
+  
+  # match remainder.
+  rke.remainder = rke.remove.pairs(rke.all, rm.pair.ids=total.matching$match$pair.id)
+  remainder.m = max.matching(rke.remainder, include.3way=F, regular.matching=T)
+  total.matching <- add.matching(total.matching, remainder.m)
   
   return(total.matching)
 }
@@ -511,7 +519,7 @@ OAB.matched.in.OUU <- function(rke) {
               U=all.U.matched))         
 }
 
-xCM3 <- function(rke.pool, verbose=F) {
+xCM3 <- function(pool, verbose=F) {
   # Runs xCM with 3-way exchanges.
   #
   # The most important object is "total.matching" for every mechanism
@@ -676,7 +684,12 @@ xCM3 <- function(rke.pool, verbose=F) {
     # Add matching information from internal matching.
     total.matching <- add.matching(total.matching, internal.matching)
   }
-
+  
+  # match remainder.
+  rke.remainder = rke.remove.pairs(rke.all, rm.pair.ids=total.matching$match$pair.id)
+  remainder.m = max.matching(rke.remainder, include.3way=T, regular.matching=T)
+  total.matching <- add.matching(total.matching, remainder.m)
+  
   CHECK_UNIQUE(total.matching$match$pair.id)
   return(total.matching)
 }
@@ -798,11 +811,11 @@ Bonus.QS = function(rke.pool, include.3way=F)  {
 }
 
 ## Bonus mechanism. Ashlagi & Roth (2013)
-Bonus = function(rke.pool, include.3way=F) {
-  CHECK_rke.pool(rke.pool)
+Bonus = function(pool, include.3way=F) {
+  CHECK_rke.pool(pool)
   # unload reports.
-  rke.list = rke.pool$rke.list
-  rke.all = rke.pool$rke.all
+  rke.list = pool$rke.list
+  rke.all = pool$rke.all
   
   # Total matching computed by the mechanism.
   total.matching = empty.match.result(empty.rke())
@@ -827,7 +840,7 @@ Bonus = function(rke.pool, include.3way=F) {
   ## 2. Match R pairs. First match internally, then maximize global,
   #     promoting the internally-matched.
   promoted.Rpairs <- c()  # will contain the R pairs that were matched in internal M_R matchings.
-  for(h in 1:length(rke.list)) {
+  for(h in rke.list.hospital.ids(rke.list)) {
     rke.h = rke.list[[h]]
     # Maximize the matches on the R subgraph.
     h.Rpairs = subset(rke.h$pairs, pair.type=="R")$pair.id
@@ -862,7 +875,7 @@ Bonus = function(rke.pool, include.3way=F) {
   # Compute Q-S:
   #   Q[hid][X-Y] = how many #X-Y in hospital hid
   #   S[hid][X-Y] = { ids of matched X-Y for hid }
-  QS.obj = Bonus.QS(rke.pool=rke.pool, include.3way=include.3way)
+  QS.obj = Bonus.QS(rke.pool=pool, include.3way=include.3way)
   ## For all under-demanded pairs  X-Y
   for(i in ud.pcs) {
     # i is a PC (pair code)
