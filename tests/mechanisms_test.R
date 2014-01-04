@@ -6,6 +6,25 @@ CHECK.rke.equal <- function(rke1, rke2) {
   CHECK_SETEQ(rke1$pairs$pc, rke2$pairs$pc)
 }
 
+# Runs all tests for mechanisms.R
+run.all.mechanisms.tests <- function(ntrials) {
+  ok <- function() print("[OK]")
+  for(i in 1:ntrials) {
+    print(sprintf("#####   (%d/%d)   TESTs mechanisms.R    #####", i, ntrials))
+    test.kpd.create()
+    ok()
+    test.play.strategies()
+    ok()
+    test.run.mechanism()
+    ok()
+    test.compute.ir.constraints()
+    ok()
+    test.compute.Rsubgraph.constraints()
+    ok()
+    test.OAB.matched.in.OUU()
+  }
+}
+
 test.kpd.create <- function() {
   # Tests whether the KPD markets are created correctly.
   # Test 1: For the strategy profile "ttttt" check the reported
@@ -40,11 +59,12 @@ test.play.strategies <- function() {
   
   
   random.strategies = sample(c("t", "c", "c"))
+  include.3way = sample(c(T,F), 1)
   # print(random.strategies)
-  out = play.strategies(pool$rke.list, paste(random.strategies, collapse=""), include.3way=T)
+  out = play.strategies(pool$rke.list, paste(random.strategies, collapse=""), include.3way=include.3way)
   hid = which(random.strategies=="c")[1]
   rke = pool$rke.list[[hid]]
-  m = max.matching(rke, include.3way=T, regular.matching=T)
+  m = max.matching(rke, include.3way=include.3way, regular.matching=T)
   
   str = out[[hid]]
   CHECK_EQ(m$utility, length(str$hide), msg="|hide| = |max matching|")
@@ -52,27 +72,30 @@ test.play.strategies <- function() {
   CHECK_DISJOINT(str$report, str$hide)
   # |matching| = 0 in the reported subgraph
   remainder = rke.keep.pairs(rke, pair.ids=str$report)
-  CHECK_EQ(max.matching(remainder, include.3way=T)$utility, 0)
+  CHECK_EQ(max.matching(remainder, include.3way=include.3way)$utility, 0)
 }
 
 test.run.mechanism <- function() {
-  m = rpois(1, lambda=5)
-  n = rpois(1, lambda=15)
-  print(sprintf("m=%d hospitals, n=%d pairs", m, n))
+  m = 2 + 2 * rpois(1, lambda=2)
+  n = rpois(1, lambda=10)
+ 
   pool = rrke.pool(m=m, n=n, uniform.pra=F)
-  kpd = kpd.create(pool, strategy.str=paste(rep("c", m), collapse=""), include.3way=F)
+  include.3way = sample(c(T,F), 1)
+  kpd = kpd.create(pool, strategy.str=paste(rep("c", m), collapse=""), include.3way=include.3way)
   
-  out = Run.Mechanism(kpd, "rCM", include.3way=F)
+  mech = sample(c("rCM", "xCM", "Bonus"), 1)
+  out = Run.Mechanism(kpd, mech, include.3way=include.3way)
+  print(sprintf("TEST Run.Mechanism. m=%d hospitals, n=%d pairs, mech=%s, 3way=%s", m, n, mech, include.3way))
+  mech.matching = do.call(mech, args=list(pool=kpd$reported.pool,
+                                                      include.3way=include.3way))
+  # 1. Test utilities
+  CHECK_TRUE(abs(mech.matching$utility - out$mech.matching$utility) <= 3)
   
-  theoretical.mech.matching = max.matching(kpd$reported.pool$rke.all,
-                               include.3way=F, regular.matching=T)
-  # tests the #2-way exchanges
-  CHECK_EQ(theoretical.mech.matching$information[31], out$mech.matching$information[31])
   internals = sapply(1:length(pool$rke.list), function(h) max.matching(pool$rke.list[[h]],
-                                                                        include.3way=F,
-                                                                        regular.matching=T)$utility)
-  CHECK_EQ(sum(internals)/2 + theoretical.mech.matching$information[31], 
-           out$total.matching$information[31])
+                                                                       include.3way=include.3way,
+                                                                       regular.matching=T)$utility)
+  CHECK_GE(get.matching.hospital.utilities(out$total.matching, m),
+           internals)
 }
 
 test.compute.ir.constraints <- function() {
@@ -82,8 +105,9 @@ test.compute.ir.constraints <- function() {
   pool = rrke.pool(m=rpois(1, lambda=6), n=rpois(1, lambda=20), uniform.pra=T)
   ir = compute.ir.constraints(pool, pair.types=c("S", "R"))
   CHECK_MEMBER(names(ir), c("pc", "hospital", "internal.matches", "desc", "pair.type"))
-  print(sprintf("m=%d, n=%d, Checking %d constraints", 
-                length(pool$rke.list), rke.size(pool$rke.list[[1]]), nrow(ir)))
+  print(sprintf("TEST compute.ir.constraints() -- m=%d, n=%d, Checking %d constraints. Avg=%.2f constraints", 
+                length(pool$rke.list), rke.size(pool$rke.list[[1]]), nrow(ir),
+                mean(ir$internal.matches)))
   for(i in 1:nrow(ir)) {
     constraint = ir[i, ]
     arg.desc = constraint$desc
@@ -110,13 +134,28 @@ test.compute.Rsubgraph.constraints <- function() {
   
   internal.index = which(names(out) == "internal.matches")
   CHECK_EQ(length(internal.index), 2)
-  CHECK_EQ(out[, internal.index[1]], out[, internal.index[2]])
-  
-  totalPc = out$unmatched + out$internal.matches
-  out.totalPc = sapply(1:nrow(out), function(i) nrow(subset(pool$rke.all$pairs, hospital==out[i,]$hospital & pc==out[i,]$pc)))
-  CHECK_EQ(out.totalPc, totalPc)
-  
+  if(nrow(out) > 0) {
+    CHECK_EQ(out[, internal.index[1]], out[, internal.index[2]])
+    
+    totalPc = out$unmatched + out$internal.matches
+    out.totalPc = sapply(1:nrow(out), function(i) nrow(subset(pool$rke.all$pairs, hospital==out[i,]$hospital & pc==out[i,]$pc)))
+    CHECK_EQ(out.totalPc, totalPc)
+  }
   return(out)
   
   
+}
+
+test.OAB.matched.in.OUU <- function() {
+  rke = rrke(80)
+  x = OAB.matched.in.OUU(rke)
+  print(sprintf("TEST OAB.matched.in.OUU() -- Total OUU matches =%d", length(c(x$OAB, x$U))/3))
+  CHECK_EQ(length(x$U), 2 * length(x$OAB))
+  CHECK_SETEQ(names(x), c("OAB", "U", "matching"))
+  nOAB = nrow(subset(rke$pairs, desc=="O-AB"))
+  CHECK_GE(nOAB, length(x$OAB))
+  if(length(x$U) > 0) {
+    CHECK_SETEQ(x$matching$match$pair.type, c("O", "U"))
+    CHECK_SETEQ(x$matching$matched.cycles$type, c(3))
+  }
 }

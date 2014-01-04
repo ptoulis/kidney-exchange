@@ -109,7 +109,7 @@ play.strategies = function(rke.list, strategy.str, include.3way, verbose=F) {
   strategy.list = llply(hids, function(h) {
     play.strategy(rke.list[[h]],
                   strategy.str=strategies[h],
-                  include.3way=T)
+                  include.3way=include.3way)
   })
   return(strategy.list)
 }
@@ -141,7 +141,9 @@ Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
                                      include.3way=include.3way))
   
   total.matching = add.matching(total.matching, mech.matching)
-  
+  if(verbose) {
+    print(sprintf("Mech matching computed. Total %d matches", nrow(total.matching$match)))
+  }
   # Zero-tolerance to errors.
   if (get.matching.status(mech.matching) != "OK") {
     print(sprintf("Error happened in mechanism %s. Saving", mech))
@@ -155,11 +157,16 @@ Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
   
   ## 5.  Utility from final internal matches. Recourse step
   for(h in hids) {
+
     rke.h = rke.list[[h]]
     # 1. For hospital h, find which pairs were matched
     hosp.matched.ids = intersect(rke.pair.ids(rke.h), matched.pair.ids)
     # 2. Remove from hidden part
     rke.remainder = rke.remove.pairs(rke.h, rm.pair.ids=hosp.matched.ids)
+    if(verbose) {
+      print(sprintf("Internal matching for hospital %d. Total %d pairs.",
+                    h, rke.size(rke.remainder)))
+    }
     # 3. Perform maximum matching on hidden part
     matching = max.matching(rke.remainder,
                             include.3way=include.3way,
@@ -177,7 +184,7 @@ Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
     print("Breakdown by hospital")
     for(h in hids) {
       print(sprintf("Hospital %d", h))
-      print(internal.matching[[h]]$information)
+      print(internal.matchings[[h]]$information)
     }
   }
   
@@ -249,27 +256,25 @@ compute.ir.constraints = function(rke.pool, pair.types=c(), include.3way=F) {
   }
   
   hospital.ids <- rke.list.hospital.ids(rke.list)
+  all.types = as.character(unique(kPairs$pair.type))
+  CHECK_MEMBER(pair.types, all.types)
   for(hid in hospital.ids) {
     # 1. Compute max matching internally in S
     rke.h = rke.list[[hid]]
-    for (type in intersect(pair.types, c("O", "U", "S", "R"))) {
+    for (type in pair.types) {
       # Take the pairs the belong to this group
-      type.pair.ids = subset(rke.h$pairs, pair.type==type)$pair.id
-      subrke = rke.keep.pairs(rke.h, pair.ids=type.pair.ids)
+      subrke = rke.subgraph(rke.h, pair.type=type)
       matching = max.matching(subrke, include.3way=include.3way)
       CHECK_TRUE(get.matching.status(matching) == "OK", msg="Matching OK?")
-      match = matching$match
-      tab.pc = as.matrix(table(match$pc))  # tabulate the PC codes.
-      # data.frame of pc frequencies
-      tab.pc = data.frame(pc=as.numeric(rownames(tab.pc)), freq=tab.pc[ , 1])
-      CHECK_UNIQUE(tab.pc$pc)
-      num.results = nrow(tab.pc)
-      if (num.results > 0)
-        out = rbind(out, list(pc=tab.pc$pc,
-                              hospital=rep(hid, num.results),
-                              internal.matches=tab.pc$freq))
-    }
-  }## for every hospital
+      # get the pair codes for this specific pair type.
+      all.type.pcs = subset(kPairs, pair.type==type)$pc
+      for(type.pc in all.type.pcs) {
+        out = rbind(out, list(pc=type.pc,
+                              hospital=hid,
+                              internal.matches=length(which(matching$match$pc==type.pc))))
+      }
+    }  ## constraints for every hospital
+  }
   rownames(out) <- NULL
   out$desc = sapply(out$pc, pc.to.desc)
   out$pair.type = pc.to.pair.type(out$pc)
