@@ -68,12 +68,12 @@ CHECK_comparison <- function(comparison) {
 }
 
 # An example COMPARISON object.
-example.comparison = create.comparison(mechanisms=c("rCM", "xCM", "Bonus"),
-                                       nHospitals=4, nSize=18,
+example.comparison = create.comparison(mechanisms=c("xCM"),
+                                       nHospitals=3, nSize=140,
                                        uniform.pra=T, include.3way=F,
-                                       baseline.strategy="tttt",
-                                       deviation.strategy="cccc",
-                                       nsamples=10)
+                                       baseline.strategy="ttt",
+                                       deviation.strategy="ttc",
+                                       nsamples=2)
 
 compare.mechanisms <- function(comparison) {
   # Compares two mechanisms.
@@ -120,6 +120,7 @@ compare.mechanisms <- function(comparison) {
                          uniform.pra=comparison$uniform.pra)
     # 2. Create the KPD markets
     kpds = list()
+
     kpds$baseline = kpd.create(rke.pool=rke.pool,
                                strategy.str=comparison$baseline.strategy,
                                include.3way=comparison$include.3way)
