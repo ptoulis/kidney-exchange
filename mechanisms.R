@@ -123,6 +123,7 @@ Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
   #   mech.matching = MATCHING of the mechanism
   #   internal.matchings = LIST of m MATCHING elements, one for each hospital
   #     it is the internal matchings that hospitals make on the remainders.
+  logfine("Checking KPD object")
   CHECK_kpd(kpd)
   
   # Init total matching.
@@ -135,15 +136,14 @@ Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
   reported.rke.all = kpd$reported.pool$rke.all
   rke.list = kpd$real.pool$rke.list
   rke.all = kpd$real.pool$rke.all
-  
+  logfine("Compute mechanism matching.")
   ## 3. Run the mechanism. Get the matching
   mech.matching = do.call(mech, args=list(pool=kpd$reported.pool,
                                      include.3way=include.3way))
   
   total.matching = add.matching(total.matching, mech.matching)
-  if(verbose) {
-    print(sprintf("Mech matching computed. Total %d matches", nrow(total.matching$match)))
-  }
+  logfine(sprintf("Mech matching computed. Total %d matches", nrow(total.matching$match)))
+  
   # Zero-tolerance to errors.
   if (get.matching.status(mech.matching) != "OK") {
     print(sprintf("Error happened in mechanism %s. Saving", mech))
@@ -157,16 +157,12 @@ Run.Mechanism = function(kpd, mech, include.3way, verbose=F) {
   
   ## 5.  Utility from final internal matches. Recourse step
   for(h in hids) {
-
     rke.h = rke.list[[h]]
     # 1. For hospital h, find which pairs were matched
     hosp.matched.ids = intersect(rke.pair.ids(rke.h), matched.pair.ids)
     # 2. Remove from hidden part
     rke.remainder = rke.remove.pairs(rke.h, rm.pair.ids=hosp.matched.ids)
-    if(verbose) {
-      print(sprintf("Internal matching for hospital %d. Total %d pairs.",
-                    h, rke.size(rke.remainder)))
-    }
+    logfine(sprintf("RunMechanism-Recourse: Matching for hospital %d, total %d pairs remaining", h, rke.size(rke.remainder)))
     # 3. Perform maximum matching on hidden part
     matching = max.matching(rke.remainder,
                             include.3way=include.3way,
@@ -408,6 +404,7 @@ compute.Rsubgraph.constraints <- function(ir.constraints, rke.pool) {
 # Implements xCM mechanism (Toulis & Parkes, 2013)
 # Returns: LIST(matching=total.matching)
 xCM <- function(pool, include.3way=F, verbose=F) {
+  logfine("Checking rke.pool")
   CHECK_rke.pool(pool)
   if(include.3way) {
     return(xCM3(pool, verbose=verbose))
@@ -421,10 +418,13 @@ xCM <- function(pool, include.3way=F, verbose=F) {
   
   m = length(rke.list)  # no. of hospitals
   ##  1. Compute IR constraints
+  logfine("Compute IR constraints for S-, R-subgraphs")
   ir.constraints = compute.ir.constraints(pool, pair.types=c("S", "R"), include.3way=F)
   
   # 2.  Match S internally
   s.subrke = rke.subgraph(rke.all, pair.type="S")
+  logfine(sprintf("Compute matching on S-subgraph. Total %d pairs, %d edges",
+                  rke.size(s.subrke), sum(s.subrke$edges$can.donate)))
   s.constraints = subset(ir.constraints, pair.type=="S")
   s.matching = max.matching(s.subrke,
                             ir.constraints=s.constraints,
@@ -432,9 +432,11 @@ xCM <- function(pool, include.3way=F, verbose=F) {
   
   # 0.1 Add matching information from S
   total.matching <- add.matching(total.matching, s.matching)
-  
+  logfine("xCM: S-matching computed.")
   ## 3.   Match R internally
   r.subrke = rke.subgraph(rke.all, pair.type="R")
+  logfine(sprintf("Compute matching on R-subgraph with constraints. Total %d pairs.",
+                  rke.size(r.subrke)))
   r.constraints = compute.Rsubgraph.constraints(ir.constraints, rke.pool=pool)
   # R-constraints have additionally the "y" lottery allocation (see notes)
   CHECK_EQ(nrow(r.constraints), 2 * m, msg="AB and BA pairs for each hospital")
@@ -453,12 +455,15 @@ xCM <- function(pool, include.3way=F, verbose=F) {
     r.matching = max.matching(r.subrke, ir.constraints = loop.r.constraints, include.3way=F)
     loop.ended = get.matching.status(r.matching) == "OK"
     q = q + 1
+    logfine(sprintf("xCM: In R-subgraph loop. q=%d", q))
   }
 
   # 0.2 Add matching information from R
   total.matching <- add.matching(total.matching, r.matching)
   ## remove some stuff that are not needed anymore
   rm(ir.constraints)
+  logfine("xCM: R-matching computed.")
+  
   #  4. Almost regular matching to the remainder
   ## Match OD's individually.
   hospital.ids <- rke.list.hospital.ids(rke.list)
@@ -470,6 +475,7 @@ xCM <- function(pool, include.3way=F, verbose=F) {
     internal.matching = max.matching(rke.h, include.3way=F, regular.matching=T)
     # 0.3 Add matching information from internal matching.
     total.matching <- add.matching(total.matching, internal.matching)
+    logfine(sprintf("xCM: Computed internal matching for hospital %d", hid))
   }
   
   # match remainder.
@@ -837,6 +843,7 @@ Bonus = function(pool, include.3way=F) {
   
   ## 1. Match S pairs internally
   s.subrke = rke.subgraph(rke.all, pair.type="S")
+  logdebug(sprintf("Computing max-matching in S-subgraph. Size %d pairs", rke.size(s.subrke)))
   s.matching = max.matching(s.subrke, include.3way=include.3way)
   
   logdebug("Performed S-matching..Utilities:")
