@@ -139,33 +139,25 @@ compare.mechanisms <- function(comparison) {
       for(s in all.strategies) {
         logfine(sprintf("Run mechanism=%s, strategy=%s, 3way=%s", mech, s, comparison$include.3way))
         # 3.1 Run mechanism -> matching output for a specific strategy profile
-        run.output = NA
-        tryCatch(expr = {
-          evalWithTimeout({ run.output =  Run.Mechanism(kpd=kpds[[s]], mech=mech, include.3way=comparison$include.3way) },
-                          timeout = 120)
-        }, TimeoutException = function(ex) {
-          cat("Timeout. Empty matching. Skipping..\n")
-        })
+        run.output =  Run.Mechanism(kpd=kpds[[s]], mech=mech, include.3way=comparison$include.3way)
         # run.output has (total.matching, mech.matching, internal.matchings)
-        if(length(names(run.output)) > 0) {
-          # 3.2 Update utility matrix.
-          result[[s]][[mech]]$utility[, i] <- get.matching.hospital.utilities(run.output$total.matching,
-                                                                              comparison$m)
-          # 3.3 Update total + mech information
-          for(m in c("total.matching", "mech.matching")) {
-            key = sprintf("%sInfo", m)
-            result[[s]][[mech]][[key]] = result[[s]][[mech]][[key]] + run.output[[m]]$information
-          }
-          # 3.4 Update hospital internal matching info
-          for (hid in 1:comparison$m) {
-            result[[s]][[mech]]$internal.matchingInfo[[hid]] =  
-              result[[s]][[mech]]$internal.matchingInfo[[hid]] + run.output$internal.matchings[[hid]]$information
-            ## pairs breakdown
-            result[[s]][[mech]]$hospital.pairsBreakdown[[hid]] = 
-              result[[s]][[mech]]$hospital.pairsBreakdown[[hid]] + 
-              table(subset(run.output$total.matching$match, hospital==hid)$pair.type)
-          }  # for all hospitals, matching info
+        # 3.2 Update utility matrix.
+        result[[s]][[mech]]$utility[, i] <- get.matching.hospital.utilities(run.output$total.matching,
+                                                                            comparison$m)
+        # 3.3 Update total + mech information
+        for(m in c("total.matching", "mech.matching")) {
+          key = sprintf("%sInfo", m)
+          result[[s]][[mech]][[key]] = result[[s]][[mech]][[key]] + run.output[[m]]$information
         }
+        # 3.4 Update hospital internal matching info
+        for (hid in 1:comparison$m) {
+          result[[s]][[mech]]$internal.matchingInfo[[hid]] =  
+            result[[s]][[mech]]$internal.matchingInfo[[hid]] + run.output$internal.matchings[[hid]]$information
+          ## pairs breakdown
+          result[[s]][[mech]]$hospital.pairsBreakdown[[hid]] = 
+            result[[s]][[mech]]$hospital.pairsBreakdown[[hid]] + 
+            table(subset(run.output$total.matching$match, hospital==hid)$pair.type)
+        }  # for all hospitals, matching info
       } # all strategies (baseline, deviation)
     } # for every mechanism
     setTxtProgressBar(pb, value=i / comparison$nsamples)
