@@ -274,7 +274,7 @@ max.matching <- function(rke,
                          randomize.matching=T,
                          regular.matching=F,
                          promote.pair.ids=c(),
-                         timeLimit=3600,
+                         timeLimit=120000,
                          verbose=F) {
   # Performs some form of maximum matching on the specific RKE object.
   #
@@ -408,7 +408,6 @@ max.matching <- function(rke,
     if(abs(i-1) < 1e-6) return(1)
     return(NA)
   })
-  logthis(gurobi.result, verbose)
   match.out = gurobi.matched.pairs(gurobi.result, rke, Cycles)
   edge.index = which(rke$edges$edge.id %in% match.out$matched.edges)
   rke$edges$edge.color[edge.index] <- rep("red", length(match.out$matched.edges))

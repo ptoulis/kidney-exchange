@@ -245,7 +245,6 @@ CHECK_rke <- function(rke) {
 CHECK_rke_subset <- function(rke.smaller, rke.bigger) {
   # Tests whether the smaller RKE is a subset of the bigger one
   #
-  loginfo("Checking rke SUBSET")
   warning("SUBSET RKE test generates 2500 checks at most. This might not be optimal")
   nMaxTests <- 500
   CHECK_rke(rke.smaller)
@@ -263,7 +262,6 @@ CHECK_rke_subset <- function(rke.smaller, rke.bigger) {
   new.pairs = rke.pair.ids(rke.smaller)
   ntrials = min(nMaxTests, nrow(rke.bigger$edges))
   edge.ids <- sample(1:nrow(rke.bigger$edges), size=ntrials, replace=F)
-  loginfo(sprintf("Checking edges compatibility (%d tests)", ntrials))
   pb = txtProgressBar(style=3, min=0, max=1)
   tmp <- c()
   for (i in 1:ntrials) {
