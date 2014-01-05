@@ -484,7 +484,8 @@ table.regularity <- function(nsamples, max.hospitalSize=500,
 table.welfare.incentives <- function(mechanisms=kImplementedKPDMechanisms,
                                      nhospitals=6, nsize=15, 
                                      include.3way=F, nsamples=100,
-                                     filename.prefix="table") {
+                                     filename.prefix="table",
+                                     full.suite=T) {
   # Table of 2way exchanges to compare Welfare and Incentives.
   # or Table of 3way exchanges to compare welfare + incentives
 
@@ -535,8 +536,10 @@ table.welfare.incentives <- function(mechanisms=kImplementedKPDMechanisms,
   exp.results <- list()
   exp.results = run.comparison(exp.results, nhospitals, nhospitals-1, T)
   exp.results = run.comparison(exp.results, nhospitals, nhospitals-1, F)
-  exp.results = run.comparison(exp.results, 1, 0, T)
-  exp.results = run.comparison(exp.results, 1, 0, F)  
+  if(full.suite) {
+    exp.results = run.comparison(exp.results, 1, 0, T)
+    exp.results = run.comparison(exp.results, 1, 0, F)
+  }
 }
 
 run.all.simple.experiments <- function(nsamples=1000) {
@@ -624,9 +627,11 @@ simple.experiments <- function(experiment.no, nsamples=100, max.hospitalSize=140
 
 run.sweetSpot.experiments <- function(nsamples) {
   table.welfare.incentives(mechanisms=c("xCM"), nhospitals=3, nsize=160, 
-                           include.3way=F, nsamples=nsamples, filename.prefix="SweetSpot")
+                           include.3way=F, nsamples=nsamples,
+                           filename.prefix="SweetSpot", full.suite=F)
   
   table.welfare.incentives(mechanisms=c("xCM"), nhospitals=2, nsize=80, 
-                           include.3way=T, nsamples=nsamples, filename.prefix="SweetSpot")
+                           include.3way=T, nsamples=nsamples,
+                           filename.prefix="SweetSpot", full.suite=F)
 }
 
