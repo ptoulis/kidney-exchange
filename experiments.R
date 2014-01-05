@@ -605,7 +605,7 @@ table.welfare.incentives <- function(mechanisms=kImplementedKPDMechanisms,
                     max(0, nsamples-old.size)))
       nsamples = max(0, nsamples - old.size)
     } else {
-      print(sprintf("Old result (%s) does not exists. Taking %d samples", result.name, nsamples))
+      print(sprintf("Old result (%s) does not exist. Taking full %d samples..", result.name, nsamples))
     }
     if(nsamples > 0) {
       comparison = create.comparison(mechanisms=mechanisms,
