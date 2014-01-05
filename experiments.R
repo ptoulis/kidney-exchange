@@ -485,7 +485,7 @@ table.welfare.incentives <- function(mechanisms=kImplementedKPDMechanisms,
                                      nhospitals=6, nsize=15, 
                                      include.3way=F, nsamples=100,
                                      filename.prefix="table",
-                                     full.suite=T) {
+                                     run.profiles=c(1,2,3,4)) {
   # Table of 2way exchanges to compare Welfare and Incentives.
   # or Table of 3way exchanges to compare welfare + incentives
 
@@ -534,12 +534,14 @@ table.welfare.incentives <- function(mechanisms=kImplementedKPDMechanisms,
     return(results)
   }
   exp.results <- list()
-  exp.results = run.comparison(exp.results, nhospitals, nhospitals-1, T)
-  exp.results = run.comparison(exp.results, nhospitals, nhospitals-1, F)
-  if(full.suite) {
+  if(1 %in% run.profiles)
+    exp.results = run.comparison(exp.results, nhospitals, nhospitals-1, T)
+  if(2 %in% run.profiles)
+    exp.results = run.comparison(exp.results, nhospitals, nhospitals-1, F)
+  if(3 %in% run.profiles)
     exp.results = run.comparison(exp.results, 1, 0, T)
+  if(4 %in% run.profiles)
     exp.results = run.comparison(exp.results, 1, 0, F)
-  }
 }
 
 run.all.simple.experiments <- function(nsamples=1000) {
