@@ -628,7 +628,7 @@ simple.experiments <- function(experiment.no, nsamples=100, max.hospitalSize=140
 }
 
 run.sweetSpot.experiments <- function(nsamples) {
-  table.welfare.incentives(mechanisms=c("xCM"), nhospitals=3, nsize=160, 
+  table.welfare.incentives(mechanisms=c("xCM"), nhospitals=3, nsize=140, 
                            include.3way=F, nsamples=nsamples,
                            filename.prefix="SweetSpot", full.suite=F)
   
