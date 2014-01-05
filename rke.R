@@ -69,6 +69,8 @@ rke.add <- function(rke1, rke2, verbose=F) {
 rke.keep.pairs = function(rke, pair.ids) {
   # Keeps the specified ids and removes all others.
   # Returns a <rke> object.
+  if(length(pair.ids) == 0)
+    return(empty.rke())
   CHECK_TRUE(is.vector(pair.ids))
   CHECK_MEMBER(pair.ids, rke$pairs$pair.id)
   all.pairs = rke.pair.ids(rke)
