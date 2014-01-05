@@ -4,7 +4,6 @@ library(xtable)
 
 rm(list=ls())
 # Add necessary libs.
-require(R.utils)
 source("../r-toolkit/checks.R")
 source("../r-toolkit/logs.R")
 source("terminology.R")
