@@ -4,6 +4,7 @@ library(xtable)
 
 rm(list=ls())
 # Add necessary libs.
+require(R.utils)
 source("../r-toolkit/checks.R")
 source("../r-toolkit/logs.R")
 source("terminology.R")
@@ -69,11 +70,11 @@ CHECK_comparison <- function(comparison) {
 
 # An example COMPARISON object.
 example.comparison = create.comparison(mechanisms=c("xCM"),
-                                       nHospitals=3, nSize=140,
+                                       nHospitals=3, nSize=20,
                                        uniform.pra=T, include.3way=F,
                                        baseline.strategy="ttt",
                                        deviation.strategy="ttc",
-                                       nsamples=2)
+                                       nsamples=15)
 
 compare.mechanisms <- function(comparison) {
   # Compares two mechanisms.
@@ -110,8 +111,11 @@ compare.mechanisms <- function(comparison) {
       }
     }
   }  # done with initialization
+  if(comparison$nsamples==0)
+    return(result)
   
   pb = txtProgressBar(style=3)
+
   # main loop
   for(i in 1:comparison$nsamples) {
     # 1. Sample the RKE pool
@@ -120,40 +124,49 @@ compare.mechanisms <- function(comparison) {
                          uniform.pra=comparison$uniform.pra)
     # 2. Create the KPD markets
     kpds = list()
-
+    logfine("Pool sampled")
     kpds$baseline = kpd.create(rke.pool=rke.pool,
                                strategy.str=comparison$baseline.strategy,
                                include.3way=comparison$include.3way)
+    logfine("KPD baseline created")
     kpds$deviation = kpd.create(rke.pool=rke.pool,
                                 strategy.str=comparison$deviation.strategy,
                                 include.3way=comparison$include.3way)
-    
+    logfine("KPD deviation created")
+
     # 3. Main loop starts here.
     for (mech in comparison$mechanisms) {
       for(s in all.strategies) {
+        logfine(sprintf("Run mechanism=%s, strategy=%s, 3way=%s", mech, s, comparison$include.3way))
         # 3.1 Run mechanism -> matching output for a specific strategy profile
-        run.output =  Run.Mechanism(kpd=kpds[[s]], mech=mech, include.3way=comparison$include.3way) 
-        # this object has (total.matching, mech.matching, internal.matchings)
-        
-        # 3.2 Update utility matrix.
-        result[[s]][[mech]]$utility[, i] <- get.matching.hospital.utilities(run.output$total.matching,
-                                                                            comparison$m)
-        # 3.3 Update total + mech information
-        for(m in c("total.matching", "mech.matching")) {
-          key = sprintf("%sInfo", m)
-          result[[s]][[mech]][[key]] = result[[s]][[mech]][[key]] + run.output[[m]]$information
+        run.output = NA
+        tryCatch(expr = {
+          evalWithTimeout({ run.output =  Run.Mechanism(kpd=kpds[[s]], mech=mech, include.3way=comparison$include.3way) },
+                          timeout = 120)
+        }, TimeoutException = function(ex) {
+          cat("Timeout. Empty matching. Skipping..\n")
+        })
+        # run.output has (total.matching, mech.matching, internal.matchings)
+        if(length(names(run.output)) > 0) {
+          # 3.2 Update utility matrix.
+          result[[s]][[mech]]$utility[, i] <- get.matching.hospital.utilities(run.output$total.matching,
+                                                                              comparison$m)
+          # 3.3 Update total + mech information
+          for(m in c("total.matching", "mech.matching")) {
+            key = sprintf("%sInfo", m)
+            result[[s]][[mech]][[key]] = result[[s]][[mech]][[key]] + run.output[[m]]$information
+          }
+          # 3.4 Update hospital internal matching info
+          for (hid in 1:comparison$m) {
+            result[[s]][[mech]]$internal.matchingInfo[[hid]] =  
+              result[[s]][[mech]]$internal.matchingInfo[[hid]] + run.output$internal.matchings[[hid]]$information
+            ## pairs breakdown
+            result[[s]][[mech]]$hospital.pairsBreakdown[[hid]] = 
+              result[[s]][[mech]]$hospital.pairsBreakdown[[hid]] + 
+              table(subset(run.output$total.matching$match, hospital==hid)$pair.type)
+          }  # for all hospitals, matching info
         }
-        # 3.4 Update hospital internal matching info
-        for (hid in 1:comparison$m) {
-          result[[s]][[mech]]$internal.matchingInfo[[hid]] =  
-            result[[s]][[mech]]$internal.matchingInfo[[hid]] + run.output$internal.matchings[[hid]]$information
-          ## pairs breakdown
-          result[[s]][[mech]]$hospital.pairsBreakdown[[hid]] = 
-            result[[s]][[mech]]$hospital.pairsBreakdown[[hid]] + 
-            table(subset(run.output$total.matching$match, hospital==hid)$pair.type)
-        }  # for all hospitals, matching info
       } # all strategies (baseline, deviation)
-      
     } # for every mechanism
     setTxtProgressBar(pb, value=i / comparison$nsamples)
   }  # all trials
@@ -481,6 +494,79 @@ table.regularity <- function(nsamples, max.hospitalSize=500,
   print(sprintf("Simulation complete. File saved in %s", filename))
 }
 
+add.results <- function(result1, result2) {
+  CHECK_SETEQ(names(result1), names(result2))
+  CHECK_SETEQ(names(result1), c("baseline", "deviation"))
+  CHECK_SETEQ(names(result1$baseline), names(result2$baseline))
+  CHECK_SETEQ(names(result1$deviation), names(result2$deviation))
+  CHECK_EQ(result1$baseline$strategy, result2$baseline$strategy)
+  CHECK_EQ(result1$deviation$strategy, result2$deviation$strategy)
+  
+  result.all = list()
+  for(s in c("baseline", "deviation")) {
+    result.all[[s]] <- list()
+    mechanisms = setdiff(names(result1[[s]]), "strategy")
+    for(mech in mechanisms) {
+      result.all[[s]][[mech]]$utility = cbind(result1[[s]][[mech]]$utility,
+                                              result2[[s]][[mech]]$utility)
+      for(info in c("total.matchingInfo", "mech.matchingInfo")) {
+        result.all[[s]][[mech]][[info]] =
+          result1[[s]][[mech]][[info]] + result2[[s]][[mech]][[info]]
+      }
+      
+      for(otherInfo in c("internal.matchingInfo", "hospital.pairsBreakdown")) {
+        result.all[[s]][[mech]][[otherInfo]] = list()
+        for(hid in 1:nrow(result1$baseline[[mech]]$utility)) {
+          result.all[[s]][[mech]][[otherInfo]][[hid]] =
+            result1[[s]][[mech]][[otherInfo]][[hid]] + result2[[s]][[mech]][[otherInfo]][[hid]]
+        }
+      }  # info lists
+      
+    } # for all mechanisms
+    result.all[[s]]$strategy = result1[[s]]$strategy
+  } # for baseline, deviation
+  return(result.all)
+}
+
+get.result.size <- function(result) {
+  mechs = setdiff(names(result$baseline), "strategy")
+  mech = mechs[1]
+  return(ncol(result$baseline[[mech]]$utility))
+}
+
+test.add.results <- function() {
+  example.comparison$nsamples=3
+  mech = sample(c("rCM", "xCM", "Bonus"), 1)
+  example.comparison$mechanisms = c(mech)
+
+  example.comparison$n = 15
+  example.comparison$m = 3
+  
+  r1 = compare.mechanisms(example.comparison)
+  example.comparison$nsamples=2
+  r2 = compare.mechanisms(example.comparison)
+  
+  rboth = add.results(r1, r2)
+  
+  CHECK_EQ(ncol(rboth$baseline[[mech]]$utility), 5)
+  CHECK_EQ(sum(r1$baseline[[mech]]$utility) + sum(r2$baseline[[mech]]$utility),
+           sum(rboth$baseline[[mech]]$utility))
+  CHECK_TRUE(all(rboth$deviation[[mech]]$total.matchingInfo == 
+                   r1$deviation[[mech]]$total.matchingInfo +
+                   r2$deviation[[mech]]$total.matchingInfo))
+  hid = sample(1:3, 1)
+  cat(sprintf("\nRandom mechanism=%s, hospital %d", mech, hid))
+  CHECK_TRUE(all(rboth$deviation[[mech]]$internal.matchingInfo[[hid]] == 
+                   r1$deviation[[mech]]$internal.matchingInfo[[hid]] +
+                   r2$deviation[[mech]]$internal.matchingInfo[[hid]]))
+  CHECK_TRUE(all(rboth$deviation[[mech]]$hospital.pairsBreakdown[[hid]] == 
+                   r1$deviation[[mech]]$hospital.pairsBreakdown[[hid]] +
+                   r2$deviation[[mech]]$hospital.pairsBreakdown[[hid]]))
+  
+  CHECK_EQ(rboth$deviation$strategy, r2$deviation$strategy)
+  CHECK_EQ(rboth$baseline$strategy, r1$baseline$strategy)
+  print("OK")
+}
 
 table.welfare.incentives <- function(mechanisms=kImplementedKPDMechanisms,
                                      nhospitals=6, nsize=15, 
@@ -489,11 +575,22 @@ table.welfare.incentives <- function(mechanisms=kImplementedKPDMechanisms,
                                      run.profiles=c(1,2,3,4)) {
   # Table of 2way exchanges to compare Welfare and Incentives.
   # or Table of 3way exchanges to compare welfare + incentives
-
+  #
+  # Each table for all 4 profiles corresponds to *one* filename.
   get.strategy.profile <- function(no.truthful) {
     CHECK_TRUE(no.truthful >= 0 & no.truthful <= nhospitals, msg="#truthful should be correct")
     no.deviating = nhospitals - no.truthful
     return(paste(c(rep("t", no.truthful), rep("c", no.deviating)), collapse=""))
+  }
+  filename = sprintf("out/%s%d-m%dn%d-results.Rdata",
+                     filename.prefix,
+                     ifelse(include.3way, 3, 2), nhospitals, nsize)
+  old.results = list()
+  if(file.exists(filename)) {
+    print(sprintf("File %s already exists. Loading...", filename))
+    load(filename)
+    old.results = results
+    rm(results)
   }
   
   run.comparison <- function(results, base.Nt, dev.Nt, pra) {
@@ -505,36 +602,52 @@ table.welfare.incentives <- function(mechanisms=kImplementedKPDMechanisms,
     #  pra = T or F, whether we want uniform PRA or non-uniform PRA.
     baseline.strategy = get.strategy.profile(base.Nt)
     deviation.strategy = get.strategy.profile(dev.Nt)
-    print("")
-
-    comparison = create.comparison(mechanisms=mechanisms,
-                                   nHospitals=nhospitals, nSize=nsize,
-                                   uniform.pra=pra, 
-                                   include.3way=include.3way,
-                                   baseline.strategy=baseline.strategy,
-                                   deviation.strategy=deviation.strategy,
-                                   nsamples=nsamples)
-    
-    print(sprintf("Comparing profiles  %s vs. %s, PRA=%s, 3way=%d, m=%d, n=%d", 
-                  baseline.strategy, deviation.strategy, pra,
-                  include.3way,
-                  comparison$m,
-                  comparison$n))
-    
     profile.name = sprintf("prof%d%d", base.Nt, dev.Nt)
     result.name = sprintf("%s.%s.%s", 
                           profile.name,
                           ifelse(pra, "UPRA", "NonUPRA"),
                           ifelse(include.3way, "3way", "2way"))
-    results[[result.name]] <- compare.mechanisms(comparison)
-    filename = sprintf("out/%s%d-m%dn%d-results.Rdata",
-                       filename.prefix,
-                       ifelse(include.3way, 3, 2), nhospitals, nsize)
-    cat(sprintf("\nSaving to filename %s", filename))
-    save(results, file=filename)
+    if(result.name %in% names(results)) {
+      old.size = get.result.size(results[[result.name]])
+      print(sprintf("Old result (%s) exists and has size %d", result.name, old.size))
+      print(sprintf("Ordered %d samples, need to take %d instead..", nsamples,
+                    max(0, nsamples-old.size)))
+      nsamples = max(0, nsamples - old.size)
+    }
+    if(nsamples > 0) {
+      comparison = create.comparison(mechanisms=mechanisms,
+                                     nHospitals=nhospitals, nSize=nsize,
+                                     uniform.pra=pra, 
+                                     include.3way=include.3way,
+                                     baseline.strategy=baseline.strategy,
+                                     deviation.strategy=deviation.strategy,
+                                     nsamples=nsamples)
+      
+      cat(sprintf("\nComparing profiles  %s vs. %s, PRA=%s, 3way=%d, m=%d, n=%d, nsamples=%d", 
+                    baseline.strategy, deviation.strategy, pra,
+                    include.3way,
+                    comparison$m,
+                    comparison$n,
+                    nsamples))
+      ## Compare mechanisms -> new result.
+      new.result <- compare.mechanisms(comparison)
+      
+      if(result.name %in% names(results)) {
+        old.size = get.result.size(results[[result.name]])
+        cat(sprintf("\n\n++Adding to old results object. Result size (#samples)=%d", old.size))
+        results[[result.name]] = add.results(results[[result.name]], new.result)
+        cat(sprintf("\nNew Result size (#samples)=%d", get.result.size(results[[result.name]])))
+      } else {
+        results[[result.name]] = new.result
+      }
+      
+      cat(sprintf("\nSaving to filename %s", filename))
+      save(results, file=filename)
+    }
     return(results)
   }
-  exp.results <- list()
+  
+  exp.results <- old.results
   if(1 %in% run.profiles)
     exp.results = run.comparison(exp.results, nhospitals, nhospitals-1, T)
   if(2 %in% run.profiles)
@@ -629,7 +742,8 @@ simple.experiments <- function(experiment.no, nsamples=100, max.hospitalSize=140
 }
 
 run.sweetSpot.experiments <- function(nsamples) {
-  table.welfare.incentives(mechanisms=c("xCM"), nhospitals=3, nsize=140, 
+   kCurrentLogLevel <<- 0
+  table.welfare.incentives(mechanisms=c("xCM"), nhospitals=3, nsize=180, 
                            include.3way=F, nsamples=nsamples,
                            filename.prefix="SweetSpot",
                            run.profiles=c(1,2))
