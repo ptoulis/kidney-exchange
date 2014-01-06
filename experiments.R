@@ -734,12 +734,13 @@ simple.experiments <- function(experiment.no, nsamples=100, max.hospitalSize=140
   
 }
 
-run.sweetSpot.experiments <- function(nsamples) {
-   kCurrentLogLevel <<- 0
-  table.welfare.incentives(mechanisms=c("xCM"), nhospitals=3, nsize=180, 
-                           include.3way=F, nsamples=nsamples,
-                           filename.prefix="SweetSpot",
-                           run.profiles=c(1,2))
+run.sweetSpot.experiments <- function(nsamples, only.3way) {
+  # kCurrentLogLevel <<- 0
+  if(!only.3way)
+    table.welfare.incentives(mechanisms=c("xCM"), nhospitals=3, nsize=180, 
+                             include.3way=F, nsamples=nsamples,
+                             filename.prefix="SweetSpot",
+                             run.profiles=c(1,2))
   
   table.welfare.incentives(mechanisms=c("xCM"), nhospitals=2, nsize=80, 
                            include.3way=T, nsamples=nsamples,
