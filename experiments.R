@@ -747,3 +747,23 @@ run.sweetSpot.experiments <- function(nsamples) {
                            run.profiles=c(1,2))
 }
 
+short.efficiency.experiment <- function(nsamples=10) {
+  # does efficiency gain come from R pairs in 3-way exchanges?
+  types = c("O", "U", "S", "R")
+  increase = matrix(NA, nrow=0, ncol=length(types))
+  pb = txtProgressBar(style=3)
+    
+  for(i in 1:nsamples) {
+    rke = rrke(70)
+    m2 = max.matching(rke, regular.matching=T)
+    m3 = max.matching(rke, regular.matching=T, include.3way=T)
+    update = sapply(types, function(type) {
+      nrow(subset(m3$match, pair.type==type)) - nrow(subset(m2$match, pair.type==type))
+    })
+    increase = rbind(increase, update)
+    setTxtProgressBar(pb, value=i/nsamples)
+  }
+  rownames(increase) <- NULL
+  colnames(increase) = types
+  return(increase)
+}
