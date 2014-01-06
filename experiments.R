@@ -745,7 +745,7 @@ run.sweetSpot.experiments <- function(nsamples, only.3way) {
   table.welfare.incentives(mechanisms=c("xCM"), nhospitals=2, nsize=80, 
                            include.3way=T, nsamples=nsamples,
                            filename.prefix="SweetSpot",
-                           run.profiles=c(1,2))
+                           run.profiles=c(1))
 }
 
 short.efficiency.experiment <- function(nsamples=10) {
