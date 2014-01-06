@@ -271,7 +271,7 @@ safe.sample <- function(from, size) {
   return(from[which(ind==1)])
 }
 
-table.regularity <- function(nsamples, max.hospitalSize=500,
+table.regularity <- function(nsamples, max.hospitalSize=200,
                              include.3way, verbose=F) {
   # Explore regularity assumptions for 2-way or 3-way exchanges
   #
@@ -292,9 +292,9 @@ table.regularity <- function(nsamples, max.hospitalSize=500,
   #   aspect S= sum of S pairs (b.c. S pairs =0 after 3way matching)
   #   aspect O = 0
   #
-  all.sizes <- round(seq(10, max.hospitalSize, by=50))
+  all.sizes <- round(seq(10, max.hospitalSize, by=20))
   if(include.3way)
-    all.sizes = round(seq(10, max.hospitalSize, by=50))  # smaller sizes for 3-way
+    all.sizes = round(seq(10, max.hospitalSize, by=20))  # smaller sizes for 3-way
   
   sampled.sizes <- sample(all.sizes, size=nsamples, replace=T)
   print("Sampled sizes breakdown")
@@ -311,7 +311,7 @@ table.regularity <- function(nsamples, max.hospitalSize=500,
     as.vector(sapply(x, function(s) sprintf("%s.unmatched", s)))  
   }
 
-  regularity.aspects = c("nsize",
+  regularity.aspects = c("nsize", "all.match",
                          S.aspects, unmatched.aspects(S.aspects),
                          R.aspects, unmatched.aspects(R.aspects),
                          OU.aspects, unmatched.aspects(OU.aspects))
@@ -395,9 +395,10 @@ table.regularity <- function(nsamples, max.hospitalSize=500,
         R.rke.remainder = rke.remove.pairs(R.rke, get.matching.ids(mR))
         mOU = max.matching(OU.rke)
         OU.rke.remainder = rke.remove.pairs(OU.rke, get.matching.ids(mOU))
-              
+        
+        nAllMatched = max.matching(rke)$utility
         # Update regularity matrix
-        update = as.vector(c(nsize, 
+        update = as.vector(c(nsize, nAllMatched,
                    count.aspects(S.rke, S.aspects),
                    count.aspects(S.rke.remainder, S.aspects), 
                    count.aspects(R.rke, R.aspects),
@@ -445,8 +446,10 @@ table.regularity <- function(nsamples, max.hospitalSize=500,
         mOU = max.matching(OU.rke, regular.matching=T)  # should be 2-way
         OU.rke.remainder = rke.remove.pairs(OU.rke, get.matching.ids(mOU))
         
+        nAllMatched = max.matching(rke, include.3way=T)$utility
+        
         # Update regularity matrix
-        update = as.vector(c(nsize, 
+        update = as.vector(c(nsize, nAllMatched,
                              count.aspects(S.rke, S.aspects),
                              count.aspects(S.rke.remainder, S.aspects), 
                              count.aspects(R.rke, R.aspects),
