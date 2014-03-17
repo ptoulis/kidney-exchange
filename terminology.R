@@ -113,7 +113,7 @@ kPairs <- cbind(kPairs, desc=
 kPairs$pair.type <- kPairTypes[1+ with(kPairs, 2 * blood.compatible + symmetric.compatible)]
 kPairs$symmetric.compatible <- NULL
 kPairs<- cbind(pc=kPairCodes, kPairs)
-kPairs$pair.color <- laply(kPairs$pair.type, function(i) kPairTypeColors[[i]])
+kPairs$pair.color <- sapply(as.character(kPairs$pair.type), function(i) kPairTypeColors[[i]])
 
 compatibility.mask = kUniformPRA * kPairs$blood.compatible + (1 - kPairs$blood.compatible)
 kPairs$marginal.prob <- kPairs$prob * compatibility.mask
