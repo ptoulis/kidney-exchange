@@ -1,7 +1,6 @@
 # Panos Toulis, David C.Parkes
 # 2012, Random Graph models for Kidney Exchanges
 source("terminology.R")
-library(plyr)
 
 rrke.pool <- function(m=3, n=60, uniform.pra, verbose=F) {
   # Create a "rke pool" object.
@@ -344,7 +343,10 @@ rke.edge.by.pair <- function(rke, id.frame) {
   return (out)
 }
 
-plot.rke = function(rke, vertex.size=20) {
+plot.rke = function(rke, layout=layout.auto, 
+                    mark.ex=10,
+                    vertex.size=20,
+                    font.size=1) {
   library(igraph)
   if(rke.size(rke) == 0) {
     loginfo("Empty RKE can't be plotted.")
@@ -352,12 +354,27 @@ plot.rke = function(rke, vertex.size=20) {
   }
   g = graph.adjacency(rke$A, mode="directed")
   V(g)$color = rke$pairs$pair.color
+  V(g)$label.cex = font.size
   # igraph orders edges by source node.
   E(g)$color = arrange(subset(rke$edges, can.donate==1), pair.id1)$edge.color
   V(g)$label = str_c("H", rke$pairs$hospital, "#", rke$pairs$desc, rke$pairs$pair.id)
+
+  
   par(mar=c(0,0,0,0))
   par(mfrow=c(1,1))
-  plot.igraph(g,layout=layout.auto, vertex.size=vertex.size)
+  groups = list()
+  cols = c()
+  for(group in unique(as.character(kPairs$pair.type))){
+    groups[[group]] = subset(rke$pairs, pair.type==group)$pair.id
+    print(group)
+    colGroup = ifelse(group=="U", "white", subset(kPairs, pair.type==group)$pair.color[1])
+    cols <- c(cols, alpha(colGroup, alpha=0.5))
+  }
+    print(groups)
+  print(cols)
+  plot.igraph(g, mark.groups=groups, mark.col=cols, 
+              mark.border=cols, mark.expand=mark.ex,
+              layout=layout, vertex.size=vertex.size)
 }
 
 # to-functions
