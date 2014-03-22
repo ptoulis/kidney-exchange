@@ -1,6 +1,6 @@
 # Copyright 2013 Panos Toulis, David C.Parkes
 # Author: Panos Toulis(ptoulis@fas.harvard.edu)
-library(plyr)
+library(plyr)  # useful for data-handling
 library(stringr)
 
 kCurrentLogLevel = 5
