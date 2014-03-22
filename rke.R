@@ -355,20 +355,36 @@ plot.rke = function(rke, layout=layout.auto,
   g = graph.adjacency(rke$A, mode="directed")
   V(g)$color = rke$pairs$pair.color
   V(g)$label.cex = font.size
+  
+  reverse.pair.names <- function(names) {
+    out = c()
+    for(name in names) {
+      u = strsplit(name, split="")[[1]]
+      dash.index = which(u=="-")
+      i2 = seq(dash.index+1, length(u))
+      i1 = seq(1, dash.index-1)
+      new.name = str_c(paste(u[i2], collapse=""), "-",
+                       paste(u[i1], collapse=""))
+      out <- c(out, new.name)
+    }
+    return(out)
+  }
   # igraph orders edges by source node.
   E(g)$color = arrange(subset(rke$edges, can.donate==1), pair.id1)$edge.color
-  V(g)$label = str_c("H", rke$pairs$hospital, "#", rke$pairs$desc, rke$pairs$pair.id)
-
+  V(g)$label = str_c("H", rke$pairs$hospital, "#",
+                     reverse.pair.names(as.character(rke$pairs$desc)),
+                     rke$pairs$pair.id)
   
   par(mar=c(0,0,0,0))
   par(mfrow=c(1,1))
   groups = list()
   cols = c()
+
   for(group in unique(as.character(kPairs$pair.type))){
     groups[[group]] = subset(rke$pairs, pair.type==group)$pair.id
-    print(group)
     colGroup = ifelse(group=="U", "white", subset(kPairs, pair.type==group)$pair.color[1])
-    cols <- c(cols, alpha(colGroup, alpha=0.5))
+    torgb = col2rgb(colGroup)[,1]/255
+    cols <- c(cols, rgb(torgb[1], torgb[2], torgb[3], alpha=0.5))
   }
     print(groups)
   print(cols)
