@@ -1,7 +1,6 @@
 This code can be used to perform research on Kidney Exchanges.
-In this domain, a random graph is formed where each node is a donor/patient
-and each directed edge denotes compatibility between pairs.
-The overall goal is to create efficient exchanges and also make sure that participants (hospitals) have the incentive to share truthfully their donor/patient pairs.
+In this domain, a random graph is formed where each node is a patient/donor pair 
+(i.e. a donor willing to donate to a patient but can't because they are incompatible), and each directed edge denotes compatibility between pairs. The overall goal is to create efficient exchanges and also make sure that participants (hospitals) have the incentive to share truthfully their donor/patient pairs.
 
 More information on the model can be found in (Toulis and Parkes, 2013) -- see here http://www.people.fas.harvard.edu/~ptoulis/harvard-homepage/papers/pkd-toulis-parkes2013.pdf
 This is also the paper where the code is introduced and extensively used (please cite that paper wrt to this provided code).
