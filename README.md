@@ -42,7 +42,7 @@ pair1 -> pair2 -> pair1. It creates a pool of 4 hospitals, each sharing a graph 
 and then lets one hospital (Hospital 3) "deviate" i.e., hide all pairs that can be matched internally.
 It then runs "xCM" internally to clear the market and prints the results.
 ```
-pool = rrke.pool(m=4, n=20, uniform.pra=T)  // uniform PRA model (see Toulis & Parkes, 2013)
+pool = rrke.pool(m=4, n=20, uniform.pra=T)  # uniform PRA model (see Toulis & Parkes, 2013)
 kpd = kpd.create(pool, strategy.str="ttc", include.3way=T) // include.3way allows for 3-cycles
 out = Run.Mechanism(kpd, "xCM", include.3way=T)  // runs xCM on this pool
 no.matches = get.matching.utility(out)  
