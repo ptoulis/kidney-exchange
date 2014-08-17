@@ -769,3 +769,42 @@ short.efficiency.experiment <- function(nsamples=10) {
   colnames(increase) = types
   return(increase)
 }
+
+# Added 8/17
+additional.experiments <- function(m, n, nreps=1, add.plots=F) {
+  ## Output data.
+  xcm.utilities <- c()
+  bonus.utilities <- c()
+  bonus.dev.util <- matrix(NA, nrow=0, ncol=m)
+  
+  pb = txtProgressBar(style=3)
+  
+  for(j in 1:nreps) {
+    pool = rrke.pool(m, n, uniform.pra = T)
+    kpd.t = kpd.create(pool, strategy.str=paste(rep("t", m), collapse=""), include.3way=T)
+    kpd.c = kpd.create(pool, strategy.str=paste(rep("c", m), collapse=""), include.3way=T)
+    kpd.dev = kpd.create(pool, strategy.str=paste(c("c", rep("t", m-1)), collapse=""), include.3way=T)
+    
+    out.xcm = Run.Mechanism(kpd.t, mech="xCM", ,include.3way=T)
+    out.bonus.c = Run.Mechanism(kpd.c, mech="Bonus", ,include.3way=T)
+    out.bonus.dev = Run.Mechanism(kpd.dev, mech="Bonus", ,include.3way=T)
+    
+    # Get utilities
+    res.xcm = get.matching.hospital.utilities(out.xcm$total.matching, m)
+    res.bonus = get.matching.hospital.utilities(out.bonus.c$total.matching, m)
+    res.bonus.dev = get.matching.hospital.utilities(out.bonus.dev$total.matching, m)
+    
+    xcm.utilities <- c(xcm.utilities, sum(res.xcm))
+    bonus.utilities <- c(bonus.utilities, sum(res.bonus))
+    bonus.dev.util <- rbind(bonus.dev.util, res.bonus.dev)
+    setTxtProgressBar(pb, value=j/nreps)
+  }
+  print("Done.")
+  rownames(bonus.dev.util) <- c()
+  if(add.plots) {
+    hist(xcm.utilities, breaks=20, col="pink", main="Welfare (xCM=pink, Bonus=blue)", xlab="welfare")
+    hist(bonus.utilities, add=T, col=rgb(0, 0,1, alpha=0.4), breaks=20)
+  }
+  return(list(xcm=xcm.utilities, bonus=bonus.utilities, bonus.dev=bonus.dev.util))
+}
+
