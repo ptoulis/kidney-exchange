@@ -771,63 +771,64 @@ short.efficiency.experiment <- function(nsamples=10) {
 }
 
 # Added 8/17
-additional.experiments <- function(m, n, nreps=1, add.plots=F, save.filename=NA) {
-  ## Output data.
-  xcm.utilities <- c()
-  bonus.utilities <- c()
-  xcm.dev.util <- matrix(NA, nrow=0, ncol=m)
-  bonus.dev.util <- matrix(NA, nrow=0, ncol=m)
+additional.experiments <- function(m, n, nreps=1, save.filename=NA) {
+  # The experimental setup
+  # xcm.t = We will run xCM at the truthful profile  etc..
+  #   The profile will be used to create the appropriate kpd object.
+  setup = list(xcm.t=list(mech="xCM", profile="t"),
+               xcm.h1.dev=list(mech="xCM", profile="H1"),
+               bonus.t=list(mech="Bonus", profile="t"),
+               bonus.c=list(mech="Bonus", profile="c"),
+               bonus.h1.dev=list(mech="Bonus", profile="H1"))
+  
+  ## Initialize Output data.
+  output.data = list()
+  for(f in names(setup)) {
+    output.data[[f]] <-  matrix(NA, nrow=0, ncol=m)
+  }
   
   pb = txtProgressBar(style=3)
-  
-  output.data = list()
-  if(!is.na(save.filename) & file.exists(save.filename)) {
+  # Continually save data if the "save.filename" is supplied.
+  if(!is.na(save.filename) && file.exists(save.filename)) {
     load(save.filename)
     print(sprintf("Data file exists. Loading it now. Has %d entries.", nrow(output.data)))
   }
   
   for(j in 1:nreps) {
+    # 1. Sample the appropriate KPD objects.
     pool = rrke.pool(m, n, uniform.pra = T)
-    kpd.t = kpd.create(pool, strategy.str=paste(rep("t", m), collapse=""), include.3way=T)
-    kpd.c = kpd.create(pool, strategy.str=paste(rep("c", m), collapse=""), include.3way=T)
-    # KPD where H1 deviates, everyone else is truthful.
-    kpd.dev = kpd.create(pool, strategy.str=paste(c("c", rep("t", m-1)), collapse=""), include.3way=T)
+    kpd.list = list()
+    # profile t = all truthful
+    kpd.list[["t"]] <- kpd.create(pool, strategy.str=paste(rep("t", m), collapse=""), include.3way=T)
+    # profile c = all deviating
+    kpd.list[["c"]] <- kpd.create(pool, strategy.str=paste(rep("c", m), collapse=""), include.3way=T)
+    # profile H1 = H1 deviates, everyone else is truthful.
+    kpd.list[["H1"]] <- kpd.create(pool, strategy.str=paste(c("c", rep("t", m-1)), collapse=""), include.3way=T)
     
-    out.xcm = Run.Mechanism(kpd.t, mech="xCM", ,include.3way=T)
-    out.bonus.c = Run.Mechanism(kpd.c, mech="Bonus", ,include.3way=T)
-    out.xcm.dev = Run.Mechanism(kpd.dev, mech="xCM", ,include.3way=T)
-    out.bonus.dev = Run.Mechanism(kpd.dev, mech="Bonus", ,include.3way=T)
+    # 2. Run the mechanisms according to the "setup" object 
+    #   get utilities and store them in the output tables.
+    for(f in names(setup)) {
+      kpd.f = kpd.list[[setup[[f]]$profile]] # either kpd.t, kpd.c, or kpd.h1
+      kpd.mech = setup[[f]]$mech # either xCM or Bonus
+      # Run mechanism(kpd, mech)
+      out = Run.Mechanism(kpd.f, mech=kpd.mech, include.3way=T)
+      # Compute utility
+      utilities <- get.matching.hospital.utilities(out$total.matching, m)
+      # Store result
+      output.data[[f]] <- rbind(output.data[[f]], utilities)
+    }
     
-    # Get utilities
-    res.xcm = get.matching.hospital.utilities(out.xcm$total.matching, m)
-    res.bonus = get.matching.hospital.utilities(out.bonus.c$total.matching, m)
-    res.xcm.dev = get.matching.hospital.utilities(out.xcm.dev$total.matching, m)
-    res.bonus.dev = get.matching.hospital.utilities(out.bonus.dev$total.matching, m)
-    
-    # Store results
-    xcm.utilities <- c(xcm.utilities, sum(res.xcm))
-    bonus.utilities <- c(bonus.utilities, sum(res.bonus))
-    xcm.dev.util <- rbind(xcm.dev.util, res.xcm.dev)
-    bonus.dev.util <- rbind(bonus.dev.util, res.bonus.dev)
-
     setTxtProgressBar(pb, value=j/nreps)
-    rownames(xcm.dev.util) <- c()
-    rownames(bonus.dev.util) <- c()
-    
-    output.data = list(xcm=xcm.utilities, 
-                       bonus=bonus.utilities,
-                       xcm.dev=xcm.dev.util,
-                       bonus.dev=bonus.dev.util)
+    # Post-processing (remove annoying row names)
+    for(f in names(setup)) {
+      rownames(output.data[[f]]) <- c()
+    }
+    # Save if filename is supplied.
     if(!is.na(save.filename)) {
       save(output.data, file=save.filename)
     }
-    
   }
   print("Done.")
-  if(add.plots) {
-    hist(xcm.utilities, breaks=20, col="pink", main="Welfare (xCM=pink, Bonus=blue)", xlab="welfare")
-    hist(bonus.utilities, add=T, col=rgb(0, 0,1, alpha=0.4), breaks=20)
-  }
   return(output.data)
 }
 
