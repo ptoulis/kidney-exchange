@@ -771,40 +771,59 @@ short.efficiency.experiment <- function(nsamples=10) {
 }
 
 # Added 8/17
-additional.experiments <- function(m, n, nreps=1, add.plots=F) {
+additional.experiments <- function(m, n, nreps=1, add.plots=F, save.filename=NA) {
   ## Output data.
   xcm.utilities <- c()
   bonus.utilities <- c()
+  xcm.dev.util <- matrix(NA, nrow=0, ncol=m)
   bonus.dev.util <- matrix(NA, nrow=0, ncol=m)
   
   pb = txtProgressBar(style=3)
+  
+  output.data = list()
   
   for(j in 1:nreps) {
     pool = rrke.pool(m, n, uniform.pra = T)
     kpd.t = kpd.create(pool, strategy.str=paste(rep("t", m), collapse=""), include.3way=T)
     kpd.c = kpd.create(pool, strategy.str=paste(rep("c", m), collapse=""), include.3way=T)
+    # KPD where H1 deviates, everyone else is truthful.
     kpd.dev = kpd.create(pool, strategy.str=paste(c("c", rep("t", m-1)), collapse=""), include.3way=T)
     
     out.xcm = Run.Mechanism(kpd.t, mech="xCM", ,include.3way=T)
     out.bonus.c = Run.Mechanism(kpd.c, mech="Bonus", ,include.3way=T)
+    out.xcm.dev = Run.Mechanism(kpd.dev, mech="xCM", ,include.3way=T)
     out.bonus.dev = Run.Mechanism(kpd.dev, mech="Bonus", ,include.3way=T)
     
     # Get utilities
     res.xcm = get.matching.hospital.utilities(out.xcm$total.matching, m)
     res.bonus = get.matching.hospital.utilities(out.bonus.c$total.matching, m)
+    res.xcm.dev = get.matching.hospital.utilities(out.xcm.dev$total.matching, m)
     res.bonus.dev = get.matching.hospital.utilities(out.bonus.dev$total.matching, m)
     
+    # Store results
     xcm.utilities <- c(xcm.utilities, sum(res.xcm))
     bonus.utilities <- c(bonus.utilities, sum(res.bonus))
+    xcm.dev.util <- rbind(xcm.dev.util, res.xcm.dev)
     bonus.dev.util <- rbind(bonus.dev.util, res.bonus.dev)
+
     setTxtProgressBar(pb, value=j/nreps)
+    rownames(xcm.dev.util) <- c()
+    rownames(bonus.dev.util) <- c()
+    
+    output.data = list(xcm=xcm.utilities, 
+                       bonus=bonus.utilities,
+                       xcm.dev=xcm.dev.util,
+                       bonus.dev=bonus.dev.util)
+    if(!is.na(save.filename)) {
+      save(output.data, file=save.filename)
+    }
+    
   }
   print("Done.")
-  rownames(bonus.dev.util) <- c()
   if(add.plots) {
     hist(xcm.utilities, breaks=20, col="pink", main="Welfare (xCM=pink, Bonus=blue)", xlab="welfare")
     hist(bonus.utilities, add=T, col=rgb(0, 0,1, alpha=0.4), breaks=20)
   }
-  return(list(xcm=xcm.utilities, bonus=bonus.utilities, bonus.dev=bonus.dev.util))
+  return(output.data)
 }
 

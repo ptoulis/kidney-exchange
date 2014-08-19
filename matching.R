@@ -214,7 +214,8 @@ gurobi.matched.pairs <- function(gurobi.result, rke, cycles) {
   # Args:
   #   gurobi.result = LIST(status, x=vector of solutions[2cycles, 3cycles])
   # Returns: A <matching> object.
-  if(gurobi.result$status=="TIME_LIMIT" | gurobi.result$status=="INF_OR_UNBD") {
+  if(is.null(gurobi.result) | is.na(gurobi.result) | 
+       gurobi.result$status=="TIME_LIMIT" | gurobi.result$status=="INF_OR_UNBD") {
     warning("Time limit/infinity or Impossible")
     empty.result = empty.match.result(rke)
     empty.result$status = gurobi.result$status
