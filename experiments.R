@@ -781,6 +781,10 @@ additional.experiments <- function(m, n, nreps=1, add.plots=F, save.filename=NA)
   pb = txtProgressBar(style=3)
   
   output.data = list()
+  if(!is.na(save.filename) & file.exists(save.filename)) {
+    load(save.filename)
+    print(sprintf("Data file exists. Loading it now. Has %d entries.", nrow(output.data)))
+  }
   
   for(j in 1:nreps) {
     pool = rrke.pool(m, n, uniform.pra = T)

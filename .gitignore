@@ -7,4 +7,5 @@ out/*
 out/png/*
 null.R
 .Rproj.user
+*rda
 *Rproj
